@@ -1,0 +1,162 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\rfckw}[1]{\textsc{#1}}
+
+\title{\bfseries A Finer Exploitability Gradation (VLEV)\\ for FedRAMP Rev5 VDR/VER}
+\author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This is a companion proposal to \emph{A Deterministic, CVSS--Environmental Method for
+FedRAMP Rev5 VDR/VER Vulnerability Prioritization}, which derives a Potential Agency
+Impact rating (PAIN, N1--N5) and a VDR-TFR-PVR remediation deadline for each finding.
+That method treats exploitability as a single yes/no line (Likely-Exploitable or
+not). This proposal recommends splitting it into \emph{three} bands so the very
+tightest remediation clocks are reserved for the flaws most likely to be exploited in
+the wild --- and shows that the change is purely additive to the existing remediation
+matrix, slowing nothing down. The key words \rfckw{must}, \rfckw{should}, and
+\rfckw{may} are to be read as in RFC~2119.
+\end{abstract}
+
+\section{The added inflection point}
+The reference method uses one EPSS cut to separate Likely-Exploitable (LEV) from Not
+(NLEV). We propose \emph{two} cuts and three bands:
+\begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
+\item \textbf{NLEV} --- $\text{EPSS} \le 0.30$: not likely exploitable.
+\item \textbf{LEV} --- $0.30 < \text{EPSS} \le 0.75$: likely exploitable.
+\item \textbf{VLEV} --- $\text{EPSS} > 0.75$: \emph{very} likely exploitable.
+\end{itemize}
+\textbf{Observed active exploitation always maps to VLEV}, regardless of EPSS: if CISA
+Vulnrichment reports \code{exploitation = active} (KEV-equivalent), the flaw is being
+used \emph{now} and belongs in the most-urgent band by definition.
+
+\section{Alignment with CISA Vulnrichment}
+The split is not arbitrary --- it mirrors the taxonomy of the authoritative source.
+CISA Vulnrichment's SSVC \emph{Exploitation} metric already distinguishes three
+states: \code{none}, \code{poc} (a public proof-of-concept exists), and \code{active}
+(observed in the wild). Today's binary LEV/NLEV flattens that distinction; the
+proposed bands restore it, with each state lining up to a band and EPSS supplying the
+statistical estimate where Vulnrichment is silent:
+\begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
+\item \code{none} $\rightarrow$ NLEV (no known exploit; statistically EPSS $\le 0.30$).
+\item \code{poc} $\rightarrow$ LEV (exploit code exists, not yet widespread; EPSS $0.30$--$0.75$).
+\item \code{active} $\rightarrow$ VLEV (being used now; EPSS $> 0.75$).
+\end{itemize}
+As with \code{active}$\rightarrow$VLEV, a known \code{poc} state can floor a finding to
+LEV even when its EPSS is lower. The exploitation \emph{state} (when known) and the
+EPSS \emph{probability} (always available) then agree on one three-tier scale instead
+of being forced into a two-way yes/no.
+
+\section{Calibration: anchored on today's matrix}
+We anchor the three bands on FedRAMP's existing deadlines so adoption is trivial and
+\emph{nothing remediates slower than today}:
+\begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
+\item \textbf{VLEV reuses FedRAMP's current LEV deadlines, unchanged} --- the
+  very-likely / actively-exploited band keeps today's fastest clock.
+\item \textbf{LEV} (the new $0.30$--$0.75$ band) gets \emph{slightly more} time than
+  VLEV --- likely, but not certain, so a modest grace over the actively-exploited
+  band, and a large speed-up versus today, where this band sat in the slow NLEV
+  column.
+\item \textbf{NLEV} ($\le 0.30$) keeps today's slow deadline as \code{NLEV+NIRV} and
+  now \emph{splits} by reachability, so a not-likely-but-internet-reachable flaw
+  (\code{NLEV+IRV}) is modestly tighter than a purely internal one.
+\end{itemize}
+Within every band, internet-reachable (IRV) is tighter than not-reachable (NIRV). The
+result is six remediation columns in place of today's three.
+
+\section{The proposed matrix}
+Tables~\ref{tab:ab}--\ref{tab:d} give the full six-column grid per Certification Class
+(days; $0.5 = 12$ hours). Columns are grouped by reachability; within each group the
+three exploitability bands increase left to right. The VLEV columns and
+\code{NLEV+NIRV} reproduce the provider's current matrix exactly; \code{LEV} and
+\code{NLEV+IRV} are the new, faster columns. PAIN-1 carries no FedRAMP deadline.
+Values are illustrative of a representative VDR-TFR-PVR profile; the authoritative day
+counts remain FedRAMP's to set.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l ccc ccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Internet-reachable (IRV)}} & \multicolumn{3}{c}{\textbf{Not reachable (NIRV)}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+\textbf{PAIN} & VLEV & LEV & NLEV & VLEV & LEV & NLEV \\
+\midrule
+N5 & 4  & 6   & 16  & 8   & 12  & 32 \\
+N4 & 8  & 12  & 48  & 32  & 48  & 64 \\
+N3 & 32 & 48  & 96  & 64  & 96  & 192 \\
+N2 & 96 & 144 & 176 & 160 & 192 & 192 \\
+\bottomrule
+\end{tabular}
+\caption{Proposed six-column grid --- \textbf{Class A / B} (days; $0.5 = 12$ h).}
+\label{tab:ab}
+\end{table}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l ccc ccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Internet-reachable (IRV)}} & \multicolumn{3}{c}{\textbf{Not reachable (NIRV)}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+\textbf{PAIN} & VLEV & LEV & NLEV & VLEV & LEV & NLEV \\
+\midrule
+N5 & 2  & 3  & 8   & 4   & 6   & 16 \\
+N4 & 4  & 6  & 32  & 8   & 12  & 64 \\
+N3 & 16 & 24 & 64  & 32  & 48  & 128 \\
+N2 & 48 & 72 & 160 & 128 & 160 & 192 \\
+\bottomrule
+\end{tabular}
+\caption{Proposed six-column grid --- \textbf{Class C} (days; $0.5 = 12$ h).}
+\label{tab:c}
+\end{table}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l ccc ccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Internet-reachable (IRV)}} & \multicolumn{3}{c}{\textbf{Not reachable (NIRV)}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+\textbf{PAIN} & VLEV & LEV & NLEV & VLEV & LEV & NLEV \\
+\midrule
+N5 & 0.5 & 1  & 4   & 1  & 2   & 8 \\
+N4 & 2   & 3  & 16  & 8  & 12  & 32 \\
+N3 & 8   & 12 & 48  & 16 & 24  & 64 \\
+N2 & 24  & 36 & 160 & 96 & 144 & 192 \\
+\bottomrule
+\end{tabular}
+\caption{Proposed six-column grid --- \textbf{Class D} (days; $0.5 = 12$ h).}
+\label{tab:d}
+\end{table}
+
+\section{Net effect and adoption}
+Nothing slows down. The actively-exploited / $>0.75$ band keeps FedRAMP's current LEV
+clock; the broad $0.30$--$0.75$ middle band --- previously parked in the slow NLEV
+column --- accelerates onto a near-LEV clock; and reachability now refines the
+not-likely band. Because a conforming implementation already drives remediation from a
+config-driven \code{[Class][PAIN][column]} lookup, this is additive: it adds columns,
+not a redesign. An adopter \rfckw{may} tune the two EPSS cut points ($0.30$, $0.75$)
+and the per-Class day counts; the structural recommendation is the three-tier
+exploitability axis aligned to CISA Vulnrichment's \code{none}/\code{poc}/\code{active}
+states.
+
+\end{document}

@@ -1,0 +1,11 @@
+# Rendered PDFs are published as GitHub release assets, not tracked here.
+*.pdf
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz

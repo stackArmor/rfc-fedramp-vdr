@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FedRAMP VDR/VER — PAIN Scoring Method, VLEV &amp; VEX Proposals</title>
+<meta name="description" content="A deterministic, standards-grounded method for prioritizing vulnerabilities under FedRAMP Rev5 VDR/VER, plus companion proposals: a VLEV exploitability gradation and a CycloneDX VEX disposition profile.">
+<style>
+  :root{
+    --ink:#11181c; --muted:#5b6770; --line:#e3e8ec; --bg:#f7f9fb;
+    --accent:#0b5fff; --accent-ink:#08308a; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; color:var(--ink); background:var(--bg);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:0 20px}
+  header{
+    background:linear-gradient(180deg,#0b1f3a,#0b2c57); color:#fff;
+    padding:56px 0 44px; border-bottom:4px solid var(--accent);
+  }
+  header .wrap{text-align:left}
+  .eyebrow{font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:#9fc0ff; margin:0 0 10px}
+  h1{font-size:30px; line-height:1.25; margin:0 0 14px; font-weight:700}
+  .lede{font-size:17px; color:#d7e3f5; margin:0; max-width:60ch}
+  .author{margin-top:18px; font-size:14px; color:#aebfd6}
+  .author a{color:#cfe0ff}
+  main{padding:40px 0 60px}
+  h2{font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:36px 0 14px}
+  .cards{display:grid; gap:16px}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:20px 22px; box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .card h3{margin:0 0 6px; font-size:18px}
+  .card .sub{color:var(--muted); font-size:14px; margin:0 0 14px}
+  .cards.two{grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+  .card.featured{
+    border-color:var(--accent); border-width:2px; padding:26px 26px;
+    box-shadow:0 6px 20px rgba(11,95,255,.13);
+    background:linear-gradient(180deg,#ffffff,#f4f8ff);
+  }
+  .card.featured h3{font-size:24px; margin-top:4px}
+  .card.featured .sub{color:#2a3942; font-size:15px}
+  .badge{
+    display:inline-block; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    font-weight:700; color:#fff; background:var(--accent); padding:3px 10px; border-radius:999px;
+  }
+  .actions{display:flex; gap:10px; flex-wrap:wrap}
+  .btn{
+    display:inline-block; text-decoration:none; font-size:14px; font-weight:600;
+    padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
+  }
+  .btn.primary{background:var(--accent); color:#fff}
+  .btn.ghost{background:#fff; color:var(--accent-ink)}
+  .btn:hover{filter:brightness(1.05)}
+  .note{font-size:13px; color:var(--muted)}
+  pre{
+    background:#0b1f3a; color:#e7eefb; padding:14px 16px; border-radius:10px;
+    overflow:auto; font-size:13px; line-height:1.5;
+  }
+  footer{border-top:1px solid var(--line); padding:26px 0 50px; color:var(--muted); font-size:13px}
+  footer a{color:var(--accent-ink)}
+  a{color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <p class="eyebrow">FedRAMP Rev5 · Vulnerability Detection &amp; Response</p>
+    <h1>A Deterministic, CVSS-Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization</h1>
+    <p class="lede">FedRAMP defines <em>Potential Agency Impact</em> (PAIN, N1–N5) and a remediation-timeframe matrix but leaves the classifier unspecified. That classifier already exists, in standardized form, as the Environmental metric group of CVSS. This work makes the mapping explicit, deterministic, and auditable.</p>
+    <p class="author">Matthew Venne, Chief Technology Officer, <a href="https://stackarmor.com">stackArmor</a></p>
+    <p style="margin-top:18px">
+      <a class="btn primary" href="https://github.com/stackArmor/rfc-fedramp-vdr/discussions">💬 Join the discussion</a>
+    </p>
+    <p style="margin-top:12px; font-size:14px; color:#d7e3f5">All comments should be directed to our <a href="https://github.com/stackArmor/rfc-fedramp-vdr/discussions" style="color:#cfe0ff">GitHub Discussion</a>.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2>Start here — the core document</h2>
+  <div class="cards">
+    <div class="card featured">
+      <span class="badge">Primary document</span>
+      <h3>The Method</h3>
+      <p class="sub">A Deterministic, CVSS-Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example asset-archetype catalog. The two companions below build on it.</p>
+      <div class="actions">
+        <a class="btn primary" href="vdr-pain-cvss.pdf">View PDF</a>
+        <a class="btn ghost" href="vdr-pain-cvss.pdf" download>Download</a>
+      </div>
+    </div>
+  </div>
+
+  <h2>Companion proposals</h2>
+  <div class="cards two">
+    <div class="card">
+      <h3>VLEV — Exploitability Gradation</h3>
+      <p class="sub">A Finer Exploitability Gradation (VLEV) for FedRAMP Rev5 VDR/VER — splits exploitability into three bands (NLEV / LEV / VLEV) aligned to CISA Vulnrichment, with the full six-column remediation grid per Certification Class.</p>
+      <div class="actions">
+        <a class="btn primary" href="vlev-proposal.pdf">View PDF</a>
+        <a class="btn ghost" href="vlev-proposal.pdf" download>Download</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>VEX (CycloneDX) — Disposition</h3>
+      <p class="sub">A CycloneDX VEX Profile for FedRAMP Rev5 VDR/VER Disposition and Response — the machine-readable carrier for the post-detection disposition step (false positive, not reachable, mitigated, or accepted with an attested response), with a VER field mapping, an OCI distribution pattern, and an optional CISA-label crosswalk.</p>
+      <div class="actions">
+        <a class="btn primary" href="vex-cyclonedx.pdf">View PDF</a>
+        <a class="btn ghost" href="vex-cyclonedx.pdf" download>Download</a>
+      </div>
+    </div>
+  </div>
+
+  <h2>Build from source</h2>
+  <p class="note">These are informational documents. PDFs are rendered from the LaTeX sources:</p>
+  <pre>brew install tectonic        # one-time
+tectonic vdr-pain-cvss.tex   # -&gt; vdr-pain-cvss.pdf
+tectonic vlev-proposal.tex   # -&gt; vlev-proposal.pdf
+tectonic vex-cyclonedx.tex   # -&gt; vex-cyclonedx.pdf</pre>
+</main>
+
+<footer class="wrap">
+  <p>Source: <a href="https://github.com/stackArmor/rfc-fedramp-vdr">github.com/stackArmor/rfc-fedramp-vdr</a> ·
+  Feedback &amp; questions: <a href="https://github.com/stackArmor/rfc-fedramp-vdr/discussions">GitHub Discussions</a>.
+  Informational; each Cloud Service Provider should derive remediation-day values and the archetype catalog from its own system categorization.</p>
+</footer>
+</body>
+</html>

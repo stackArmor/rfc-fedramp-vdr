@@ -1,0 +1,303 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\rfckw}[1]{\textsc{#1}}
+
+\definecolor{lstbg}{HTML}{F6F8FA}
+\definecolor{lstrule}{HTML}{D0D7DE}
+\lstdefinestyle{json}{
+  basicstyle=\ttfamily\scriptsize,
+  backgroundcolor=\color{lstbg},
+  frame=single, rulecolor=\color{lstrule},
+  framesep=6pt, xleftmargin=6pt, xrightmargin=6pt,
+  breaklines=true, breakatwhitespace=true,
+  columns=fullflexible, keepspaces=true,
+  showstringspaces=false, aboveskip=10pt, belowskip=6pt,
+}
+
+\title{\bfseries A CycloneDX VEX Profile for\\ FedRAMP Rev5 VDR/VER Disposition and Response}
+\author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
+\date{June 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+This is a companion to \emph{A Deterministic, CVSS--Environmental Method for FedRAMP
+Rev5 VDR/VER Vulnerability Prioritization}, which assigns every detected finding a
+Potential Agency Impact rating (PAIN, N1--N5) and a remediation deadline by formula.
+That scoring is deterministic and computable \emph{a priori}. Deciding whether a
+finding is \emph{truly} exploitable in the running environment --- and, when a fix will
+miss the deadline, attesting the compensating response --- is a separate,
+\emph{a posteriori} step that can only follow detection. FedRAMP's Vulnerability
+Evaluation Requirements (VER) make that step normative but name no format. This
+proposal recommends \textbf{CycloneDX VEX} as the structured, machine-readable, signable
+carrier for it, chosen for the fit of its disposition and response \emph{vocabulary} ---
+not because it carries scores; it does not. We give the field mapping to VER, a thin
+worked example, an OCI-native distribution pattern, and an optional crosswalk to CISA's
+status-justification labels for downstream interoperability. This document is an
+\emph{implementation profile}: it shows one defensible way to satisfy existing VER
+requirements; it does not propose changing them. The key words \rfckw{must},
+\rfckw{should}, and \rfckw{may} are to be read as in RFC~2119.
+\end{abstract}
+
+\section{Where disposition sits in the lifecycle}
+The method memo computes PAIN and a deadline for \emph{every} finding a scanner emits.
+But a scan hit is a candidate, not a confirmed exposure: the flagged code may be
+absent, may never execute, may require a configuration nobody enabled, or may sit
+behind a control that already neutralizes it. Resolving which is the \emph{disposition}
+step.
+
+Disposition is an \emph{a posteriori} determination. The factors that decide it ---
+reachability, configuration, surrounding mitigations --- are specific to a given
+vulnerability on a given deployment and cannot be enumerated before that vulnerability
+is known. The analysis therefore necessarily follows detection, acutely so for novel
+vulnerabilities, where no prior due-diligence could exist. This is a statement about
+\emph{timing}, not about who or what performs it: the determination \rfckw{may} be fully
+automated or AI/agentic, but it cannot be precomputed.
+
+Because VER's clocks are short, the determination must be captured in a form that
+machines can produce, exchange, sign, and act on. A disposition resolves a finding onto
+one of two tracks:
+\begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
+\item \textbf{Not truly affected} --- the finding is suppressed, with a machine-readable
+  justification recording \emph{why} (code absent, unreachable, configuration-gated, or
+  already mitigated).
+\item \textbf{Affected but remediation will be late} --- the finding is accepted within
+  process, with an attested mitigation and a planned response, rather than silently
+  breaching the deadline.
+\end{itemize}
+
+\section{Why CycloneDX: the vocabulary fits the lifecycle}
+FedRAMP is not bound to any single VEX format, and VER specifies \emph{fields and
+content}, not a schema (Section~\ref{sec:vermap}). The provider therefore chooses the
+carrier --- the same latitude FedRAMP itself exercised in substituting PAIN for SSVC.
+On that basis the deciding factor is \emph{expressiveness}: which format's disposition
+vocabulary most precisely captures the real outcomes above. CycloneDX's \code{analysis}
+object is the strongest fit. The same granularity pays off when disposition is
+automated: because each justification names a distinct precondition, an automated or
+AI/agentic analyzer can map each evidence source one-to-one to a justification, where a
+coarser vocabulary would collapse several distinct findings onto a single label.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.30\textwidth} >{\raggedright\arraybackslash}p{0.62\textwidth}}
+\toprule
+\textbf{CycloneDX field} & \textbf{Values (and what they capture)} \\
+\midrule
+\code{analysis.state} & \code{resolved}, \code{resolved\_with\_pedigree},
+  \code{exploitable}, \code{in\_triage}, \code{false\_positive},
+  \code{not\_affected} --- note a first-class \code{false\_positive} and an
+  \code{in\_triage} (work-in-progress) state. \\
+\code{analysis.justification} & \code{code\_not\_present}, \code{code\_not\_reachable},
+  \code{requires\_configuration}, \code{requires\_dependency},
+  \code{requires\_environment}, \code{protected\_by\_compiler},
+  \code{protected\_at\_runtime}, \code{protected\_at\_perimeter},
+  \code{protected\_by\_mitigating\_control} --- nine reasons, naming configuration,
+  reachability, and perimeter/runtime controls explicitly. \\
+\code{analysis.response} & \code{can\_not\_fix}, \code{will\_not\_fix}, \code{update},
+  \code{rollback}, \code{workaround\_available} --- the planned action, which the
+  late-remediation track needs and lighter formats lack. \\
+\code{analysis.detail} & free text for human-readable context and evidence. \\
+\bottomrule
+\end{tabular}
+\caption{CycloneDX's \code{analysis} block: states, justifications, and responses.}
+\end{table}
+
+The operational cases a CSP actually encounters map onto native values without
+contortion:
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.42\textwidth} >{\raggedright\arraybackslash}p{0.50\textwidth}}
+\toprule
+\textbf{Real-world disposition} & \textbf{CycloneDX expression} \\
+\midrule
+Scanner false positive & \code{state: false\_positive} \\
+Vulnerable code absent / removed & \code{not\_affected} + \code{code\_not\_present} \\
+Vulnerable path never executes & \code{not\_affected} + \code{code\_not\_reachable} \\
+Needs an unset configuration & \code{not\_affected} + \code{requires\_configuration} \\
+Neutralized at the edge (WAF/IAP) & \code{not\_affected} + \code{protected\_at\_perimeter} \\
+Neutralized at runtime / by a control & \code{not\_affected} + \code{protected\_at\_runtime} / \code{protected\_by\_mitigating\_control} \\
+Affected; fix will miss deadline & \code{exploitable} + \code{response:[workaround\_available, update]} + \code{detail} \\
+Under evaluation & \code{in\_triage} \\
+\bottomrule
+\end{tabular}
+\caption{Operational dispositions and their native CycloneDX encodings.}
+\label{tab:cases}
+\end{table}
+
+\section{Mapping to FedRAMP VER}
+\label{sec:vermap}
+VER requires the disposition step and a machine-readable report, in each case by
+function rather than by named format. CycloneDX satisfies each clause:
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.30\textwidth} >{\raggedright\arraybackslash}p{0.62\textwidth}}
+\toprule
+\textbf{VER requirement} & \textbf{CycloneDX mechanism} \\
+\midrule
+\code{VER-EVA-EFP} (evaluate false positives) & \code{analysis.state = false\_positive} \\
+\code{VER-EVA-AIA} (assume exploitable absent evidence) & a VEX statement \emph{is} the
+  ``evidence otherwise''; its absence leaves the assume-exploitable default in force \\
+\code{VER-RPT-VDT} (per-finding disposition) & \code{analysis.state} +
+  \code{justification} + \code{response} keyed to the CVE and component \\
+\code{VER-TFR-MAV} / \code{VER-RPT-AVI} (accepted vulns) & \code{state = exploitable}
+  with \code{response} and \code{detail} recording the acceptance and mitigation \\
+\code{VER-TFR-MRH} (machine-readable JSON history) & CycloneDX is JSON; statements
+  accrete over time with timestamps \\
+\bottomrule
+\end{tabular}
+\caption{FedRAMP VER clauses and the CycloneDX fields that satisfy them.}
+\end{table}
+
+\section{A thin attestation: what it carries, and what it does not}
+The disposition artifact stays deliberately small. It carries only what identifies the
+finding and records the judgment:
+\begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
+\item the vulnerability \code{id} and its \code{source};
+\item the affected component, by \code{affects[].ref} (a package URL / \code{bom-ref});
+\item the \code{analysis} block --- \code{state}, \code{justification},
+  \code{response}, \code{detail};
+\item provenance --- author, timestamp, and a signature over the artifact.
+\end{itemize}
+
+It deliberately \emph{omits} PAIN, the LEV/IRV axes, the Certification Class, and the
+CVSS vector. Those are computed deterministically by the method and live in the
+provider's scoring report; duplicating them into the disposition artifact would invite
+drift and tempt a reader to treat an attestation as a place to re-score. The two
+records are joined on a stable key --- the \textbf{CVE identifier plus the component
+reference} --- so a reporting layer can attach each disposition to the finding it
+governs and recover the retained PAIN for audit. The disposition changes a finding's
+\emph{handling}; it never changes its score.
+
+\section{Worked example}
+A single signed CycloneDX document can carry several statements. Below, one finding is
+dispositioned \code{not\_affected} (unreachable code) and one is \code{exploitable} with
+an attested perimeter mitigation because the vendor fix will arrive after the deadline.
+Note the absence of any score, rating, or PAIN field.
+
+\begin{lstlisting}[style=json]
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-28T14:00:00Z",
+    "authors": [{ "name": "CSP Security Team" }],
+    "component": {
+      "type": "application",
+      "name": "payments-api",
+      "bom-ref": "payments-api@2.4.1"
+    }
+  },
+  "vulnerabilities": [
+    {
+      "id": "CVE-2026-10101",
+      "source": { "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-10101" },
+      "analysis": {
+        "state": "not_affected",
+        "justification": "code_not_reachable",
+        "detail": "Vulnerable parser entrypoint is never invoked; only the
+                   signing helper from this library is linked."
+      },
+      "affects": [{ "ref": "pkg:golang/example.com/parser@1.2.3" }]
+    },
+    {
+      "id": "CVE-2026-20202",
+      "source": { "name": "NVD",
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-20202" },
+      "analysis": {
+        "state": "exploitable",
+        "response": ["workaround_available", "update"],
+        "detail": "Vendor fix ETA exceeds the VER deadline. Perimeter WAF
+                   virtual patch deployed and egress restricted; tracked for
+                   update on vendor release."
+      },
+      "affects": [{ "ref": "pkg:deb/debian/libxyz@2.1.0-1" }]
+    }
+  ]
+}
+\end{lstlisting}
+
+\section{Distribution and retrieval over OCI}
+For containerized workloads the disposition artifact \rfckw{should} travel with the
+image it describes. CycloneDX documents have a defined media type and can be stored as
+OCI artifacts in the same registry as the image and associated with it through the
+registry's referrers/attestation mechanism. A scanner that already pulls an image to
+detect vulnerabilities can, in the same pass, resolve the image's attached VEX and
+apply the dispositions automatically --- so the \emph{a posteriori} judgment, once made
+and signed, is rediscovered and reused on every subsequent scan without re-litigation.
+This keeps disposition co-located with the artifact under evaluation, versioned with it,
+and verifiable by signature, and folds it natively into the existing detection workflow
+rather than bolting on a side channel.
+
+\section{Optional interoperability: CycloneDX to CISA labels}
+A FedRAMP-facing report needs nothing beyond the above. Some downstream consumers ---
+agency tooling, or a CSAF advisory pipeline --- speak CISA's narrower
+status-justification vocabulary instead. CISA, like CycloneDX, separates the two axes:
+each CycloneDX \code{state} coarsens onto a CISA \emph{status} and each
+\code{justification} onto a CISA \emph{justification label}, in both cases without loss
+of safety (the mapping only ever generalizes; it never invents a stronger claim). This
+crosswalk is \rfckw{optional} and exists solely for interchange.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.40\textwidth} >{\raggedright\arraybackslash}p{0.52\textwidth}}
+\toprule
+\textbf{CycloneDX justification / state} & \textbf{CISA label (coarsened)} \\
+\midrule
+\code{code\_not\_present} & \code{vulnerable\_code\_not\_present} \\
+\code{code\_not\_reachable} & \code{vulnerable\_code\_not\_in\_execute\_path} \\
+\code{requires\_configuration} & \code{vulnerable\_code\_not\_in\_execute\_path} \\
+\code{requires\_dependency} & \code{vulnerable\_code\_not\_in\_execute\_path} \\
+\code{requires\_environment} & \code{vulnerable\_code\_not\_in\_execute\_path} \\
+\code{protected\_by\_compiler} & \code{inline\_mitigations\_already\_exist} \\
+\code{protected\_at\_runtime} & \code{inline\_mitigations\_already\_exist} \\
+\code{protected\_at\_perimeter} & \code{inline\_mitigations\_already\_exist} \\
+\code{protected\_by\_mitigating\_control} & \code{inline\_mitigations\_already\_exist} \\
+\midrule
+\code{state: not\_affected} & \code{not\_affected} (paired with the justification above as the CISA label) \\
+\code{state: false\_positive} & \code{not\_affected} (\code{component\_not\_present} where the component is truly absent) \\
+\code{state: in\_triage} & \code{under\_investigation} \\
+\code{state: exploitable} & \code{affected} \\
+\code{state: resolved} / \code{resolved\_with\_pedigree} & \code{fixed} \\
+\bottomrule
+\end{tabular}
+\caption{Optional coarsening of CycloneDX dispositions onto CISA's labels/statuses.}
+\end{table}
+
+\section{Standing and adoption}
+CycloneDX introduced its vulnerability and VEX capabilities in version~1.4
+(January~2022), ahead of CISA's status-justification guidance (June~2022); its richer
+vocabulary is thus an independent, earlier design rather than a divergence from a later
+one. CycloneDX is now an Ecma International standard (ECMA-424). Adoption is additive:
+the disposition layer sits on top of the unchanged scoring pipeline of the method memo,
+joined by CVE and component, and a provider \rfckw{may} emit the optional CISA crosswalk
+for consumers that require it. As with the method's archetype catalog, this profile is
+offered as a workable existence proof, not as a new FedRAMP standard --- the choice of
+carrier remains the provider's.
+
+\end{document}
