@@ -371,52 +371,6 @@ Publisher (ADP) in the CVE Program; that choice is itself a design opinion (see
 Appendix~\ref{app:opinions}). The day-valued tables are given in
 Appendix~\ref{app:matrix}. PAIN-1 carries no FedRAMP deadline.
 
-\section{Assigning CR/IR/AR: archetypes (an example, not a standard)}
-\label{sec:archetypes}
-\begin{plain}
-Rather than hand-rate every server, we sort systems into a short list of
-\emph{archetypes} --- a database, a login service, a cache, a message bus, and so on
---- and each archetype comes with its criticality pre-filled. Tag a system with its
-archetype and the scoring is automatic. Our list is only an \emph{example}: every
-provider should tailor its own to the data it actually holds.
-\end{plain}
-The model in Section~\ref{sec:math} is only as good as the CR/IR/AR assignment that
-feeds it. Without an archetype approach, a provider would have to tag each asset
-with CR/IR/AR scores individually. While certainly justifiable and valid, this
-requires evaluating each asset in isolation. In doing so, we lose a systematic ``chain
-of thought'' --- for instance, why is a specific host scored CR:L, IR:H, AR:L?
-
-By assigning requirements to archetypes instead, the underlying rationale remains
-readily understandable and easily auditable. Tagging an asset with its archetype
-inherits that clear chain of thought. We propose the archetype taxonomy herein as
-a valid option, while recognizing that not every asset will fit cleanly. CSPs
-\rfckw{may} define custom archetypes or adjust the scoring of existing ones at
-their discretion to map their estate accurately. The goal is to identify the most
-critical assets as defined by FedRAMP and deprioritize less critical ones.
-
-
-\begin{quote}\itshape
-The archetype catalog in Appendix~\ref{app:catalog} is illustrative. A conforming
-implementation \rfckw{must} derive its CR/IR/AR assignment from its own system
-categorization (FIPS-199 impact levels, data inventory, authorization boundary). It
-\rfckw{may} adopt the example catalog as a starting point, but each CSP
-\rfckw{should} own and justify its mapping. Two providers with different data
-inventories can legitimately assign the same software different requirements.
-\end{quote}
-
-The classification rule we recommend is \emph{control-plane lens first}: if an
-asset can deploy, orchestrate, hold cross-estate credentials, or actuate
-configuration, classify it by that control function regardless of the data it
-stores; otherwise classify by the data it holds. The same physical software lands
-in different archetypes by role --- an in-memory store used as a cache is
-\code{app-tier}, the same software used as a session/token store is
-\code{identity-secrets}, and used as a job broker is \code{data-backbone}.
-
-For Kubernetes estates, the multi-agency flag can be resolved most-specific-first:
-workload label, then namespace label, then cluster default. Other deployment
-models should apply the same rule to their own asset, boundary, and provider-default
-metadata.
-
 \section{Worked examples}
 \begin{plain}
 The same formula, run by hand on realistic cases. Watch the \emph{same}
@@ -685,7 +639,53 @@ Vulnrichment's SSVC \emph{Exploitation} metric as one input to LEV
 \emph{disposition} of each finding (Section~\ref{sec:vex}). Neither is mandated by the
 rule by name.
 
-\section{Applicability and disposition via VEX}
+\section{Assigning CR/IR/AR: archetypes (an example, not a standard)}
+\label{sec:archetypes}
+\begin{plain}
+Rather than hand-rate every server, we sort systems into a short list of
+\emph{archetypes} --- a database, a login service, a cache, a message bus, and so on
+--- and each archetype comes with its criticality pre-filled. Tag a system with its
+archetype and the scoring is automatic. Our list is only an \emph{example}: every
+provider should tailor its own to the data it actually holds.
+\end{plain}
+The model in Section~\ref{sec:math} is only as good as the CR/IR/AR assignment that
+feeds it. Without an archetype approach, a provider would have to tag each asset
+with CR/IR/AR scores individually. While certainly justifiable and valid, this
+requires evaluating each asset in isolation. In doing so, we lose a systematic ``chain
+of thought'' --- for instance, why is a specific host scored CR:L, IR:H, AR:L?
+
+By assigning requirements to archetypes instead, the underlying rationale remains
+readily understandable and easily auditable. Tagging an asset with its archetype
+inherits that clear chain of thought. We propose the archetype taxonomy herein as
+a valid option, while recognizing that not every asset will fit cleanly. CSPs
+\rfckw{may} define custom archetypes or adjust the scoring of existing ones at
+their discretion to map their estate accurately. The goal is to identify the most
+critical assets as defined by FedRAMP and deprioritize less critical ones.
+
+
+\begin{quote}\itshape
+The archetype catalog in Appendix~\ref{app:catalog} is illustrative. A conforming
+implementation \rfckw{must} derive its CR/IR/AR assignment from its own system
+categorization (FIPS-199 impact levels, data inventory, authorization boundary). It
+\rfckw{may} adopt the example catalog as a starting point, but each CSP
+\rfckw{should} own and justify its mapping. Two providers with different data
+inventories can legitimately assign the same software different requirements.
+\end{quote}
+
+The classification rule we recommend is \emph{control-plane lens first}: if an
+asset can deploy, orchestrate, hold cross-estate credentials, or actuate
+configuration, classify it by that control function regardless of the data it
+stores; otherwise classify by the data it holds. The same physical software lands
+in different archetypes by role --- an in-memory store used as a cache is
+\code{app-tier}, the same software used as a session/token store is
+\code{identity-secrets}, and used as a job broker is \code{data-backbone}.
+
+For Kubernetes estates, the multi-agency flag can be resolved most-specific-first:
+workload label, then namespace label, then cluster default. Other deployment
+models should apply the same rule to their own asset, boundary, and provider-default
+metadata.
+
+\section{Applicability and the disposition via Vulnerability Exploitability eXchange (VEX)}
 \label{sec:vex}
 \begin{plain}
 Scoring says how bad a finding is and how fast to fix it. But a scanner's hit is not
