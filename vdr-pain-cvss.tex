@@ -185,7 +185,7 @@ Two distinct inputs feed two distinct stages:
   threshold) sits in the slow column: \textbf{128 days}. Mark it
   \code{exploitation = active} and it becomes LEV --- the deadline drops to
   \textbf{16 days} (internet-reachable) or 32 days (not).
-\item \emph{Technical impact moves the level.} A ``weak'' RCE (low impact across
+\item \emph{Technical impact moves the level.} A ``weak'' RCE (Remote Code Execution; low impact across
   C/I/A) on a High/High/High asset scores Disruptive $\rightarrow$ \textbf{N3}. Mark
   it \code{technical impact = total} and the in-scope dimensions floor to High,
   scoring Debilitating $\rightarrow$ \textbf{N4} (worked in Example~5).
@@ -839,6 +839,13 @@ N3 & 32 & 64  & 192 & 16 & 32  & 128 & 8   & 16 & 64 \\
 N2 & 96 & 160 & 192 & 48 & 128 & 192 & 24  & 96 & 192 \\
 \bottomrule
 \end{tabular}
+
+\vspace{0.5em}
+\begin{minipage}{0.95\textwidth}
+\footnotesize
+\emph{Note:} Values represent days to remediate, mitigate, or attest after detection;
+$0.5$ represents 12 hours.
+\end{minipage}
 \end{table}
 
 \section{Explicit design opinions (calibratable choices)}
