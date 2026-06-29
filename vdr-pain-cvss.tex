@@ -378,6 +378,19 @@ on --- that is the entire point of the method.
 We use $C,I,A$ for impacts and CR/IR/AR for requirements; all arithmetic follows
 Eqs.~\eqref{eq:isc}--\eqref{eq:pain}.
 
+For reference, the severity word used in each example is assigned by:
+\[
+W(S) \;=\;
+\begin{cases}
+\text{Minimal} & S < \theta_1 \\
+\text{Narrow} & \theta_1 \le S < \theta_2 \\
+\text{Disruptive} & \theta_2 \le S < \theta_3 \\
+\text{Debilitating} & S \ge \theta_3
+\end{cases}
+\qquad
+(\theta_1,\theta_2,\theta_3) = (0.25,\ 0.55,\ 0.80).
+\]
+
 \paragraph{Example 1 --- RCE on a crown-jewel datastore, multi-agency.}
 $C\!=\!I\!=\!A\!=\!0.56$ (High), CR=IR=AR=$1.5$ (High), $m=1$.
 \begin{align*}
