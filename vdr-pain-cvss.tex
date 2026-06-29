@@ -487,20 +487,6 @@ If an authoritative source reports technical impact \code{total}, the touched
 dimensions floor to $0.56$, giving $S=1.0 \Rightarrow \text{Debilitating}
 \Rightarrow \boxed{\text{N4}}$.
 
-\section{Determinism, governance, and defensibility}
-\begin{itemize}[leftmargin=1.4em]
-\item \textbf{Determinism.} Given the same (CVE vector, archetype, VER axes), the
-  method yields the same PAIN and deadline on every run and for every analyst.
-\item \textbf{Two human inputs only.} An asset needs exactly two tags
-  (\code{asset-archetype}, \code{multi-agency}); everything else is derived.
-\item \textbf{Governed calibration.} The word thresholds
-  (Eq.~\eqref{eq:word}) and the EPSS threshold are the only tunable knobs and
-  \rfckw{must} live in governed configuration, not in ad-hoc cluster state.
-\item \textbf{Auditability.} Each finding can carry the full derivation: the
-  resolved archetype and its source, CR/IR/AR, $S$, the word, the scope, and the
-  selected matrix cell.
-\end{itemize}
-
 \section{Reference architectures and sample scans}
 \subsection{Single-agency, Class C}
 Figure~\ref{fig:arch} shows a representative deployment with each component tagged
@@ -765,6 +751,20 @@ disposition \rfckw{should} cite the evidence it rests on and be signed, so it is
 reproducible and attributable; and it \rfckw{should} carry a timestamp and be
 re-evaluated when the image, configuration, or control it relied on changes, so a
 suppression cannot outlive the condition that justified it.
+
+\section{Determinism, governance, and defensibility}
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{Determinism.} Given the same (CVE vector, archetype, VER axes), the
+  method yields the same PAIN and deadline on every run and for every analyst.
+\item \textbf{Two human inputs only.} An asset needs exactly two tags
+  (\code{asset-archetype}, \code{multi-agency}); everything else is derived.
+\item \textbf{Governed calibration.} The word thresholds
+  (Eq.~\eqref{eq:word}) and the EPSS threshold are the only tunable knobs and
+  \rfckw{must} live in governed configuration, not in ad-hoc cluster state.
+\item \textbf{Auditability.} Each finding can carry the full derivation: the
+  resolved archetype and its source, CR/IR/AR, $S$, the word, the scope, and the
+  selected matrix cell.
+\end{itemize}
 
 \section{Security Considerations}
 \label{sec:seccon}
