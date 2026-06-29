@@ -81,25 +81,6 @@ categorization. A reference architecture and a sample scan complete the memo.
 
 \tableofcontents
 
-\section*{Document version history}
-\addcontentsline{toc}{section}{Document version history}
-This memo is a living document. Table~\ref{tab:history} tracks its version history.
-
-\begin{table}[H]
-\centering
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{lll>{\raggedright\arraybackslash}p{0.55\textwidth}}
-\toprule
-\textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Summary of Changes} \\
-\midrule
-1.0 & June 28, 2026 & M. Venne & Initial publication. \\
-1.1 & June 29, 2026 & M. Venne & Added detailed rationale for archetype-based asset mapping (Section~\ref{sec:archetypes}) and CSP risk ownership (Section~\ref{app:opinions}). \\
-\bottomrule
-\end{tabular}
-\caption{Document version history.}
-\label{tab:history}
-\end{table}
-
 \section{Status of This Memo and Terminology}
 This document is informational. It does not itself define a FedRAMP requirement; it
 specifies a standardized \emph{method} for satisfying the existing VDR/VER
@@ -888,8 +869,9 @@ on. Each item below names the value we use, why, and the fact that an implementa
   define IRV as ``fronted by a public load balancer/route whose edge does not enforce
   authentication.'' A route gated by a native identity-aware proxy (or equivalent) is
   treated as \emph{not} internet-reachable, on the view that an unauthenticated
-  attacker cannot reach the vulnerable surface. An adopter wanting a stricter posture
-  \rfckw{may} count any public route as IRV regardless of edge authentication.
+  attacker cannot reach the vulnerable surface. This approach is conceptually 
+  similar to requiring a virtual private network (VPN) or secure tunnel to access 
+  a resource.
 \item \textbf{Impact-only severity, normalized by $0.915$.} We take CVSS's
   \emph{Modified Impact Sub-Score} and rescale it to $[0,1]$ (Eq.~\ref{eq:s}) rather
   than computing the full 0--10 environmental score. PAIN is about \emph{impact on the
@@ -945,6 +927,26 @@ on. Each item below names the value we use, why, and the fact that an implementa
   FedRAMP. Listed here only to mark the boundary between what we chose and what the
   rule dictates.
 \end{enumerate}
+
+\clearpage
+\section{Document version history}
+\label{app:history}
+This memo is a living document. Table~\ref{tab:history} tracks its version history.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll>{\raggedright\arraybackslash}p{0.55\textwidth}}
+\toprule
+\textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Summary of Changes} \\
+\midrule
+1.0 & June 28, 2026 & M. Venne & Initial publication. \\
+1.1 & June 29, 2026 & M. Venne & Added detailed rationale for archetype-based asset mapping (Section~\ref{sec:archetypes}) and CSP risk ownership (Section~\ref{app:opinions}). \\
+\bottomrule
+\end{tabular}
+\caption{Document version history.}
+\label{tab:history}
+\end{table}
 
 \section*{Normative sources}
 \addcontentsline{toc}{section}{Normative sources}
