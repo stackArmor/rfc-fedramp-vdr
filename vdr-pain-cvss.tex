@@ -720,15 +720,14 @@ deployment --- for example, whether the affected code is present, reachable,
 configured, or already neutralized by a compensating control. The analysis may be
 automated, but it happens after detection because those facts are finding-specific.
 
-\paragraph{Where FedRAMP requires it.} VER makes this step normative without prescribing
-a format. \code{VER-EVA-EFP} requires evaluating false positives; \code{VER-EVA-AIA}
-directs the provider to \emph{assume} a vulnerability is exploitable and automatable
-\emph{absent evidence otherwise} --- making disposition a rebuttable presumption for
-which structured evidence is exactly what is wanted; \code{VER-RPT-VDT} requires a
-per-finding \emph{disposition}; and \code{VER-TFR-MAV} / \code{VER-RPT-AVI} govern
-vulnerabilities that are accepted rather than remediated. The \emph{Vulnerability
-Exploitability eXchange} (VEX) is the standardized, machine-readable, signable artifact
-for carrying precisely these assertions.
+\paragraph{Where FedRAMP requires it.} VER requires three things relevant here:
+evaluate whether a scanner finding is real, record the per-finding disposition, and
+track vulnerabilities that are accepted rather than remediated. The FedRAMP clauses
+behind those duties are \code{VER-EVA-EFP}, \code{VER-EVA-AIA},
+\code{VER-RPT-VDT}, and \code{VER-TFR-MAV}/\code{VER-RPT-AVI}. VER makes the
+disposition step mandatory, but it does not prescribe a carrier format. The
+\emph{Vulnerability Exploitability eXchange} (VEX) is a standardized,
+machine-readable, signable artifact for carrying those assertions.
 
 \paragraph{Two outcomes.} A disposition resolves a finding onto one of two tracks:
 \begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
@@ -766,12 +765,6 @@ disposition \rfckw{should} cite the evidence it rests on and be signed, so it is
 reproducible and attributable; and it \rfckw{should} carry a timestamp and be
 re-evaluated when the image, configuration, or control it relied on changes, so a
 suppression cannot outlive the condition that justified it.
-
-The \emph{format} for these assertions --- why a CSP \rfckw{should} prefer CycloneDX's
-disposition vocabulary, how the artifact is kept thin (carrying the disposition, not the
-score), and how it is distributed and retrieved alongside container images --- is the
-subject of a separate companion proposal, deliberately kept out of this memo so the
-method stays format-neutral.
 
 \section{Relationship to CVSS v4.0}
 \label{sec:v4}
