@@ -766,19 +766,6 @@ reproducible and attributable; and it \rfckw{should} carry a timestamp and be
 re-evaluated when the image, configuration, or control it relied on changes, so a
 suppression cannot outlive the condition that justified it.
 
-\section{Relationship to CVSS v4.0}
-\label{sec:v4}
-This method is expressed in CVSS v3.1 terms because the v3.1 Environmental group
-provides a closed-form Modified Impact Sub-Score (Eq.~\eqref{eq:isc}) with explicit
-CR/IR/AR multipliers. CVSS v4.0 reworks impact into Vulnerable-System
-(\code{VC/VI/VA}) and Subsequent-System (\code{SC/SI/SA}) metrics, removes the
-\code{Scope} metric, and scores via a lookup ``MacroVector'' rather than a formula;
-CR/IR/AR persist but feed that lookup. A v4.0-only finding can be \emph{approximated}
-by mapping \code{VC/VI/VA} onto $C/I/A$ in Eq.~\eqref{eq:isc}, at the cost of
-ignoring Subsequent-System impact. While NVD remains v3.1-dominant, an
-implementation \rfckw{should} prefer the v3.1 vector and \rfckw{may} treat v4.0 via
-this approximation until a native v4.0 environmental scorer is warranted.
-
 \section{Security Considerations}
 \label{sec:seccon}
 The method trusts the type-tags on each system: if someone mislabels a critical
@@ -941,8 +928,14 @@ on. Each item below names the value we use, why, and the fact that an implementa
   to CR/IR/AR all High so it scores loudly, rather than to a low default. ``Unknown''
   is treated as serious until classified.
 \item \textbf{CVSS v3.1, not v4.0.} We build on v3.1's closed-form environmental
-  formula; v4.0 findings are approximated by mapping VC/VI/VA onto $C/I/A$
-  (Section~\ref{sec:v4}).
+  formula because it provides a Modified Impact Sub-Score (Eq.~\ref{eq:isc}) with
+  explicit CR/IR/AR multipliers. CVSS v4.0 retains CR/IR/AR but feeds them into a
+  lookup-based MacroVector rather than the v3.1 formula, and it splits impact into
+  Vulnerable-System (\code{VC/VI/VA}) and Subsequent-System (\code{SC/SI/SA})
+  metrics. A v4.0-only finding can be approximated by mapping \code{VC/VI/VA} onto
+  $C/I/A$, at the cost of ignoring Subsequent-System impact; while NVD remains
+  v3.1-dominant, an implementation \rfckw{should} prefer the v3.1 vector when both
+  are available.
 \item \textbf{The archetype catalog and its CR/IR/AR values
   (Appendix~\ref{app:catalog}).} Illustrative only --- each CSP \rfckw{should} derive
   its own from its system categorization. A 3PAO \rfckw{may} take on the role of 
