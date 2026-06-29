@@ -81,6 +81,25 @@ categorization. A reference architecture and a sample scan complete the memo.
 
 \tableofcontents
 
+\section*{Document version history}
+\addcontentsline{toc}{section}{Document version history}
+This memo is a living document. Table~\ref{tab:history} tracks its version history.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lll>{\raggedright\arraybackslash}p{0.55\textwidth}}
+\toprule
+\textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Summary of Changes} \\
+\midrule
+1.0 & June 28, 2026 & M. Venne & Initial publication. \\
+1.1 & June 29, 2026 & M. Venne & Added detailed rationale for archetype-based asset mapping (Section~\ref{sec:archetypes}) and CSP risk ownership (Section~\ref{app:opinions}). \\
+\bottomrule
+\end{tabular}
+\caption{Document version history.}
+\label{tab:history}
+\end{table}
+
 \section{Status of This Memo and Terminology}
 This document is informational. It does not itself define a FedRAMP requirement; it
 specifies a standardized \emph{method} for satisfying the existing VDR/VER
@@ -415,10 +434,19 @@ automatic. Our list is only an \emph{example}: every provider should tailor its 
 to the data it actually holds.
 \end{plain}
 The model in Section~\ref{sec:math} is only as good as the CR/IR/AR assignment that
-feeds it. Assigning requirements per individual asset does not scale and invites
-drift. A practical mechanism is to define a small catalog of \emph{asset
-archetypes}, each carrying a fixed CR/IR/AR, and to tag each asset with one
-archetype.
+feeds it. Without an archetype approach, a provider would have to tag each asset
+with CR/IR/AR scores individually. While certainly justifiable and valid, this
+requires evaluating each asset in isolation. In doing so, we lose a systematic ``chain
+of thought'' --- for instance, why is a specific host scored CR:L, IR:H, AR:L?
+
+By assigning requirements to archetypes instead, the underlying rationale remains
+readily understandable and easily auditable. Tagging an asset with its archetype
+inherits that clear chain of thought. We propose the archetype taxonomy herein as
+a valid option, while recognizing that not every asset will fit cleanly. CSPs
+\rfckw{may} define custom archetypes or adjust the scoring of existing ones at
+their discretion to map their estate accurately. The goal is to identify the most
+critical assets as defined by FedRAMP and deprioritize less critical ones.
+
 
 \begin{quote}\itshape
 The archetype catalog in Appendix~\ref{app:catalog} is illustrative. A conforming
@@ -904,7 +932,11 @@ on. Each item below names the value we use, why, and the fact that an implementa
   (Section~\ref{sec:v4}).
 \item \textbf{The archetype catalog and its CR/IR/AR values
   (Appendix~\ref{app:catalog}).} Illustrative only --- each CSP \rfckw{should} derive
-  its own from its system categorization.
+  its own from its system categorization. A 3PAO \rfckw{may} take on the role of 
+  validating these mappings during an assessment; however, the CSP remains 
+  ultimately responsible if an asset is undertagged, a vulnerability is not 
+  remediated in time, and it is subsequently exploited (just as in the 
+  commercial world).
 \item \textbf{The remediation deadline values (Appendix~\ref{app:matrix}) are
   \emph{not} ours to calibrate.} They are reproduced verbatim from FedRAMP's published
   \texttt{VDR-TFR-PVR} table (mandated by CISA BOD~26-04; see Section~\ref{sec:bod}).
