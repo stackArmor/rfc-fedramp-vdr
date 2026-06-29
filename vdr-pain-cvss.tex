@@ -37,6 +37,16 @@
   title={WHAT THE SYMBOLS MEAN}
 }
 
+% Definition callout: for normative-ish local definitions used by the method.
+\newtcolorbox{definitionbox}{
+  enhanced, breakable,
+  colback=infoblue!4, colframe=infoblue!45, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=infoblue!80!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={DEFINITION}
+}
+
 % --- palette ---
 \definecolor{crit}{HTML}{C0392B}
 \definecolor{high}{HTML}{E67E22}
@@ -340,13 +350,18 @@ $0.70$):
 \qquad
 \text{IRV} = \text{asset is internet-reachable}.
 \]
-Here \emph{internet-reachable} means the asset is fronted by a \textbf{public-facing
-load balancer or route whose edge does not itself enforce authentication}. A route
-gated by native edge authentication --- an identity-aware proxy or equivalent that
+
+\begin{definitionbox}
+\emph{Internet-reachable} means the vulnerable surface can be reached by an
+unauthenticated internet-originating actor, either directly through a public IP
+address or through a public-facing load balancer, ingress, route, or equivalent
+edge path whose edge does not itself enforce authentication. A route gated by
+native edge authentication --- an identity-aware proxy or equivalent that
 authenticates every request before it reaches the workload --- is treated as
 \emph{not} internet-reachable (NIRV), on the view that an unauthenticated attacker
-cannot reach the vulnerable surface. (How a given platform's routes and edge
-authentication are discovered is an implementation concern, out of scope here.)
+cannot reach the vulnerable surface. How a given platform discovers public IPs,
+routes, and edge authentication is an implementation concern, out of scope here.
+\end{definitionbox}
 
 Both the exploitation state here and the technical impact in
 Section~\ref{sec:math} are sourced from \emph{CISA Vulnrichment}, an Authorized Data
@@ -883,13 +898,6 @@ on. Each item below names the value we use, why, and the fact that an implementa
 \item \textbf{LEV is a union, not a blend.} A finding is Likely Exploitable if
   EPSS $\ge \theta_{\text{epss}}$ \emph{or} exploitation is observed ``active'' ---
   whichever fires, with no weighting between them.
-\item \textbf{Internet-reachability counts edge authentication as a mitigation.} We
-  define IRV as ``fronted by a public load balancer/route whose edge does not enforce
-  authentication.'' A route gated by a native identity-aware proxy (or equivalent) is
-  treated as \emph{not} internet-reachable, on the view that an unauthenticated
-  attacker cannot reach the vulnerable surface. This approach is conceptually 
-  similar to requiring a virtual private network (VPN) or secure tunnel to access 
-  a resource.
 \item \textbf{Impact-only severity, normalized by $0.915$.} We take CVSS's
   \emph{Modified Impact Sub-Score} and rescale it to $[0,1]$ (Eq.~\ref{eq:s}) rather
   than computing the full 0--10 environmental score. PAIN is about \emph{impact on the
