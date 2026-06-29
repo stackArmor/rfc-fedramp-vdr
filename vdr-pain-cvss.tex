@@ -205,6 +205,12 @@ between 0 and 1. Finally we translate that score into a plain word. Bigger numbe
 more damage. The only place human judgment enters is the three cut-points that decide
 where one word becomes the next.
 \end{plain}
+
+The expected output is a PAIN level. The path is: compute an asset-specific
+impact scalar $S$ from CVSS impact values and the asset's CR/IR/AR; translate
+$S$ into a customer-effect word (Minimal, Narrow, Disruptive, or Debilitating);
+then combine that word with the multi-agency flag to select N1--N5.
+
 All constants below are taken \emph{verbatim} from the CVSS v3.1 specification; only
 the normalization and the word thresholds (Section~\ref{sec:thresholds}) are
 additions.
@@ -220,7 +226,7 @@ additions.
 \item $S$ --- that damage rescaled to a clean $0$--$1$ range.
 \item $W$ --- the plain English word $S$ maps to.
 \item $m$ --- does the system serve one agency ($0$) or many ($1$)? Resolved
-  hierarchically from the workload/namespace/cluster tags.
+  hierarchically from governed asset metadata.
 \item $\theta_1,\theta_2,\theta_3$ --- the three cut-points where the word changes.
 \end{itemize}
 \end{notation}
@@ -274,11 +280,11 @@ implementation \rfckw{must} treat them as governed configuration rather than an
 in-band, ad-hoc setting.
 
 \paragraph{Scope and the N-level.}
-Let $m \in \{0,1\}$ be the asset's multi-agency flag, resolved most-specific-first:
-workload label, then namespace label, then a namespace glob, then the cluster
-default (Section~\ref{sec:archetypes}). Scope is purely hierarchical --- an asset is
-multi-agency only if it (or its namespace, or the cluster) is tagged so. The N-level
-follows from the word and scope:
+Let $m \in \{0,1\}$ be the asset's multi-agency flag, resolved from governed
+asset metadata using the most-specific applicable value. Scope is purely
+hierarchical --- an asset is multi-agency only if the asset itself, a containing
+boundary, or the provider default is tagged multi-agency. The N-level follows
+from the word and scope:
 \begin{equation}
 \text{PAIN} =
 \begin{cases}
@@ -445,6 +451,11 @@ stores; otherwise classify by the data it holds. The same physical software land
 in different archetypes by role --- an in-memory store used as a cache is
 \code{app-tier}, the same software used as a session/token store is
 \code{identity-secrets}, and used as a job broker is \code{data-backbone}.
+
+For Kubernetes estates, the multi-agency flag can be resolved most-specific-first:
+workload label, then namespace label, then cluster default. Other deployment
+models should apply the same rule to their own asset, boundary, and provider-default
+metadata.
 
 \section{Determinism, governance, and defensibility}
 \begin{itemize}[leftmargin=1.4em]
@@ -899,11 +910,11 @@ on. Each item below names the value we use, why, and the fact that an implementa
   vendor SSVC decision, a commercial threat-intelligence feed, or the CISA KEV
   catalog). EPSS, by contrast, supplies the statistical exploitation \emph{likelihood}
   (item~2); the two are complementary.
-\item \textbf{Scope is purely hierarchical.} An asset is multi-agency only if it ---
-  or its namespace, or the cluster default --- is tagged so (most-specific wins);
-  there is no automatic per-archetype escalation. (An earlier draft auto-escalated
-  ``shared-infrastructure'' archetypes to multi-agency; we removed that in favor of
-  explicit, operator-controlled tagging.)
+\item \textbf{Scope is purely hierarchical.} An asset is multi-agency only if the
+  asset itself, a containing boundary, or the provider default is tagged so
+  (most-specific wins); there is no automatic per-archetype escalation. (An earlier
+  draft auto-escalated ``shared-infrastructure'' archetypes to multi-agency; we
+  removed that in favor of explicit, operator-controlled tagging.)
 \item \textbf{``Archetype'', not ``type''.} We classify assets by their
   \emph{role/usage pattern}, not their intrinsic kind, and the label reflects that:
   the same software lands in different archetypes by how it is used (an in-memory
