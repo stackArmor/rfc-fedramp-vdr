@@ -27,16 +27,22 @@ path out. The repositioned paper argues that reading is not practical:
   is a prevention FedRAMP names.
 
 The replacement position: reachability is computed per finding by an explicit
-per-factor equation (restored from the original draft), and **demonstrable
-input sanitization terminates payload propagation to downstream components**.
-Most real applications already sanitize internet-sourced input; what the rules
-should ask of a CSP is that it can *demonstrate* reasonable sanitization when
-asked — by the 3PAO during assessment or by the authorizing agency (or
-FedRAMP) on request — via code review, SAST, DAST, or unit-test evidence.
-The fail-safe survives: where sanitization (or any other factor) cannot be
-evidenced, the finding stays IRV. Evidence gaps still widen the IRV set, never
-shrink it. What changes is that ordinary, demonstrable engineering practice
-now counts as evidence, instead of only network topology.
+per-factor equation (restored from the original draft), and **verified input
+sanitization terminates payload propagation to downstream components**.
+Most real applications already sanitize internet-sourced input. The paper
+asserts that **collecting the evidence of that sanitization is the auditor's
+job**: the 3PAO's assessment verifies reasonable sanitization of
+internet-sourced inputs to downstream components through SAST, DAST, unit and
+integration tests, and code review — the CSP's ordinary SDLC artifacts, not a
+new standing documentation burden. The authorizing agency or FedRAMP may
+request the same evidence. **Additional scrutiny concentrates on components
+that process data from unauthenticated users** — entry points and the
+pre-authentication surfaces they feed — rather than uniform suspicion across
+the estate. The fail-safe survives: where sanitization (or any other factor)
+is not evidenced, the finding stays IRV. Evidence gaps still widen the IRV
+set, never shrink it. What changes is that ordinary engineering practice,
+verified in assessment, now counts as evidence, instead of only network
+topology.
 
 ## 2. Paper structure (math spine + gates as computation)
 
@@ -124,9 +130,14 @@ consistent with the established whitepaper style.
 1. **Structure:** math spine + gates as computation (not a wholesale replace
    that would drop the Gate 2/Gate 3 work, and not math bolted onto the
    current prose structure).
-2. **Who asks for sanitization evidence:** phrased as "the 3PAO during
-   assessment, and the authorizing agency or FedRAMP on request" — covering
-   both candidates the user floated.
+2. **Who owns sanitization evidence:** per Matthew's direction (2026-07-02),
+   the paper asserts collecting it is the auditor's job — the 3PAO verifies
+   sanitization during assessment via SAST/DAST/unit tests/code review drawn
+   from the CSP's normal SDLC artifacts; the agency or FedRAMP may request the
+   same evidence. Key support: FedRAMP continuous monitoring already requires
+   regular DAST/web-application scanning, so the primary evidence stream
+   exists today — no new machinery. Scrutiny concentrates on components
+   processing unauthenticated-user data.
 3. **How sanitization enters the math:** as a transfer-function hop operation
    (surface termination), not a bare extra boolean factor — it composes with
    the existing E(a) propagation and keeps the per-CWE-class granularity
