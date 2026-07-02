@@ -47,8 +47,9 @@ Evaluation Requirements (VER) make that step normative but name no format. This
 proposal recommends \textbf{CycloneDX VEX} as the structured, machine-readable, signable
 carrier for it, chosen for the fit of its disposition and response \emph{vocabulary} ---
 not because it carries scores; it does not. We give the field mapping to VER, a thin
-worked example, an OCI-native distribution pattern, and an optional crosswalk to CISA's
-status-justification labels for downstream interoperability. This document is an
+worked example, an OCI-native distribution pattern, a deployment-context service/workload
+attestation pattern, and an optional crosswalk to CISA's status-justification labels for
+downstream interoperability. This document is an
 \emph{implementation profile}: it shows one defensible way to satisfy existing VER
 requirements; it does not propose changing them. The key words \rfckw{must},
 \rfckw{should}, and \rfckw{may} are to be read as in RFC~2119.
@@ -175,7 +176,9 @@ The disposition artifact stays deliberately small. It carries only what identifi
 finding and records the judgment:
 \begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
 \item the vulnerability \code{id} and its \code{source};
-\item the affected component, by \code{affects[].ref} (a package URL / \code{bom-ref});
+\item the affected subject, by \code{affects[].ref}: either a software component
+  \code{bom-ref} (for artifact applicability) or a service/workload \code{bom-ref}
+  (for deployment-context reachability);
 \item the \code{analysis} block --- \code{state}, \code{justification},
   \code{response}, \code{detail};
 \item provenance --- author, timestamp, and a signature over the artifact.
@@ -185,10 +188,85 @@ It deliberately \emph{omits} PAIN, the LEV/IRV axes, the Certification Class, an
 CVSS vector. Those are computed deterministically by the method and live in the
 provider's scoring report; duplicating them into the disposition artifact would invite
 drift and tempt a reader to treat an attestation as a place to re-score. The two
-records are joined on a stable key --- the \textbf{CVE identifier plus the component
-reference} --- so a reporting layer can attach each disposition to the finding it
-governs and recover the retained PAIN for audit. The disposition changes a finding's
-\emph{handling}; it never changes its score.
+records are joined on a stable key --- the \textbf{CVE identifier plus the affected
+subject reference} --- so a reporting layer can attach each disposition to the
+finding it governs and recover the retained PAIN for audit. The disposition changes
+a finding's \emph{handling}; it never changes its score.
+
+
+\section{Service and workload subjects: reusable surface attestations}
+CycloneDX can describe both software \code{components} and network-facing \code{services}.
+Its vulnerability \code{affects[].ref} field references a subject by \code{bom-ref}, and
+that subject can be a service as well as a package or image component. This matters for
+FedRAMP reachability because there are two different facts in play:
+\begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
+\item a \textbf{surface attestation} says what the internet can reach on a deployed
+  service or workload --- the exposed-surface set $E(a)$;
+\item a \textbf{finding disposition} says whether a particular vulnerability's required
+  surface $X(v)$ intersects that exposed surface.
+\end{itemize}
+
+A service-level surface attestation is therefore reusable across findings. It does not,
+by itself, declare every CVE on the service reachable or unreachable; instead it caches
+the asset-side evidence so each CVE can be evaluated automatically without rediscovering
+Ingress, Gateway, load-balancer, backend protocol, ALPN, and edge-auth state. If a service
+attestation says the subject is not internet-reachable at all, every finding on that subject
+can be classified NIRV. If it says the subject is internet-reachable, each \code{AV:N}
+finding remains IRV by default unless the per-CVE required surface is known and positively
+mismatches the attested exposed surface.
+
+A stable service/workload \code{bom-ref} \rfckw{should} identify the deployment subject,
+not merely the image artifact. A Kubernetes service, for example, can be represented with
+a stable URN-like reference:
+\begin{lstlisting}[style=json]
+{
+  "services": [
+    {
+      "bom-ref": "urn:k8s:prod:default:service:payments-api",
+      "name": "payments-api",
+      "endpoints": ["https://api.example.com"],
+      "properties": [
+        { "name": "k8s:cluster", "value": "prod" },
+        { "name": "k8s:namespace", "value": "default" },
+        { "name": "k8s:kind", "value": "Service" },
+        { "name": "k8s:name", "value": "payments-api" },
+        { "name": "vdr:assetInternetReachable", "value": "true" },
+        { "name": "vdr:exposedBackendProtocol", "value": "http" },
+        { "name": "vdr:exposedBackendProtocolVersion", "value": "HTTP2" },
+        { "name": "vdr:exposedBackendAlpn", "value": "h2" },
+        { "name": "vdr:routeEvidence", "value": "HTTPRoute public/payments -> Service default/payments-api:8080" }
+      ]
+    }
+  ]
+}
+\end{lstlisting}
+
+The per-finding record can then reference the same service subject and record the
+automated disposition for a specific CVE:
+\begin{lstlisting}[style=json]
+{
+  "id": "CVE-2026-30303",
+  "analysis": {
+    "state": "exploitable",
+    "detail": "Asset is internet-reachable and CVSS is AV:N. Required protocol is unknown, so the required surface is treated as a wildcard."
+  },
+  "affects": [{ "ref": "urn:k8s:prod:default:service:payments-api" }],
+  "properties": [
+    { "name": "vdr:findingInternetReachable", "value": "true" },
+    { "name": "vdr:reachabilityDecision", "value": "insufficient_evidence_to_downgrade" },
+    { "name": "vdr:remediationTrack", "value": "LEV+IRV" }
+  ]
+}
+\end{lstlisting}
+
+This split preserves automation without overclaiming. The service attestation is reused
+for all CVEs on that deployed subject, while the per-CVE disposition still accounts for
+\code{AV}, required protocol, ALPN/version, and any vulnerability-specific preconditions.
+The surface attestation \rfckw{should} be re-evaluated when the facts that justify it
+change: Service selector, selected port, Ingress or Gateway binding, backend protocol,
+ALPN policy, edge authentication, or the workload template/image digest when that digest
+is part of the evidence. Routine replica churn need not invalidate the attestation when
+those evidence inputs remain unchanged.
 
 \section{Worked example}
 A single signed CycloneDX document can carry several statements. Below, one finding is
@@ -241,16 +319,22 @@ Note the absence of any score, rating, or PAIN field.
 \end{lstlisting}
 
 \section{Distribution and retrieval over OCI}
-For containerized workloads the disposition artifact \rfckw{should} travel with the
-image it describes. CycloneDX documents have a defined media type and can be stored as
-OCI artifacts in the same registry as the image and associated with it through the
-registry's referrers/attestation mechanism. A scanner that already pulls an image to
-detect vulnerabilities can, in the same pass, resolve the image's attached VEX and
-apply the dispositions automatically --- so the \emph{a posteriori} judgment, once made
-and signed, is rediscovered and reused on every subsequent scan without re-litigation.
-This keeps disposition co-located with the artifact under evaluation, versioned with it,
-and verifiable by signature, and folds it natively into the existing detection workflow
-rather than bolting on a side channel.
+For artifact-only dispositions, the VEX document \rfckw{should} travel with the image it
+describes. CycloneDX documents have a defined media type and can be stored as OCI
+artifacts in the same registry as the image and associated with it through the registry's
+referrers/attestation mechanism. A scanner that already pulls an image to detect
+vulnerabilities can, in the same pass, resolve the image's attached VEX and apply the
+dispositions automatically.
+
+Deployment-context reachability attestations have a different subject: the service,
+workload, or runtime component. They \rfckw{may} still be distributed as signed OCI
+artifacts, but the reference is to a stable service/workload \code{bom-ref} and the
+evidence binds the statement to the route and backend protocol configuration that
+justified it. This allows the same surface attestation to be reused across scans and CVEs
+while still forcing re-evaluation when the deployment surface changes. The result is the
+same operational property as image-attached VEX: the \emph{a posteriori} judgment, once
+made and signed, is rediscovered and reused without re-litigation, but without pretending
+that deployment-context reachability is a property of the image alone.
 
 \section{Optional interoperability: CycloneDX to CISA labels}
 A FedRAMP-facing report needs nothing beyond the above. Some downstream consumers ---
