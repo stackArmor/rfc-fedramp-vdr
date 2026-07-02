@@ -128,11 +128,18 @@ is five gates, each a question with a deterministic answer:
   of the crowd behind it --- a change-management tool behind an IAP at a large
   provider can have a hundred thousand authorized users and still be remote
   access. And deciding which role a given login plays is a human call: the
-  operator declares it, and the auditor validates it. (What a customer login
-  \emph{does} earn you is an exploitability argument --- it defeats FedRAMP's
-  ``an automated unauthenticated system can exploit it'' floor --- which
-  shortens nothing about the data path but can support a likely-exploitable
-  downgrade.)
+  operator declares it, and the auditor validates it. Two more rules keep the
+  exclusion honest. The boundary must be a \emph{separate component} --- an IAP
+  or a VPN, never the application's own login page, because a login page is the
+  application itself parsing stranger input. And the app behind the boundary
+  still needs its \emph{own} login, exactly like tools behind a VPN do: if the
+  app accepts the proxy's signed headers as the entire login, then one hijacked
+  proxy session --- or a compromised proxy, which will happily stamp valid
+  headers --- opens the app, so that app stays internet-reachable. Two doors,
+  two logins. (What a customer login \emph{does} earn you is an exploitability
+  argument --- it defeats FedRAMP's ``an automated unauthenticated system can
+  exploit it'' floor --- which shortens nothing about the data path but can
+  support a likely-exploitable downgrade.)
 \item \textbf{What does Kubernetes expose?} Ingress rules, gateway routes, and
   load-balancer services are readable directly from the cluster. The gate also
   covers what route-centric inventories miss --- NodePorts that open a port on
@@ -220,9 +227,9 @@ The common excuses, against the evidence the method actually demands:
 \midrule
 ``it's behind the firewall'' & every allowed source range is attributed to you or
 your customer --- narrow-but-unclaimed rules don't count \\
-``it's behind the VPN / SSO'' & the boundary's role is remote access for your own
-people, not the customer product's front door --- declared by the operator,
-validated by the auditor \\
+``it's behind the VPN / SSO'' & a separate edge component (not the app's own
+login page) in a remote-access role --- declared by the operator, validated by
+the auditor --- with the app's own independent login still behind it \\
 ``it has no public IP'' & no data path reaches it either --- proven by
 deny-by-default rules or an attested-complete flow map, not by quiet logs \\
 ``that package isn't even used'' & runtime execution evidence shows the code never
