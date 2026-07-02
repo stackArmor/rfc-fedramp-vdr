@@ -203,66 +203,28 @@ Opposite verdicts, and neither is decided by where the server sits --- one is
 decided by evidence of cleaning, the other by evidence of what the doors actually
 deliver.
 
-\section*{``But we have a WAF'' --- the attest-vs-downgrade trade}
+\section*{``But we have a WAF''}
 If in-code sanitization can end reachability, surely a WAF rule that blocks the
 exploit does too? FedRAMP does permit that reclassification. The paper's answer:
-you may, but you shouldn't --- attest instead. Since ``keep it classified
-reachable'' sounds like leaving money on the table, it is worth walking through
-what each choice actually buys.
+you may, but you shouldn't --- attest instead.
 
-\textbf{Start with the surprise: the downgrade buys you no schedule.} The clock
-relief you want comes from FedRAMP's mitigation definitions, not from the
-reclassification. FedRAMP defines mitigation over \emph{likelihood or impact}, and
-a WAF rule that verifiably blocks the triggering payloads is a likelihood
-reduction: partial mitigation moves the finding to a longer clock, and a rule that
-verifiably blocks \emph{every} variant drives the likelihood to negligible --- the
-finding is \emph{fully mitigated} and leaves the remediation treadmill for routine
-operations. You get all of that while the finding is still classified
-internet-reachable, with a signed VEX statement carrying the claim. So the two
-postures land on the same deadlines. The choice is not about speed; it is about
-what your records say --- and when they lie.
-
-\textbf{What the attestation buys is truth that survives failure.} A WAF is a
-bolt-on device: rules get tuned during incidents, flipped to detection-only,
-bypassed by obfuscation --- Log4Shell's whack-a-mole was exactly this --- and a
-CDN migration can quietly route around one. Now compare the two ledgers on the day
-that happens. The attested record still reads: internet-reachable, mitigated by
-\emph{this named rule} --- which is still true, and the mitigation claim points at
-exactly the control your monitoring should be watching. The downgraded record
-reads: not internet-reachable, slow clock --- which became false the moment the
-rule failed, with nothing in the vulnerability record to say so and nothing
-prompting a re-evaluation. Same exposure in reality; only one set of books is
-still honest.
-
-Three more dividends follow from the same design:
-
-\begin{itemize}[leftmargin=1.5em]
-\item \textbf{Your own risk picture stays real.} Keeping the finding classified
-  reachable means your dashboards keep showing the true residual exposure ---
-  what you are actually betting on the WAF to hold --- instead of laundering it
-  out of view.
-\item \textbf{The zero-day drill becomes a query.} When threat intel says a new
-  technique bypasses WAF protections, the attested estate answers in one filter:
-  every VEX statement naming a WAF control is suspect --- re-check those.
-  The downgraded estate has to first \emph{rediscover} which quiet NIRV verdicts
-  were secretly WAF-shaped before it can even start. On the day the calm breaks,
-  that difference is hours.
-\item \textbf{The audit artifact is simply better.} A signed, machine-readable
-  statement naming the exact protecting control is something a 3PAO can verify
-  and re-check; a silent absence from the urgent list is something they will
-  question. And ongoing: the downgrade path obligates you to re-validate a
-  reachability call on \emph{every} perimeter change --- easy to promise, rarely
-  done --- while the attestation localizes that dependency in one revocable
-  statement.
-\end{itemize}
-
-The contrast with in-code sanitization is what makes this a principled line
-rather than a bias against WAFs. Your application's input handling is shipped
-with the application, versioned with it, and re-tested on every build --- its
-evidence renews itself at exactly the cadence the code changes, which is why it
-earns the exclusion directly. A perimeter device's health is a minute-to-minute
-operational fact, so the claim that depends on it belongs in a revocable
-attestation, not baked into the classification.
+Two facts decide it. First, \textbf{the downgrade buys you no schedule}: FedRAMP
+defines mitigation over likelihood, so a WAF rule that verifiably blocks the
+triggering payloads earns the longer clock --- or leaves the remediation treadmill
+entirely --- while the finding stays classified internet-reachable, with a signed
+VEX statement carrying the claim. Both postures land on the same deadlines.
+Second, \textbf{the attestation stays true when the WAF fails} --- and WAFs fail:
+rules get bypassed by obfuscation (Log4Shell's whack-a-mole), flipped to
+detection-only during incidents, routed around by CDN migrations. On that day the
+attested record still says something true and names the control to check; the
+downgraded record says ``not reachable'' and is simply wrong, with nothing
+prompting a second look. Since the attestation costs almost nothing --- you are
+producing VEX anyway --- it is cheap insurance against being wrong in the
+expensive direction. The difference from in-code sanitization is the line that
+makes this principled: your application's input handling is versioned and
+re-tested with every build, so its evidence renews itself; a perimeter device's
+health is a minute-to-minute operational fact, and a claim that depends on it
+belongs in a revocable statement, not baked into the classification.
 
 Two boundaries no mitigation moves. Known Exploited Vulnerabilities keep their
 CISA due dates ``even if the vulnerability has been fully mitigated'' --- no
