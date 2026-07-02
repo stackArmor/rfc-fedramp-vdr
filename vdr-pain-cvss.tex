@@ -510,6 +510,27 @@ wands; each has a defensible causal story for the dimension it lowers:
   volume-dependent flaws.
 \end{itemize}
 
+\paragraph{High availability: eligibility is automated, the step is cited.}
+Verified redundancy is a legitimate Modified-Availability (\code{MA}) evidence
+class, and its facts are machine-checkable up front: replica count, \emph{required}
+zone anti-affinity (a \code{preferred} rule is a scheduling hint, not a guarantee
+--- verify the actual pod spread), a PodDisruptionBudget, and health-checked
+automatic restart. Tooling \rfckw{should} detect these and attach a
+candidate-mitigation line to every availability-High finding on the workload. What
+stays with a person is the step itself: \code{MA} High$\rightarrow$Low, per
+finding, with a citation stating why \emph{this} exploit does not defeat the
+redundancy. The reason the citation is required is correlation: replication
+defends against \emph{uncorrelated} failures, and an exploit is perfectly
+correlated --- every replica in every zone runs the identical vulnerable code, and
+the load balancer obligingly delivers the attacker's requests to all of them. The
+same three-zone deployment gives real protection against a trigger that is
+expensive or hard to repeat, and none at all against a crash an attacker can
+re-send at line rate; no topology fact distinguishes the two, only the CVE's
+character does. That is also why there is no graduated schedule (one zone, one
+step): the availability impact metric takes the values High, Low, and None, and
+None is reserved for the VEX disposition path --- the ladder has exactly one rung
+here, and it is earned per finding, not per architecture diagram.
+
 \paragraph{Worked example: Log4Shell egress-deny.} In December 2021, most
 organizations' first effective Log4Shell mitigation was not a WAF. One of the most
 widely deployed was default-deny egress --- a NetworkPolicy or security-group change
