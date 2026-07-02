@@ -65,7 +65,7 @@ These examples doom any method that treats reachability and accessibility as the
 \emph{Can data that originated on the public internet arrive---directly or through any chain of intermediaries---at the vulnerable code, in a form that could trigger the vulnerability?}
 \end{quote}
 
-Accessibility analysis remains necessary---it identifies the entry points where internet data comes ashore---but it is only the first phase of the determination, not the determination itself.
+Accessibility analysis remains necessary---it identifies the entry points where internet data comes ashore---but it is only the first phase of the determination, not the determination itself. This paper keeps the two words strictly apart. \emph{Internet-accessible} describes an entry point: an asset that accepts traffic arriving directly from the public internet. \emph{Internet-reachable} is FedRAMP's broader status: it applies to any vulnerability that internet-originated data can reach and trigger, whether its host is an entry point or sits downstream of one. Every internet-accessible asset hosts candidates for reachability; the reverse is nowhere close to true.
 
 \begin{plain}
 The question is not ``can the internet connect to this server?'' but ``can data that started on the internet ever reach this flaw?'' A database with no internet route still hosts internet-reachable injection flaws, because the attacker's input walks in through the public application and is handed to the database by your own tier-to-tier plumbing. Tools that stop at server exposure answer the wrong question --- and go wrong on exactly the cases FedRAMP names (SQL injection, Log4Shell).

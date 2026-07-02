@@ -207,9 +207,10 @@ facts tighten the remediation clock:
   unauthenticated outside attacker can actually reach --- through a public IP, a
   public load balancer, an ingress, or any edge path that doesn't authenticate
   first --- is far more urgent than the same flaw buried behind authentication on
-  an internal-only service. (A route gated by an identity-aware proxy that
-  authenticates every request before it hits the workload counts as \emph{not}
-  internet-reachable --- the attacker can't get to the vulnerable code.)
+  an internal-only service. (A route gated by an identity-aware proxy in a
+  \emph{remote-access} role --- your own people, with the application's own login
+  still behind it --- counts as \emph{not} internet-reachable: the attacker can't
+  get to the vulnerable code.)
 \end{itemize}
 
 Stack those up and the logic is intuitive: \textbf{more severe + more exploitable +
