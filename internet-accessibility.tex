@@ -283,10 +283,10 @@ For example: an SMB-stack CVE on a host whose only inbound tainted edge carries 
 \subsection{Filter 3: Trigger-Mechanism Class}
 The last filter sorts vulnerability classes by \emph{how the trigger arrives}, keyed on CWE (available from NVD enrichment of CVE records):
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{Payload-carried} classes are triggered by the \emph{content} of the data, and content survives any number of forwarding hops: injection (CWE-89 SQL, CWE-78 OS command, CWE-917 expression language---the Log4Shell mechanism), deserialization of untrusted data (CWE-502), memory corruption in format parsers (CWE-119/CWE-787 where the component parses delivered data), XXE (CWE-611), SSRF (CWE-918), and path traversal (CWE-22). These are exactly FedRAMP's SQL-injection and Log4Shell concern: \textbf{payload-carried vulnerabilities stay IRV wherever tainted data flows, and can never be excluded by class.} Filters 1 and 2 may still exclude them.
-\item \textbf{Peer-bound} classes require the attacker to be the \emph{direct network peer} of the vulnerable listener: authentication bypass at the socket (CWE-287/CWE-306 on the listening service itself), TLS and protocol handshake or state-machine flaws, and connection-flood denial of service. A forwarded application payload cannot perform a handshake or open a raw connection to an interior listener. So \textbf{peer-bound vulnerabilities are excludable on any asset that is not directly exposed} ($\lnot E(a)$): the only machines that can connect to the listener are the interior systems Phase B identified, and none of them is an internet source.
+\item \textbf{Content-triggered} classes are set off by the \emph{content} of the data, and content survives any number of forwarding hops: injection (CWE-89 SQL injection, CWE-78 OS command injection, CWE-917 expression-language injection---the Log4Shell mechanism), deserialization of untrusted data (CWE-502), memory corruption in format parsers (CWE-119 buffer overflow and CWE-787 out-of-bounds write, where the component parses delivered data), XML external entity injection (CWE-611), server-side request forgery (CWE-918), and path traversal (CWE-22). These are exactly FedRAMP's SQL-injection and Log4Shell concern: \textbf{content-triggered vulnerabilities stay IRV wherever tainted data flows, and can never be excluded by class.} Filters 1 and 2 may still exclude them.
+\item \textbf{Peer-bound} classes work the other way around: the flaw lives in the \emph{connection}, not in the data. A network connection is a conversation between exactly two machines, and some flaws can only be triggered by the machine actually holding that conversation---the direct network \emph{peer}---because they sit in the mechanics of the conversation itself: the TLS or protocol handshake that opens it, the service's check of who it is talking to (CWE-287 improper authentication and CWE-306 missing authentication for a critical function, on the listening service itself), or the sheer number of conversations the service can hold at once (connection-flood denial of service). Data forwarded from the internet cannot trigger these, because forwarding passes along the \emph{contents} of a conversation, never the conversation itself; an interior listener only ever converses with the interior systems next to it. So \textbf{peer-bound vulnerabilities are excludable on any asset that is not directly exposed} ($\lnot E(a)$): every machine that can open a connection to the listener is one of the interior systems Phase B identified, and none of them is an internet source.
 \end{itemize}
-Two cautions keep this filter honest. First, stored XSS is payload-carried: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by payload content and follow the data wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. The sound unit of exclusion is the combination in Equation~\ref{eq:decision}---class, position, and taint together---and any vulnerability whose CWE is missing or fits neither group defaults to payload-carried and stays IRV.
+Two cautions keep this filter honest. First, stored XSS is content-triggered: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by the content of the data and follow it wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. The sound unit of exclusion is the combination in Equation~\ref{eq:decision}---class, position, and taint together---and any vulnerability whose CWE is missing or fits neither group defaults to content-triggered and stays IRV.
 
 \begin{plain}
 Two kinds of bugs. Some are set off by the \emph{content} of the data --- a poisoned string, a booby-trapped file --- and those travel with the data through any number of internal hops, so they stay in scope wherever tainted data goes. Others require the attacker to be the machine at the \emph{other end of the connection} --- handshake, login-at-the-socket, and connection-flood flaws --- and those can be crossed off on interior systems, whose only peers are your own machines. Sorting a bug into the wrong pile (``XSS is client-side,'' ``DoS is peer-bound'') is exactly the reckless shortcut the rules warn against, so anything unclassifiable is treated as content-triggered.
@@ -317,8 +317,52 @@ FedRAMP does allow you to stop counting a flaw as internet-reachable once a WAF 
 \end{plain}
 
 \section{Summary and Conclusion}
-The FedRAMP VDR/VER rules ask a sharper question than the industry is used to answering: not ``which resources are internet-accessible?'' but ``which \emph{vulnerabilities} can a payload from the public internet trigger?'' (\code{FRD-IRV}, \code{VER-EVA-EIR}). The Exclusion-Gated Reachability Method answers it in three deterministic phases. Phase A's gates---routing, attributed firewall sources, remote-access boundaries, container routing, and the process-level refinement---find where internet data enters. Phase B follows that data across the observed flow graph and prunes, wholesale and with flow logs as evidence, the assets it can never reach. Phase C excludes individual vulnerabilities on the remaining assets through execution evidence, trigger-surface matching, and the payload-carried/peer-bound split. Every filter defaults toward IRV, so evidence gaps show up as conservatism, never as silent false negatives---and every exclusion carries machine-verifiable evidence and a VEX justification a 3PAO or agency can check.
+The FedRAMP VDR/VER rules ask a sharper question than the industry is used to answering: not ``which resources are internet-accessible?'' but ``which \emph{vulnerabilities} can a payload from the public internet trigger?'' (\code{FRD-IRV}, \code{VER-EVA-EIR}). The Exclusion-Gated Reachability Method answers it in three deterministic phases. Phase A's gates---routing, attributed firewall sources, remote-access boundaries, container routing, and the process-level refinement---find where internet data enters. Phase B follows that data across the observed flow graph and prunes, wholesale and with flow logs as evidence, the assets it can never reach. Phase C excludes individual vulnerabilities on the remaining assets through execution evidence, trigger-surface matching, and the content-triggered/peer-bound split. Every filter defaults toward IRV, so evidence gaps show up as conservatism, never as silent false negatives---and every exclusion carries machine-verifiable evidence and a VEX justification a 3PAO or agency can check.
 
 The method's purpose is proportionality with defensibility. Most detected vulnerabilities are not likely exploitable (\code{VER-EVA-ELX}), the tight \code{VDR-TFR-PVR} clocks bind only the LEV\,+\,IRV intersection, and partial mitigation legitimately satisfies the timeframes. A provider does not need to shrink its IRV set by declaration; it needs to defend the set it reports. Where a WAF virtual patch intercepts the triggering payloads, FedRAMP permits the reachability downgrade---but the stricter, more durable posture is to keep the vulnerability IRV and attest the mitigation with signed CycloneDX VEX, while still remediating Known Exploited Vulnerabilities on CISA BOD 26-04 due dates per \code{VDR-TFR-KEV}. Run the three phases as continuous automation, and the reachability determination rebuilds itself as the architecture changes---and stands up, line by line, to the scrutiny the new rules invite.
+
+\section*{Glossary of Abbreviations}
+\begin{description}[leftmargin=6em, labelwidth=5em, font=\normalfont\ttfamily, nosep, itemsep=1pt]
+\item[3PAO] Third-Party Assessment Organization
+\item[BOD] Binding Operational Directive (CISA)
+\item[CISA] Cybersecurity and Infrastructure Security Agency
+\item[CNI] Container Network Interface
+\item[CPE] Common Platform Enumeration
+\item[CVE] Common Vulnerabilities and Exposures (vulnerability identifier)
+\item[CWE] Common Weakness Enumeration (vulnerability class taxonomy)
+\item[DoS] Denial of Service
+\item[eBPF] extended Berkeley Packet Filter (kernel-level runtime telemetry)
+\item[EKS] Amazon Elastic Kubernetes Service
+\item[FRD] FedRAMP Definition (rule-ID prefix, e.g.\ \code{FRD-IRV})
+\item[GKE] Google Kubernetes Engine
+\item[IAM] Identity and Access Management
+\item[IAP] Identity-Aware Proxy
+\item[IGW] Internet Gateway
+\item[IRV] Internet-Reachable Vulnerability
+\item[JWT] JSON Web Token
+\item[KEV] Known Exploited Vulnerability (CISA catalog)
+\item[LB] Load Balancer
+\item[LEV] Likely Exploitable Vulnerability
+\item[MFA] Multi-Factor Authentication
+\item[NAT] Network Address Translation
+\item[NIRV] Not Internet-reachable Vulnerability
+\item[NLEV] Not Likely Exploitable Vulnerability
+\item[NVD] National Vulnerability Database
+\item[OCI] Open Container Initiative (registry artifact format)
+\item[OIDC] OpenID Connect
+\item[PAIN] Potential Agency Impact N-rating (N1--N5)
+\item[ReDoS] Regular-expression Denial of Service
+\item[SQL] Structured Query Language
+\item[SSRF] Server-Side Request Forgery
+\item[TLS] Transport Layer Security
+\item[VDR] Vulnerability Detection and Response (FedRAMP rule set)
+\item[VER] Vulnerability Evaluation and Reporting (FedRAMP rule set)
+\item[VEX] Vulnerability Exploitability eXchange
+\item[VPC] Virtual Private Cloud
+\item[VPN] Virtual Private Network
+\item[WAF] Web Application Firewall
+\item[XSS] Cross-Site Scripting
+\item[XXE] XML External Entity (injection)
+\end{description}
 
 \end{document}
