@@ -354,61 +354,188 @@ The $\mathrm{live}(P)$ condition asks whether a path ends at a port something ac
 
 This gate has a hard limit, and it echoes the lesson of Section~\ref{sec:position}. A queue worker on a private VM with \emph{no listening socket at all}---a thumbnail generator, a log ingester, exactly the Log4Shell shape---is still IRV for its parser flaws if it parses internet-uploaded files. ``Binds no exposed port'' closes only the connection channel; the content channel closes only when no internal edge delivers the flaw's trigger class---either because topology rules the path out or because demonstrated sanitization neutralizes it (Sections~\ref{sec:propagation} and~\ref{sec:sanitization}). Gate 5 refines direct exposure; it is never a standalone NIRV call.
 
-\section{Phase B: Transitive Payload Exposure}
-\label{sec:phaseb}
-Phase B implements the \code{FRD-IRV} note that reachability ``includes machine-based information resources that have no direct route to/from the internet but receive payloads or otherwise take action triggered by internet activity.'' It works on the \emph{data-flow graph}, not the routing graph. Nodes are assets (or workloads). A directed edge $a \rightarrow b$ exists when data observed leaving $a$ arrives at $b$ and is processed there---requests, messages, files, replication streams. An asset is \textbf{payload-exposed} (tainted), written $T(a)$, if any directed path leads to it from any Phase A entry point.
+\section{The Descriptor Space}
+\label{sec:descriptors}
+Attack vector, protocol, and ALPN are all just \emph{fields} of one tuple:
+\[
+d=\langle\,\kappa,\ \tau,\ \pi,\ \nu,\ \delta\,\rangle
+\]
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{c l l}
+\toprule
+\textbf{field} & \textbf{meaning} & \textbf{source} \\
+\midrule
+$\kappa\in\{N,A,L,P\}$ & attack-vector class & CVSS \textbf{AV} \\
+$\tau$ & transport + port (e.g.\ \code{tcp/443}) & sockets / SG / LB listeners \\
+$\pi$ & L7 protocol (\code{ssh},\code{http},\code{tls},\code{dns}) & service identity / CPE \\
+$\nu$ & protocol version / \textbf{ALPN} (\code{http/1.1},\code{h2},\code{h3}) & negotiated per hop \\
+$\delta$ & direction (inbound-listen / outbound) & path role \\
+\bottomrule
+\end{tabular}
+\end{center}
+The $\kappa$ field is exactly the CVSS \textbf{Attack Vector} (\code{AV}) base metric,
+and its four values are CVSS's own: $N$ = Network (remotely exploitable---the internet
+counts), $A$ = Adjacent (same local network only), $L$ = Local (needs a shell or local
+session), $P$ = Physical (needs to touch the device). The other fields ($\tau,\pi,\nu$)
+are \emph{not} in the CVSS vector---they come from the deployment and the CVE details.
 
-Perfect data-flow analysis is impossible at this scale, so the method deliberately over-counts, using two kinds of evidence:
-\begin{itemize}[leftmargin=1.5em]
-\item \textbf{Kubernetes estates:} the union of the flows the NetworkPolicies allow (the declared graph) and the flows actually seen by CNI or mesh telemetry, such as Cilium Hubble or Istio flow logs (the observed graph). The two kinds of evidence do different jobs. Observed flows only ever \emph{add} edges the declared picture missed: seeing traffic proves a path exists, but not seeing traffic never proves one does not, because nothing stops a new flow from starting tomorrow. Only enforcement can rule paths out---policies that cover every workload, with default-deny behind them. Where NetworkPolicies are missing or default-allow, every path \rfckw{must} be assumed open, and the permissive posture is itself a finding.
-\item \textbf{Non-Kubernetes estates:} the union of the flows that firewall and security-group rules allow (the declared graph) and the flows actually seen in VPC flow logs joined with host-level socket telemetry---which process held the socket, which peers it exchanged data with (the observed graph)---giving per-process flow edges rather than bare IP adjacency. The same division of labor applies: observed flows add edges the rules missed, and only deny-by-default firewall and security-group rules can rule paths out. Where the rules are default-allow or overly broad, every path \rfckw{must} be assumed open, and the permissive posture is itself a finding.
+\medskip
+Recall the two sets from Section~\ref{sec:model}: $X(v)$ is the \textbf{required surface}---the
+descriptors the exploit needs in order to fire---and $E(a)$ is the \textbf{exposed
+surface}---the descriptors the internet can actually deliver to the component.
+Reachability is just whether they overlap, $E(a)\cap X(v)\neq\varnothing$. Two
+descriptors \emph{match} when they agree on every field; a field set to the wildcard
+$\star$ matches \emph{any} value.
+
+\paragraph{What the wildcard is for.} Every descriptor has the five fields above, but
+you cannot always fill them all in---e.g.\ a CVE write-up may never state which
+protocol \emph{version} is affected. That unknown field is set to $\star$ rather than
+guessed. Since $\star$ matches anything, it makes an overlap \emph{more} likely, so a
+missing fact safely errs toward IRV (the fail-safe of Section~\ref{sec:failsafe}); a field is pinned to a
+specific value only when there is evidence for it.
+
+\medskip
+\noindent With the fields recalled---$\kappa$ = attack-vector class (the CVSS
+\code{AV}), $\pi$ = L7 protocol, $\nu$ = protocol version / ALPN---the one intersection
+test quietly does three jobs at once:
+\begin{itemize}[leftmargin=1.6em]
+\item \textbf{AV gating (the $\kappa$ field) is free.} An \code{AV:L} (local-only) vuln
+  needs $X(v)=\{\kappa{=}L\}$. But $E(a)$ is the \emph{internet}-exposed surface, so it
+  only ever contains $\kappa{=}N$ (network) descriptors. The two can never share a
+  $\kappa$, so $E(a)\cap X(v)=\varnothing \Rightarrow$ \textbf{NIRV, regardless of how
+  exposed the asset is.} No special case---the algebra does it. (Same for \code{AV:A}
+  adjacent and \code{AV:P} physical.)
+\item \textbf{Protocol gating is the $\pi$ field.} An \code{ssh} exploit
+  ($X(v)$ has $\pi{=}\code{ssh}$) is NIRV unless \code{ssh} is on the exposed surface
+  $E(a)$---even if the box exposes HTTP.
+\item \textbf{ALPN gating is the $\nu$ field.} An HTTP/2-only exploit
+  ($\pi{=}\code{http},\ \nu{=}\code{h2}$) is NIRV if $E(a)$ carries only
+  \code{http/1.1}.
 \end{itemize}
-Taint then spreads by simple repetition: start with the Phase A entry points, mark any asset that receives data from a marked asset, and repeat until nothing new gets marked. Because the flow evidence is collected continuously, the graph---and with it the IRV determination---rebuilds itself as the architecture changes, consistent with the automation posture of \code{VDR-CSO-ADT}.
 
-Phase B is the method's one wholesale pruning step, and it is built to err on the safe side:
-\begin{itemize}[leftmargin=1.5em, nosep]
-\item \textbf{No permitted path means NIRV, wholesale.} If no path \emph{can} reach asset $a$ from any entry point---an isolated batch cluster behind default-deny policy, an air-gapped management enclave, a database whose only permitted client is an untainted internal tool---then no internet payload can arrive there, and \emph{every} vulnerability on $a$ is NIRV. The claim \rfckw{must} rest on one of two things: enforcement that denies the paths (default-deny rules covering the asset, with the policy snapshots as evidence), or an explicit operator attestation that the flow map is complete and no path in it leads to the asset. Quiet telemetry alone is never sufficient: watching the flow logs for a month and seeing nothing arrive proves only that nothing arrived that month. A monthly batch job, a failover path, or a disaster-recovery runbook can produce its first-ever flow the day after the window closes.
-\item \textbf{A path is not a conviction.} Taint means internet-derived data reaches the asset in some form---not that every flaw on the asset can be triggered by it. Tainted assets go on to the per-vulnerability filters of Phase C.
-\item \textbf{Direction and age matter.} Edges point one way: an asset that only \emph{pulls} data from a tainted source still receives that data, so it is tainted; an asset that only \emph{pushes} data to one is not. And observed flows \rfckw{must} carry a bounded observation window, so flows that no longer exist age out of the graph.
-\end{itemize}
+The $\pi$ field is where the classic interior false positive dies. EternalBlue---the
+SMB flaw behind WannaCry---gets flagged by a scanner on an interior Windows server
+that internet-derived data genuinely reaches. But the flow telemetry shows that the
+only thing arriving on its inbound edges is PostgreSQL database traffic from the
+application tier: $\pi{=}\code{smb}\notin E(a)$. EternalBlue fires only when the
+machine \emph{parses SMB messages}, so $X(v)=\{\pi{=}\code{smb}\}$, the intersection is
+empty, and the finding is excludable---with the flow records as the audit evidence.
+The exclusion polices itself in both directions. It rests on continuously observed
+flows: if someone later mounts a file share on that server and an SMB edge appears,
+the exclusion collapses on the next derivation. And it is narrow by construction: the
+same server's flaws in \emph{PostgreSQL} parsing stay IRV, and an upload service that
+accepts arbitrary files excludes nothing, because ``arbitrary files'' matches every
+parser's trigger surface. The CVE-to-surface mapping comes from enrichment data
+(affected component, CPE, vendor advisory); where the required surface cannot be
+determined, $X(v)$ wildcards to $\star$ and the vulnerability stays IRV.
 
-\begin{plain}
-Phase B follows the data, not the network diagram. Wherever internet-originated data flows --- requests, queued messages, uploaded files, replication --- every system it touches stays in scope. A system drops out entirely, flaws and all, only when something actually rules the paths out: deny-by-default rules that cover it, or the operator's signed statement that the flow map is complete and no path leads there. ``We watched for a month and saw nothing'' is not enough on its own --- quiet logs prove the past, not the future.
-\end{plain}
-
-\section{Phase C: Per-Vulnerability Filters on Payload-Exposed Assets}
-\label{sec:phasec}
-Phase C brings back precision on tainted assets, honoring the \code{FRD-IRV} note that ``internet-reachability applies only to the specific vulnerable machine-based information resources processing the payload.'' Each filter is a deterministic exclusion with a defined evidence source and a matching VEX justification (per the companion paper, \emph{A CycloneDX VEX Profile for FedRAMP Rev5 VDR/VER}). When evidence is missing or unclear, each filter defaults to ``applies''---the vulnerability stays IRV.
-
-\begin{plain}
-Phase B only says internet data reaches the machine. Phase C asks, for each individual flaw on that machine: could that data actually set \emph{this} flaw off? Three checks. Does the vulnerable code ever run at all (Filter 1)? Does the data that arrives even come in the format that triggers this flaw (Filter 2)? And is this the kind of bug that travels in data, or one that needs a direct connection from the attacker (Filter 3)? Each check needs solid evidence to cross a flaw off; without it, the flaw stays on the internet-reachable list.
-\end{plain}
-
-\subsection{Filter 1: Execution Evidence}
-The strongest and most general filter asks a blunt question: can the vulnerable code run at all? Two tiers of evidence:
+\subsection{Execution Evidence: The Zeroth Factor}
+\label{sec:exec-evidence}
+A descriptor intersection can only fire in code that runs. Execution evidence
+therefore zeroes a finding regardless of any surface computation, in two tiers:
 \begin{itemize}[leftmargin=1.5em, nosep]
 \item \textbf{The package never runs:} it is installed (so scanners flag it), but no process from it has run during the observation window---build leftovers, disabled agents, unused OS components. VEX justification: \code{code\_not\_present}.
 \item \textbf{The vulnerable function never runs:} the library loads, but runtime telemetry (eBPF-based library and symbol tracing, for example) shows the vulnerable function is never called. VEX justification: \code{code\_not\_reachable}.
 \end{itemize}
 (The corresponding CISA status-justification labels, under the companion profile's optional crosswalk, are \code{vulnerable\_code\_not\_present} and \code{vulnerable\_code\_not\_in\_execute\_path} respectively.)
-This filter works for every class of flaw---injection, parser bugs, protocol bugs alike---which makes it the highest-yield filter to automate. It also generalizes Gate 5: Gate 5 only removes \emph{direct} exposure for processes that listen on nothing, while execution evidence rules out triggering entirely, no matter how tainted data arrives.
+This evidence works for every class of flaw---injection, parser bugs, protocol bugs alike---which makes it the highest-yield exclusion to automate. It also generalizes Gate 5: Gate 5 only removes \emph{direct} exposure for processes that listen on nothing, while execution evidence rules out triggering entirely, no matter how the data arrives.
 
-\subsection{Filter 2: Trigger-Surface Matching}
-Every vulnerability needs its trigger delivered in a specific form---a protocol, a file format, an API endpoint. A flaw in a PDF parser cannot be set off by a JPEG; a flaw in Windows file sharing cannot be set off by database traffic. That required form is the vulnerability's \emph{trigger surface}. Phase B already knows more than ``these two machines talk'': the flow telemetry records \emph{what} is actually delivered on each edge (protocol, port, and often the application protocol, from mesh or eBPF-level classification). Filter 2 checks the two against each other:
-\begin{quote}
-\textbf{Exclusion criterion.} Vulnerability $v$ on tainted asset $a$ is excluded if the trigger surface required by $v$ has an empty intersection with the set of data formats and protocols actually delivered on $a$'s inbound tainted edges.
-\end{quote}
-EternalBlue---the SMB flaw behind WannaCry---makes the exclusion concrete. A scanner flags it on an interior Windows server, and Phase B confirms the server is tainted: internet-derived data really does reach it. But the flow telemetry shows that the only thing arriving on its tainted edges is PostgreSQL database traffic from the application tier. EternalBlue fires only when the machine \emph{parses SMB messages}, and no internet-derived data ever arrives as SMB. The vulnerable code never hears from the internet in the only language it listens to, so the finding is excludable---and the flow records that show it are the audit evidence. The exclusion polices itself in both directions. It rests on continuously observed flows: if someone later mounts a file share on that server and an SMB edge appears, the exclusion collapses on the next derivation. And it is narrow by construction: the same server's flaws in \emph{PostgreSQL} parsing stay IRV, and an upload service that accepts arbitrary files excludes nothing, because ``arbitrary files'' matches every parser's trigger surface.
-
-The CVE-to-surface mapping comes from enrichment data (affected component, CPE, vendor advisory). Where the required surface cannot be determined, \textbf{the filter assumes any surface could trigger the flaw, and the vulnerability stays IRV}. That default is the safety property again: incomplete knowledge widens the IRV set instead of narrowing it.
-
-\subsection{Filter 3: Trigger-Mechanism Class}
-The last filter sorts vulnerability classes by \emph{how the trigger arrives}, keyed on CWE (available from NVD enrichment of CVE records):
+\subsection{Trigger Mechanism: Content-Triggered vs.\ Peer-Bound}
+\label{sec:mechanism}
+The descriptor a vulnerability requires depends on \emph{how its trigger arrives}, and vulnerability classes (keyed on CWE, available from NVD enrichment) split into two families:
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{Content-triggered} flaws are set off by \emph{what the data says}, so they travel wherever the data travels. The canonical example is SQL injection (CWE-89): the attacker types a malicious string into a public search box, the web application passes that string to the internal database, and the database executes it. The attacker never connects to the database---their \emph{text} does the work, and text survives every hop. Log4Shell worked the same way (CWE-917 expression-language injection): a booby-trapped string, logged by some service deep in the stack, triggered code execution on machines the attacker could not even name, let alone connect to. The same logic covers OS command injection (CWE-78), deserialization of untrusted data (CWE-502), memory corruption in file and format parsers (CWE-119 buffer overflow, CWE-787 out-of-bounds write---the malicious PDF or image that exploits whatever eventually opens it), XML external entity injection (CWE-611), server-side request forgery (CWE-918), and path traversal (CWE-22). \textbf{Content-triggered vulnerabilities stay IRV wherever tainted data flows, and can never be excluded by class} (Filters 1 and 2 may still exclude them). This is exactly FedRAMP's SQL-injection and Log4Shell concern.
-\item \textbf{Peer-bound} flaws are set off by \emph{holding the connection}---and a connection, unlike data, cannot be forwarded. Heartbleed is the canonical example: to exploit it, the attacker's own machine had to open a TLS session with the vulnerable server and send malformed heartbeat messages over that session. regreSSHion (CVE-2024-6387) is another: the attacker must connect directly to the SSH port and race its login timer. The class covers flaws in the mechanics of the connection itself: the TLS or protocol handshake that opens it, the service's login check (CWE-287 improper authentication and CWE-306 missing authentication for a critical function, on the listening service itself), and connection-flood denial of service. The exclusion is justifiable for a physical reason, not a judgment call: when the web tier needs something from an interior server, it does not hand the attacker its connection. It opens a \emph{new} connection of its own---its own handshake, its own credentials---and the attacker's data rides inside only as cargo. The attacker never holds a connection to the interior machine, so a flaw that lives in the connection mechanics has nothing to fire through. \textbf{Peer-bound vulnerabilities are therefore excludable on assets that are not directly exposed} ($\lnot E(a)$): the only machines that can connect to an interior listener are the interior systems Phase B identified, and none of them is an internet source. The exclusion never applies to machines the internet \emph{can} connect to---Heartbleed on the public load balancer is directly exposed and stays IRV.
+\item \textbf{Content-triggered} flaws are set off by \emph{what the data says}, so their required descriptor rides the data---and data survives every hop. The canonical example is SQL injection (CWE-89): the attacker types a malicious string into a public search box, the web application passes that string to the internal database, and the database executes it. The attacker never connects to the database---their \emph{text} does the work, and text survives every hop. Log4Shell worked the same way (CWE-917 expression-language injection): a booby-trapped string, logged by some service deep in the stack, triggered code execution on machines the attacker could not even name, let alone connect to. The same logic covers OS command injection (CWE-78), deserialization of untrusted data (CWE-502), memory corruption in file and format parsers (CWE-119 buffer overflow, CWE-787 out-of-bounds write---the malicious PDF or image that exploits whatever eventually opens it), XML external entity injection (CWE-611), server-side request forgery (CWE-918), and path traversal (CWE-22). \textbf{Content-triggered descriptors propagate to every downstream surface that receives the data un-neutralized}---which is exactly why the Sanitize operation of Section~\ref{sec:propagation} is the one transfer function that stops them, and exactly FedRAMP's SQL-injection and Log4Shell concern.
+\item \textbf{Peer-bound} flaws are set off by \emph{holding the connection}---and a connection, unlike data, cannot be forwarded. Heartbleed is the canonical example: to exploit it, the attacker's own machine had to open a TLS session with the vulnerable server and send malformed heartbeat messages over that session. regreSSHion (CVE-2024-6387) is another: the attacker must connect directly to the SSH port and race its login timer. The class covers flaws in the mechanics of the connection itself: the TLS or protocol handshake that opens it, the service's login check (CWE-287 improper authentication and CWE-306 missing authentication for a critical function, on the listening service itself), and connection-flood denial of service. In descriptor terms, the required surface of a peer-bound flaw includes ``the attacker is the connection peer''---a descriptor no internal leg ever delivers, for a physical reason: when the web tier needs something from an interior server, it does not hand the attacker its connection. It opens a \emph{new} connection of its own---its own handshake, its own credentials---and the attacker's data rides inside only as cargo. \textbf{Peer-bound vulnerabilities are therefore excludable on assets with no reachable direct path ($R(a)=0$)}: the only machines that can connect to an interior listener are interior systems, and none of them is an internet source. The exclusion never applies to machines the internet \emph{can} connect to---Heartbleed on the public load balancer stays IRV.
 \end{itemize}
-Two cautions keep this filter honest. First, stored XSS is content-triggered: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by the content of the data and follow it wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. The sound unit of exclusion is the combination in Equation~\ref{eq:decision}---class, position, and taint together---and any vulnerability whose CWE is missing or fits neither group defaults to content-triggered and stays IRV.
+Two cautions keep this split honest. First, stored XSS is content-triggered: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by the content of the data and follow it wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. Any vulnerability whose CWE is missing or fits neither family defaults to content-triggered and stays IRV.
+
+\begin{plain}
+Flaws split into two kinds by how the attack arrives. Some are set off by the
+\emph{content} of the data --- a poisoned string, a booby-trapped file. Those travel:
+whatever your systems pass along, the poison rides inside, so the flaw is in play
+wherever the data goes (unless something along the way provably cleans it --- next
+section). Others require the attacker to be the one \emph{holding the connection} ---
+like Heartbleed. Those don't travel: your app tier calling your database opens its own
+fresh connection, and the attacker isn't on it. So connection-type flaws on interior
+machines can come off the list; content-type flaws can't be excluded by their class
+alone --- and when in doubt, a flaw is treated as the traveling kind.
+\end{plain}
+
+\section{Where $E(a)$ Comes From: Surface Propagation}
+\label{sec:propagation}
+The exposed surface is the internet's full descriptor universe $D_\top$ pushed through
+every hop on the path to $a$. Each hop $h_i$ is a \textbf{transfer function}
+$T_i:2^D\to 2^D$:
+\begin{keybox}
+\[
+E(a)\;=\;\big(T_k\circ T_{k-1}\circ\cdots\circ T_1\big)(D_\top)
+\]
+\end{keybox}
+\begin{plain}
+Start by assuming the internet can send this component \emph{anything} ($D_\top$ ---
+every port, protocol, and version). Then follow the traffic through each device on the
+path --- load balancer, firewall, proxy --- and at each one, cross off whatever it
+blocks and rewrite whatever it changes (e.g.\ an HTTP/2 request the load balancer
+forwards as HTTP/1.1). Whatever is \emph{still standing} when it reaches the component is
+its real exposed surface $E(a)$. It's like water pressure at the tap: what comes out
+depends on every valve between the reservoir and your faucet, not just whether the
+reservoir is full.
+\end{plain}
+Four hop operations cover everything:
+\begin{enumerate}[leftmargin=1.8em]
+\item \textbf{Filter} --- drop descriptors whose $\tau/\pi$ the hop does not forward.
+  \emph{(Gates 1, 2, 4: routing, SG CIDR scope, ingress binding.)}
+\item \textbf{Translate} --- rewrite a field: TLS termination
+  $\pi:\code{https}\!\mapsto\!\code{http}$; NAT on $\tau$; \textbf{ALPN downgrade}
+  $\nu:\code{h2}\!\mapsto\!\code{http/1.1}$.
+\item \textbf{Authenticate} --- an edge proxy (IAP, AWS Verified Access) that logs the
+  visitor in \emph{before} traffic reaches the component rewrites the attack-vector
+  field $\kappa:N\!\mapsto\!A$---i.e.\ CVSS \code{MAV:A} (adjacent, not network). The
+  $\kappa$ intersection then excludes the finding automatically, with no separate auth
+  rule needed---provided the boundary qualifies under Gate~3's role test. Only auth enforced \emph{ahead of} the component counts; the proxy's own
+  pre-auth surface keeps $\kappa{=}N$ and stays IRV.
+\item \textbf{Sanitize} --- a component that validates or sanitizes internet-sourced
+  input before handing data onward strips the \emph{content-triggered} descriptors it
+  neutralizes from the surface it propagates downstream: parameterized queries remove
+  SQL-injection delivery (CWE-89), schema validation removes deserialization payloads
+  (CWE-502), output encoding removes stored-XSS delivery. Unlike the first three
+  operations, which act on network hops, this one acts at a component boundary on the
+  \emph{internal} legs of the path---and it is earned only by evidence
+  (Section~\ref{sec:sanitization}).
+\end{enumerate}
+So the five gates are not a separate method---they are \emph{how you compute} the
+first hops of $E(a)$---and the internal legs, the tier-to-tier plumbing that relays
+content onward, are where Sanitize applies.
+
+\paragraph{Enumerating the internal legs.} Which internal edges exist---which
+components hand data to which---is itself an evidence question, and the discipline is
+the same one the gates use:
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Kubernetes estates:} the union of the flows the NetworkPolicies allow (the declared graph) and the flows actually seen by CNI or mesh telemetry, such as Cilium Hubble or Istio flow logs (the observed graph). The two kinds of evidence do different jobs. Observed flows only ever \emph{add} edges the declared picture missed: seeing traffic proves a path exists, but not seeing traffic never proves one does not, because nothing stops a new flow from starting tomorrow. Only enforcement can rule paths out---policies that cover every workload, with default-deny behind them. Where NetworkPolicies are missing or default-allow, every edge \rfckw{must} be assumed present, and the permissive posture is itself a finding.
+\item \textbf{Non-Kubernetes estates:} the union of the flows that firewall and security-group rules allow (the declared graph) and the flows actually seen in VPC flow logs joined with host-level socket telemetry---which process held the socket, which peers it exchanged data with (the observed graph)---giving per-process flow edges rather than bare IP adjacency. The same division of labor applies: observed flows add edges the rules missed, and only deny-by-default firewall and security-group rules can rule paths out.
+\end{itemize}
+Because the flow evidence is collected continuously, the edge inventory---and with it
+every downstream surface---rebuilds itself as the architecture changes, consistent
+with the automation posture of \code{VDR-CSO-ADT}. Three properties keep the
+propagation honest:
+\begin{itemize}[leftmargin=1.5em, nosep]
+\item \textbf{No edge at all means the surface is empty, wholesale.} If no permitted path---direct or relayed---leads to asset $a$ from any entry point (an isolated batch cluster behind default-deny policy, an air-gapped management enclave, a database whose only permitted client never receives internet data), then $E(a)=\varnothing$ and \emph{every} vulnerability on $a$ is NIRV. The claim \rfckw{must} rest on one of two things: enforcement that denies the paths (default-deny rules covering the asset, with the policy snapshots as evidence), or an explicit operator attestation that the flow map is complete and no path in it leads to the asset. Quiet telemetry alone is never sufficient: watching the flow logs for a month and seeing nothing arrive proves only that nothing arrived that month. A monthly batch job, a failover path, or a disaster-recovery runbook can produce its first-ever flow the day after the window closes.
+\item \textbf{An edge is not a conviction.} A live internal edge delivers descriptors, not verdicts: whether a particular flaw can fire still depends on the intersection with $X(v)$---the format arriving on the edge, the mechanism class, and any demonstrated sanitization along the way.
+\item \textbf{Direction and age matter.} Edges point one way: an asset that only \emph{pulls} data from an internet-touched source still receives that data, so its surface grows; an asset that only \emph{pushes} data to one does not. And observed flows \rfckw{must} carry a bounded observation window, so edges that no longer exist age out of the inventory.
+\end{itemize}
+
+\begin{plain}
+To know what the internet can deliver to an interior machine, follow the data, not the
+network diagram: every hand-off between your own systems --- requests, queued
+messages, uploaded files, replication --- carries the internet's content one hop
+further, minus whatever each hop provably blocks, rewrites, or cleans. A machine drops
+out entirely, flaws and all, only when something actually rules every path out:
+deny-by-default rules that cover it, or the operator's signed statement that the flow
+map is complete and no path leads there. ``We watched for a month and saw nothing'' is
+not enough on its own --- quiet logs prove the past, not the future.
+\end{plain}
 
 \section{Perimeter Mitigation: Permitted Downgrade, Recommended Attestation}
 \label{sec:waf}
