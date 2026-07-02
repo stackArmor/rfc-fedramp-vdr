@@ -22,10 +22,10 @@
   left=7pt, right=7pt, top=4pt, bottom=4pt,
   fontupper=\small,
   coltitle=Sepia!72!black, fonttitle=\bfseries\sffamily\footnotesize,
-  title={THE WHOLE PIPELINE}
+  title={THE WHOLE MODEL}
 }
 
-\title{\bfseries Your Server Has No Public IP.\\ FedRAMP Still Calls It Reachable.}
+\title{\bfseries If Everything Is ``Internet-Reachable,''\\ Nothing Is.}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
 \date{July 2026}
 
@@ -33,8 +33,8 @@
 \maketitle
 
 \begin{center}
-\itshape A plain-language companion to ``An Exclusion-Gated Method for Determining
-Internet Reachability of Vulnerabilities under the FedRAMP VDR/VER Rules.''
+\itshape A plain-language companion to ``A Finding-Level Model for Internet
+Reachability under the FedRAMP VDR/VER Rules.''
 \end{center}
 
 \bigskip
@@ -42,279 +42,223 @@ Internet Reachability of Vulnerabilities under the FedRAMP VDR/VER Rules.''
 \section*{The problem in one sentence}
 FedRAMP's new rules make one question --- \emph{is this vulnerability reachable
 from the internet?} --- a major driver of how fast you must fix it, and then define
-``reachable'' far more broadly than ``the box has a public IP'' --- without telling
-you how to answer it.
+``reachable'' so broadly that, read to the letter, almost everything in a connected
+system qualifies.
 
-The stakes are concrete. The remediation matrix gives internet-reachable findings a
-dramatically shorter clock than everything else; at the top of the matrix the
-difference is hours versus days, and further down it is days versus a month. Get
-the answer wrong in one direction and you burn your team on false emergencies. Get
-it wrong in the other and you have under-reported a federal finding.
+Follow the words literally and follow the data. The request hits the application;
+the application writes the database; the database replicates; events land on the
+message bus; workers consume them; logs collect all of it. Every one of those
+components ``might receive a payload from the internet,'' so every flaw on every
+one of them lands in the internet-reachable bucket. And a label that everything
+carries means nothing: it cannot tell your security team what to fix first, and it
+puts your whole estate on the fastest remediation clocks at once --- at the top of
+the matrix, that is a two-day clock, everywhere, forever, plus per-finding
+documentation to match. No provider of realistic size can run that way, and nothing
+in the rules suggests they were designed to be unsatisfiable.
 
-So every provider needs a way to answer the question that is reproducible, fast
-enough to run on every scan, and strong enough to survive a skeptical 3PAO. That's
-what the paper builds.
+The way out is not to argue with the definition. It is to notice what else
+FedRAMP's own text says, and to make the determination a computation instead of a
+label.
 
-\section*{What FedRAMP actually means by ``reachable''}
-Two details in the rule text break most people's intuition.
+\section*{What the words actually say}
+Two details in the rule text are the source of the breadth.
 
 First, \textbf{reachability follows the data, not the network diagram.} The rule
 explicitly includes systems that ``have no direct route to/from the internet but
 receive payloads or otherwise take action triggered by internet activity.''
 Log4Shell made this vivid: the classic victim was a thumbnail generator or log
-indexer on a private subnet, with no public IP and often no listening port at all.
-It just parsed files that internet users had uploaded. The malicious string rode in
-on the data, and the private box executed it. Under FedRAMP's definition, that box
-was internet-reachable the whole time.
+indexer on a private subnet, no public IP, often no listening port at all. It just
+parsed strings that internet users had supplied. Under FedRAMP's definition, that
+box was internet-reachable the whole time.
 
 Second, \textbf{reachability is a property of the vulnerability, not the server.}
 The rule says it ``applies only to the specific vulnerable machine-based
 information resources processing the payload.'' The same host can carry one flaw
-that is internet-reachable and another that is not, because the two flaws sit in
-different code, listen on different surfaces, and are triggered by different
-things. Answering per-host is answering the wrong question.
+that is internet-reachable and another that is not.
 
-Put those together and the naive shortcuts collapse. ``It's on a private subnet''
-answers neither point. What you need is a method that traces where internet data
-actually goes, and then asks, for each individual flaw, whether that data can set
-it off.
+But the same rule text carries a third detail most readings skip. FedRAMP's notes
+say the simplest way to prevent exploitation is to ``intercept, inspect, filter,
+\emph{sanitize}, reject, or otherwise deflect'' the triggering payload before the
+vulnerable code processes it --- and that ``once this prevention is in place the
+vulnerability should no longer be considered an internet-reachable vulnerability.''
+\emph{Sanitize} is FedRAMP's own word. And sanitizing internet input is not some
+exotic control: parameterized queries, schema validation, type and bounds checks,
+output encoding --- this is what production applications already do, every day,
+before handing data to the tiers behind them.
 
-\section*{The rule of the method: reachable until proven otherwise}
-The method's central design choice is the direction of proof. \textbf{You never
-prove a vulnerability is reachable. Every vulnerability starts out
-internet-reachable, and it leaves that list only by passing a hard-evidence
-check.} Missing telemetry, an unknown protocol, an unclassifiable bug --- every
-evidence gap defaults to ``still reachable.'' Gaps can only make the urgent list
-longer, never quietly shorter.
+\section*{Compute it per finding}
+The paper replaces the label with an equation, and the equation fits in a
+sentence. For each finding, build two lists: \textbf{what the internet can actually
+deliver to this component} (which doors are open, which protocols survive the load
+balancers and firewalls in between, what the tiers in front clean out), and
+\textbf{what this particular flaw needs in order to fire} (a network path, a
+protocol, a payload class). \textbf{If the lists overlap, the finding is
+internet-reachable. If they don't, it isn't.} Every entry in both lists must be
+backed by evidence, and any entry nobody can pin down counts as an overlap --- so
+missing evidence always errs toward ``reachable,'' never away from it.
 
-That sounds harsh, but it is the property that makes the whole thing defensible: a
-false ``not reachable'' hides a federal finding on a slow clock, while a false
-``reachable'' merely wastes some urgency. The method is built so that every
-exclusion is a deliberate, evidenced decision --- and everything else stays hot.
+The asset side of the list is computed by five deterministic gates --- routing,
+firewall source attribution, edge authentication, Kubernetes exposure, and
+process-to-port mapping --- and then pushed through every hop on the way in:
+firewalls drop what they block, load balancers rewrite what they translate, login
+proxies convert public traffic to authenticated traffic, and \textbf{sanitizing
+tiers strip the payload classes they neutralize} from everything downstream. That
+last hop is the one the blanket reading ignores, and it is the one FedRAMP's own
+prevention note endorses.
 
-The checks are organized as a pipeline of three phases:
+\section*{The evidence is the auditor's to collect --- and most of it already exists}
+Here is the assertion that changes the day-to-day picture: verifying that your
+application really does sanitize its internet input is \emph{assessment work}. It
+is the auditor's job to collect the evidence --- and the evidence is not exotic
+paperwork, it is the artifacts that already exist. Code review records over the
+input-handling paths. Static analysis (SAST) results. Unit and integration tests
+that fire hostile payloads and show them handled inertly. And --- decisively ---
+the regular web-application (DAST) scanning that FedRAMP continuous monitoring
+\emph{already requires}: those scans exist precisely to throw injection and
+malformed-content payloads at the running application and report what got through.
+A clean recurring web-app scan over the endpoints that feed your database \emph{is}
+sanitization evidence, refreshed on the cadence FedRAMP already mandates.
+
+So no new documentation regime is needed. The 3PAO scopes which scans, tests, and
+reviews cover which internal hand-offs; the agency or FedRAMP can ask for the same
+evidence at any time. And the scrutiny this buys goes where the risk actually
+concentrates: \textbf{on the components that process data from unauthenticated
+users} --- the login page, the public API, the upload endpoint, and the parsers
+their raw input feeds. Those see the internet's content before any cleaning has had
+its chance. The tiers behind them see only what survives.
+
+\section*{The steady state: the reachable list looks like the internet-facing list}
+Put those pieces together and something practical falls out. Because the evidence
+collection is standing --- assessments collect it, the required scans regenerate it
+--- a conforming provider ends up, for most reporting scenarios, with an
+internet-reachable list that converges on the internet-\emph{accessible} list: the
+entry points, and the components handling raw unauthenticated input. Not because
+the two words mean the same thing (they don't, and the paper is strict about the
+vocabulary), but because standing proof of sanitization keeps closing the gap that
+the transitive definition opens.
+
+That is what proportionality looks like: the urgent list is short, real, and
+defensible, and every ``not reachable'' behind it traces to evidence an assessor
+collected rather than a judgment call someone typed into a spreadsheet.
+
+\section*{The day the calm breaks}
+The convergence has exactly one condition: attackers using known tricks. Every
+sanitization verdict is a claim about the techniques the world knows --- the scans
+fire the payloads the industry knows to fire, the tests test the tricks the
+developers knew to test. A zero-day that defeats the known techniques dissolves
+those claims wholesale, and this is precisely the day FedRAMP's sweeping definition
+was written for.
+
+Log4Shell, again, is the template. Before December 2021, nobody's sanitization
+guidance treated a JNDI lookup string inside a log line as dangerous --- so no
+evidence collected before that day said anything about it. The moment the technique
+published, every downstream component whose logs could carry attacker-controlled
+strings was in play. And the response was a moving target: within days of the first
+WAF rules blocking the attack string, obfuscated variants sailed straight past
+them, and every vendor spent the month rewriting patterns in a game of
+whack-a-mole. When no patch is in place, yesterday's mitigation is only a
+hypothesis about tomorrow's traffic.
+
+So the obligation on that day is due diligence, not paperwork: sweep for indicators
+of compromise everywhere the suspect data flows, put the known mitigations in,
+and keep watching whether they still hold --- adjusting and adding as the technique
+evolves --- until a patch exists and is applied. Whether you re-label the affected
+findings in your internal tracker is your call; the model doesn't quibble over
+ledger mechanics. Doing the work is not optional, and each suspended ``not
+reachable'' verdict is earned back only when fresh evidence shows your cleaning
+stops the new trick too.
 
 \begin{plain}
-\textbf{Phase A --- direct exposure.} Five gates decide which assets the internet
-can talk to at all $\rightarrow$ \textbf{Phase B --- payload exposure.} Follow the
-data from those entry points through queues, uploads, and replication; everything
-the data touches stays in scope $\rightarrow$ \textbf{Phase C --- per-flaw
-filters.} For each vulnerability on an exposed asset, three questions decide
-whether internet data can actually trigger \emph{this} flaw $\rightarrow$ the
-verdict, per vulnerability: internet-reachable (IRV) or not (NIRV) --- with every
-check defaulting to ``reachable'' when evidence is missing.
+Day to day: five gates find your true entry points; the auditor collects standing
+proof --- required web-app scans, code reviews, tests --- that your tiers clean
+what they pass along; and the internet-reachable list converges to the
+internet-facing list, with the deep scrutiny reserved for whatever handles input
+from strangers who never logged in. The day threat intel drops a technique that
+beats everyone's cleaning: assume it travels, hunt for compromise everywhere the
+data flows, mitigate and keep re-mitigating until the patch lands, and re-earn the
+exclusions with fresh evidence. FedRAMP's sweeping definition is written for that
+second day --- not for every day.
 \end{plain}
 
-\section*{Phase A: five gates on the front door}
-Phase A asks which assets an outside attacker can exchange data with directly. It
-is five gates, each a question with a deterministic answer:
-
-\begin{enumerate}[leftmargin=1.8em]
-\item \textbf{Does the internet route to it at all?} Public IPs, load balancers,
-  ingress paths.
-\item \textbf{Does the firewall actually stop strangers?} The test is
-  \emph{attribution}, not size: an allow-rule is only an exclusion if every source
-  range in it can be named and claimed --- your offices, your VPN egress, your
-  monitoring vendor. A rule that happens to be narrow but points at address space
-  nobody can identify excludes nothing.
-\item \textbf{Whose login is in front of it?} This is where intuitions most often
-  fail. A VPN or identity-aware proxy in front of an \emph{enrolled workforce} ---
-  issued credentials, managed devices, named principals --- is a real boundary,
-  and it excludes. But when the login wall is the front door of the customer
-  application, open to the application's general internet user base,
-  authentication excludes nothing: internet data still flows through the login and
-  into the backend. SQL injection behind a customer sign-in page is still
-  internet-reachable. (What the login \emph{does} earn you is an exploitability
-  argument --- it defeats FedRAMP's ``an automated unauthenticated system can
-  exploit it'' floor --- which shortens nothing about the data path but can
-  support a likely-exploitable downgrade.)
-\item \textbf{What does Kubernetes expose?} Ingress rules, gateway routes, and
-  load-balancer services are readable directly from the cluster. The gate also
-  covers what route-centric inventories miss --- NodePorts that open a port on
-  every node, host-network pods --- and it refuses to guess: where the cluster
-  alone cannot decide (a NodePort's fate depends on cloud firewall rules the
-  cluster cannot see), the asset is treated as exposed until node-level evidence
-  says otherwise.
-\item \textbf{Does the vulnerable software actually hold the exposed port?} Not
-  every package on an exposed host is exposed. If the flagged software maps,
-  deterministically, to processes that hold no internet-facing socket, it is not
-  \emph{directly} exposed. But this gate has a hard limit --- the Log4Shell shape
-  from earlier. ``Binds no exposed port'' is never a standalone verdict; it only
-  excludes together with Phase B's ``and no internet data reaches it.''
-\end{enumerate}
-
-\section*{Phase B: follow the data, not the diagram}
-Everything Phase A marks as an entry point becomes a source of \emph{taint}.
-Wherever internet-originated data flows --- requests, queued messages, uploaded
-files, replication streams --- every system that receives and processes it stays
-in scope, hop after hop. The private thumbnail worker is caught here: it is not an
-entry point, but it consumes what the entry points ingest.
-
-The evidence is the union of two graphs: the flows your network policies and
-firewall rules \emph{permit}, and the flows your telemetry actually \emph{sees}.
-The two do different jobs. Observed flows can only ever add edges --- seeing
-traffic proves a path exists, but not seeing traffic never proves one doesn't,
-because nothing stops a new flow from starting tomorrow. Only enforcement can rule
-paths out.
-
-That asymmetry sets the bar for the method's one wholesale exclusion. If no path
-can reach an asset from any entry point, everything on it is not
-internet-reachable --- but that claim must rest on deny-by-default rules that
-cover the asset, or on the operator's signed statement that the flow map is
-complete and no path leads there. ``We watched the logs for a month and saw
-nothing'' is not enough on its own: a monthly batch job, a failover path, or a
-disaster-recovery runbook can produce its first-ever flow the day after the window
-closes. Quiet logs prove the past, not the future.
-
-\section*{Phase C: three questions about the flaw itself}
-An asset that internet data reaches is not an asset where every flaw matters.
-Phase C restores precision, one vulnerability at a time --- honoring the rule's
-``only the specific vulnerable resources processing the payload.'' Three filters,
-each with a defined evidence source, each defaulting to ``reachable'' when the
-evidence is missing:
-
-\begin{enumerate}[leftmargin=1.8em]
-\item \textbf{Does the vulnerable code ever run?} Scanners flag what is
-  \emph{installed}; runtime telemetry shows what \emph{executes}. Build leftovers,
-  disabled agents, a vulnerable function in a library the application never calls
-  --- if execution evidence shows the code cannot run, internet data cannot
-  trigger it.
-\item \textbf{Does the arriving data even speak the flaw's language?} EternalBlue
-  is an SMB file-sharing exploit. On a server whose only internet-facing surface
-  is HTTPS, internet data arrives as HTTPS and is parsed as HTTPS --- it never
-  reaches SMB parsing code. A flaw is only reachable through data that arrives on
-  the surface the flaw lives in. The catch that keeps this honest: for the many
-  CVEs whose trigger surface can't be determined, the filter assumes the flaw is
-  triggerable by \emph{anything} --- and the finding stays reachable.
-\item \textbf{Does the bug travel in content, or does it need the attacker on the
-  wire?} Most dangerous bugs are \emph{content-triggered}: the exploit is the data
-  itself --- a SQL string, a poisoned image, a malicious log line --- and it stays
-  dangerous no matter how many internal hops it takes to arrive. Log4Shell,
-  again. But some bugs are \emph{peer-bound}: they live in the machinery of the
-  connection itself --- a TLS handshake flaw, a low-level packet-parsing bug ---
-  and can only be triggered by the machine on the other end of the connection.
-  If the vulnerable service's peers are all fixed internal systems (only the
-  application server ever connects to the database), an internet attacker can
-  send malicious \emph{content} through the front door all day, but can never
-  \emph{become the database's connection peer} --- and a handshake bug on that
-  database is out of the attacker's reach. Content-triggered flaws get no such
-  exclusion, ever, and any bug that can't be confidently classified is treated as
-  content-triggered.
-\end{enumerate}
-
-Every exclusion the pipeline grants maps to a standard, signable VEX justification
---- so each ``not reachable'' verdict ships with machine-readable evidence a 3PAO
-can check, not a spreadsheet note.
-
-The common excuses, against the evidence the method actually demands:
-
-\begin{center}
-\begin{tabular}{@{}p{2.35in}p{3.45in}@{}}
-\toprule
-\textbf{``It's not reachable because\ldots''} & \textbf{What has to be true before that counts} \\
-\midrule
-``it's behind the firewall'' & every allowed source range is attributed to you or
-your customer --- narrow-but-unclaimed rules don't count \\
-``it's behind the VPN / SSO'' & the population behind the login is your enrolled
-workforce, not the application's internet user base \\
-``it has no public IP'' & no data path reaches it either --- proven by
-deny-by-default rules or an attested-complete flow map, not by quiet logs \\
-``that package isn't even used'' & runtime execution evidence shows the code never
-runs --- installed-but-idle is a claim, telemetry is proof \\
-``wrong protocol'' & the flaw's trigger surface is known and provably absent from
-every surface internet data arrives on \\
-``an attacker can't connect to it directly'' & the flaw is peer-bound (connection
-machinery, not content) \emph{and} the peers are fixed internal systems \\
-\bottomrule
-\end{tabular}
-\end{center}
-
 \section*{The same flaw, two very different verdicts}
-The per-vulnerability grain is the point, so here it is in action:
+The per-finding grain is the point, so here it is in action:
 
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{SQL injection behind a customer login:} the login is the
-  application's own front door, the malicious string is content, and it flows
-  through authentication into the backend. \textbf{Internet-reachable} --- even
-  though the database has no public IP and sits three hops inside.
-\item \textbf{An SSH flaw on a public web server:} the same host is genuinely
-  internet-facing --- but port 22 is locked to the ops team's attributed
-  addresses, the flaw lives in a surface internet data never arrives on, and the
-  vulnerable process holds no public socket. \textbf{Not internet-reachable} ---
-  on the most public box in the estate.
+\item \textbf{SQL injection flagged on a private database behind the application
+  tier} --- FedRAMP's own canonical case. No public IP, no internet route. Under
+  the blanket reading: reachable, tightest clock. Under the model: the assessment
+  has the data-access code review on record, static analysis is clean for
+  injection on those paths, and the required web-app scans fire injection payloads
+  at the API and show them handled inertly. The cleaning hop strips injection
+  delivery from everything downstream: \textbf{not internet-reachable}, with the
+  evidence bundle as the audit artifact. Same database, no evidence collected?
+  \textbf{Reachable, full stop} --- the default doing its job.
+\item \textbf{An SSH flaw on a public web server:} the most internet-facing box in
+  the estate --- but port 22 is locked to the ops team's attributed addresses, and
+  the flaw only fires over SSH, which internet data never arrives on.
+  \textbf{Not internet-reachable}, on the most public host you own.
 \end{itemize}
 
-Same network, opposite verdicts, and neither one is decided by where the server
-sits. The first is the false negative that per-host thinking produces; the second
-is the false positive that burns response teams for no security gain.
+Opposite verdicts, and neither is decided by where the server sits --- one is
+decided by evidence of cleaning, the other by evidence of what the doors actually
+deliver.
 
 \section*{``But we have a WAF''}
-The question every provider asks next: our web application firewall blocks the
-exploit --- surely the finding isn't internet-reachable anymore? FedRAMP does
-permit that reclassification when an interception demonstrably blocks the
-exploitation path. The paper's answer: you may, but you shouldn't --- attest
-instead.
+If in-code sanitization can end reachability, surely a WAF rule that blocks the
+exploit does too? FedRAMP does permit that reclassification. The paper's answer:
+you may, but you shouldn't --- attest instead, and the distinction with in-code
+sanitization is worth being precise about.
 
-Log4Shell showed why in real time. Within days of the first WAF rules blocking the
-attack string, attackers published obfuscated variants that sailed straight past
-the patterns, and every WAF vendor spent December 2021 chasing them. A WAF
-exclusion is a bet that a signature matches every variant an adversary can invent;
-a topology exclusion is a bet that an attacker cannot send data over a connection
-that does not exist. Nobody obfuscates their way through a missing path. And the
-WAF bet also loses quietly to your own operations --- a rule flipped to
-detection-only during an incident, a CDN migration --- each silently voids the
-downgrade with nothing in the record prompting a second look.
-
-So the recommended posture is: keep the finding internet-reachable, and ship a
-signed VEX statement naming the protecting control. If the WAF ever fails, the
-attested record is still true --- internet-reachable, mitigation in doubt --- while
-a reclassified record became false the moment the control failed, and nothing says
-so. The attestation is also simply better audit evidence: a signed,
-machine-readable assertion naming the exact control, instead of a quiet absence
-from the urgent list.
+Your application's input handling is shipped with the application, versioned with
+it, and exercised by its test suite on every build. A WAF is a bolt-on device in
+front of the stack: its rules are tuned during incidents, flipped to
+detection-only, bypassed by obfuscation --- Log4Shell's whack-a-mole was exactly
+this --- and every one of those events silently invalidates a reclassification
+with nothing in the record prompting a second look. So the recommended posture is:
+keep the WAF-shielded finding classified internet-reachable and ship a signed VEX
+statement naming the protecting control. If the WAF ever fails, the attested
+record is still true --- reachable, mitigation in doubt --- while a reclassified
+record became false the moment the control failed.
 
 Two boundaries no mitigation moves. Known Exploited Vulnerabilities keep their
 CISA due dates ``even if the vulnerability has been fully mitigated'' --- no
-virtual patch extends a KEV clock, and neither does a reclassification. And
-endpoint protection changes nothing about reachability in either mode: a
-detect-only EDR alerts after the payload has already arrived, and even a
-blocking-mode EDR that genuinely stops the exploit at runtime is evidence about
-\emph{exploitability and impact} --- worth real credit on those levers --- not
-about whether internet data reaches the code. Geography and mitigation are
-different questions, and the method keeps them apart.
+virtual patch and no reclassification extends a KEV clock. And endpoint protection
+changes nothing about reachability: even a blocking-mode EDR that genuinely stops
+the exploit at runtime is evidence about exploitability and impact --- worth real
+credit on those levers --- not about whether internet data reaches the code.
 
 \section*{The bottom line}
-Four claims carry the whole paper:
+Five claims carry the whole paper:
 \begin{enumerate}[leftmargin=1.8em]
-\item \textbf{Reachability is about data paths, not IP addresses --- and it
-  attaches to the vulnerability, not the server.} A private box parsing uploaded
-  files is reachable; a locked-down daemon on a public host may not be.
-\item \textbf{You never prove ``reachable.''} Everything starts
-  internet-reachable and leaves only past a hard-evidence check; every evidence
-  gap defaults to urgent. False negatives hide federal findings; the method makes
-  them expensive.
-\item \textbf{Three phases, each deterministic:} five direct-exposure gates,
-  taint-following through the data flows (pruned only by enforcement or
-  attestation, never by quiet logs), and three per-flaw filters --- with every
-  exclusion carrying named evidence and a signable VEX justification.
-\item \textbf{Mitigations don't change geography.} A WAF earns a signed
-  attestation, not a reclassification; blocking EDR earns exploitability credit;
-  KEV deadlines bend for nothing.
+\item \textbf{Blanket ``everything is reachable'' is not a security posture.} A
+  label everything carries prioritizes nothing and sets clocks nobody can keep.
+\item \textbf{Reachability is a per-finding computation:} what the internet can
+  deliver to this component, intersected with what this flaw needs to fire ---
+  every factor evidenced, every gap defaulting to ``reachable.''
+\item \textbf{Sanitization is FedRAMP-named prevention, and verifying it is the
+  auditor's job} --- using evidence that already exists: code reviews, SAST,
+  tests, and the DAST scanning continuous monitoring already requires. Extra
+  scrutiny goes to whatever processes unauthenticated input.
+\item \textbf{In the steady state, the reachable list converges on the
+  internet-facing list} --- proportionate, short, and defensible line by line.
+\item \textbf{The broad definition is for the zero-day day.} When a technique
+  defeats known sanitization and WAF protections, hunt for compromise, mitigate
+  and re-mitigate until the patch lands, and re-earn the exclusions with fresh
+  evidence --- however you choose to track it internally.
 \end{enumerate}
 
-The full paper has the formal criteria, the Kubernetes and non-Kubernetes evidence
-sources, the worked examples, and the VEX mappings. But the idea you came for is
-simple: \textbf{stop asking ``does this server face the internet?'' and start
-asking ``can internet data set off this flaw?'' --- and make every ``no'' show its
-evidence.}
+The full paper has the equations with every symbol explained, the five gates, the
+evidence criteria, the worked examples, and the VEX mappings. But the idea you came
+for is simple: \textbf{stop treating FedRAMP's definition as a label that
+everything wears, and start treating it as a computation --- one your auditors
+already have most of the evidence to run.}
 
 \bigskip
 \noindent\textcolor{rule}{\rule{\textwidth}{0.4pt}}
 \medskip
 
 \noindent\emph{Read the full technical paper:
-\href{https://stackarmor.github.io/rfc-fedramp-vdr/internet-reachability.pdf}{An
-Exclusion-Gated Method for Determining Internet Reachability of Vulnerabilities
-under the FedRAMP VDR/VER Rules}}
+\href{https://stackarmor.github.io/rfc-fedramp-vdr/internet-reachability.pdf}{A
+Finding-Level Model for Internet Reachability under the FedRAMP VDR/VER Rules}}
 
 \end{document}
