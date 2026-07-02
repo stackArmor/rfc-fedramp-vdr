@@ -241,7 +241,7 @@ Phase B implements the \code{FRD-IRV} note that reachability ``includes machine-
 Perfect data-flow analysis is impossible at this scale, so the method deliberately over-counts, using two kinds of evidence:
 \begin{itemize}[leftmargin=1.5em]
 \item \textbf{Kubernetes estates:} the union of the flows the NetworkPolicies allow (the declared graph) and the flows actually seen by CNI or mesh telemetry, such as Cilium Hubble or Istio flow logs (the observed graph). Where NetworkPolicies are missing or default-allow, the observed graph governs---and the permissive posture is itself a finding.
-\item \textbf{Non-Kubernetes estates:} VPC flow logs joined with host-level socket telemetry---which process held the socket, which peers it exchanged data with---giving per-process flow edges rather than bare IP adjacency.
+\item \textbf{Non-Kubernetes estates:} the union of the flows that firewall and security-group rules allow (the declared graph) and the flows actually seen in VPC flow logs joined with host-level socket telemetry---which process held the socket, which peers it exchanged data with (the observed graph)---giving per-process flow edges rather than bare IP adjacency. Here too, where the rules are default-allow or overly broad, the observed graph governs and the permissive posture is itself a finding.
 \end{itemize}
 Taint then spreads by simple repetition: start with the Phase A entry points, mark any asset that receives data from a marked asset, and repeat until nothing new gets marked. Because the flow evidence is collected continuously, the graph---and with it the IRV determination---rebuilds itself as the architecture changes, consistent with the automation posture of \code{VDR-CSO-ADT}.
 
