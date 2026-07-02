@@ -60,6 +60,8 @@
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
 \newcommand{\vdrcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/providers/rev5/rules/vulnerability-detection-and-response.md}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\vercite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/providers/rev5/rules/vulnerability-evaluation-and-reporting.md}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\defcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/definitions.md}{FedRAMP/2026-markdown@2a75592}}
 
 \title{\bfseries A Deterministic, CVSS--Environmental Method for\\
 FedRAMP Rev5 VDR/VER Vulnerability Prioritization}
@@ -71,8 +73,8 @@ FedRAMP Rev5 VDR/VER Vulnerability Prioritization}
 
 \begin{abstract}
 \noindent
-FedRAMP Rev5 introduces a Vulnerability Disclosure Report (VDR) and Vulnerability
-Evaluation Requirements (VER) that define \emph{Potential Agency Impact} (PAIN,
+The FedRAMP Vulnerability Detection and Response (VDR) and Vulnerability
+Evaluation and Reporting (VER) rules define \emph{Potential Agency Impact} (PAIN,
 levels N1--N5) and a remediation--timeframe matrix, together with evaluation rules
 for likely exploitability and internet reachability. FedRAMP deliberately does
 \emph{not} prescribe how to derive a PAIN level from an individual vulnerability on
@@ -94,7 +96,10 @@ categorization. A reference architecture and a sample scan complete the memo.
 \section{Status of This Memo and Terminology}
 This document is informational. It does not itself define a FedRAMP requirement; it
 specifies a standardized \emph{method} for satisfying the existing VDR/VER
-requirements.
+requirements.\footnote{The VDR and VER rules launched on 2026-06-24 as part of the
+FedRAMP Consolidated Rules for 2026 and apply to both FedRAMP 20x and Rev5
+offerings. This memo retains its original Rev5-oriented title for link stability;
+the method applies unchanged under both.}
 
 The key words \rfckw{must}, \rfckw{must not}, \rfckw{should}, \rfckw{should not},
 and \rfckw{may} are to be interpreted as described in RFC~2119.
@@ -104,8 +109,10 @@ and \rfckw{may} are to be interpreted as described in RFC~2119.
 \item[CR/IR/AR] The CVSS Environmental Confidentiality / Integrity / Availability
   \emph{Requirements} of an asset.
 \item[ISC] Impact Sub-Score (here, the CVSS \emph{Modified} Impact Sub-Score).
-\item[LEV / NLEV] Likely Exploitable / Not Likely Exploitable (a VER axis).
-\item[IRV / NIRV] Internet Reachable / Not Internet Reachable (a VER axis).
+\item[LEV / NLEV] Likely Exploitable Vulnerability / Not Likely Exploitable
+  Vulnerability (a VER axis).
+\item[IRV / NIRV] Internet-Reachable Vulnerability / Not Internet-reachable
+  Vulnerability (a VER axis).
 \item[VEX] Vulnerability Exploitability eXchange, a machine-readable assertion about
   whether a finding affects a specific product or deployment.
 \item[Class] The provider Certification Class (A--D) selecting a remediation table.
@@ -143,8 +150,8 @@ according to the criticality of the affected asset in \emph{its} environment.
 Asset data sensitivity / FIPS-199 C-I-A categorization & Security Requirements
 \code{CR}, \code{IR}, \code{AR} \\
 Magnitude of potential agency impact & Modified Impact Sub-Score (\code{ISC}) \\
-Likely exploitable (VER) & \code{LEV}: exploit maturity (CISA Vulnrichment) / EPSS threshold \\
-Internet reachable (VER) & \code{IRV}: deployment/network context \\
+Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog membership \\
+Internet reachable (VER) & \code{IRV}: per-finding payload reachability (companion method) \\
 Single- vs.\ multi-agency blast radius & scope multiplier on the PAIN tier \\
 Provider Certification Class & selector of the remediation deadline table \\
 \bottomrule
@@ -169,40 +176,43 @@ CR/IR/AR. \textbf{SCOPE} answers ``how many agencies' data does the asset hold?'
 word (Minimal, Narrow, Disruptive, Debilitating); the word and scope together
 select the N-level.
 
-\section{Two threat inputs from CISA Vulnrichment}
+\section{Two threat inputs: EPSS and the CISA KEV catalog}
 \label{sec:enrichment}
 \begin{plain}
-Beyond the CVE's own CVSS vector, the method pulls in two facts about each flaw from
-\emph{CISA Vulnrichment} --- CISA's Authorized Data Publisher (ADP) enrichment of CVE
-records: how the flaw is actually being exploited, and how much control exploitation
-grants. One tightens the remediation \emph{clock}; the other can raise the PAIN
-\emph{level}. Both are optional: without them the method falls back to the CVSS vector
-and EPSS alone.
+Beyond the CVE's own CVSS vector, the method pulls in exactly two facts about how each
+flaw behaves in the wild: how \emph{likely} exploitation is (EPSS, a statistical
+score) and whether exploitation is \emph{known to be happening} (the CISA Known
+Exploited Vulnerabilities catalog). Either one tightens the remediation \emph{clock};
+neither changes the PAIN \emph{level}, which is driven by the CVSS vector and the
+asset's requirements alone.
 \end{plain}
 
-Two distinct inputs feed two distinct stages:
+Two governed threat inputs feed the exploitability column:
 \begin{itemize}[leftmargin=1.4em]
-\item \textbf{Exploitation state} (active / PoC / none) $\rightarrow$ the
-  \textbf{remediation clock}. ``active'' makes a finding Likely Exploitable (LEV)
-  regardless of its EPSS probability, moving it to a faster remediation column
-  (Section~\ref{sec:remediation}).
-\item \textbf{Technical impact} (total / partial) $\rightarrow$ the \textbf{PAIN
-  level}. ``total'' floors the in-scope CVSS impact to High before the CR/IR/AR
-  weighting, which can push a finding up a tier (Section~\ref{sec:math}).
+\item \textbf{EPSS probability} $\rightarrow$ statistical likelihood. A finding at or
+  above the provider-selected threshold $\theta_{\text{epss}}$ is Likely Exploitable
+  (LEV) (Section~\ref{sec:remediation}).
+\item \textbf{KEV membership} $\rightarrow$ confirmed exploitation. A CVE listed in
+  the CISA KEV catalog is LEV regardless of its EPSS probability --- observed
+  exploitation in the wild overrides any statistical estimate. KEV membership also
+  independently triggers the \code{VDR-TFR-KEV} remediation dates
+  (Section~\ref{sec:bod}), which run on CISA's published schedule irrespective of
+  the matrix.
 \end{itemize}
 
 \noindent How it plays in --- three quick illustrations (Class~C, single-agency):
 \begin{itemize}[leftmargin=1.4em]
-\item \emph{Exploitation moves the clock.} An N3 finding with EPSS $0.30$ (below
-  threshold) sits in the slow column: \textbf{128 days}. Mark it
-  \code{exploitation = active} and it becomes LEV --- the deadline drops to
-  \textbf{16 days} (internet-reachable) or 32 days (not).
-\item \emph{Technical impact moves the level.} A ``weak'' RCE (Remote Code Execution; low impact across
-  C/I/A) on a High/High/High asset scores Disruptive $\rightarrow$ \textbf{N3}. Mark
-  it \code{technical impact = total} and the in-scope dimensions floor to High,
-  scoring Debilitating $\rightarrow$ \textbf{N4} (worked in Example~5).
-\item \emph{Neither present.} No active exploitation, sub-threshold EPSS, and
-  partial/absent technical impact $\rightarrow$ the finding is scored purely on its
+\item \emph{KEV moves the clock (and starts a second one).} An N3 finding with EPSS
+  $0.30$ (below threshold) sits in the slow column: \textbf{128 days}. It appears in
+  the KEV catalog: it becomes LEV --- the deadline drops to \textbf{16 days}
+  (internet-reachable) or 32 days (not) --- and the CISA-published due date applies
+  in parallel under \code{VDR-TFR-KEV}.
+\item \emph{EPSS moves the clock statistically.} The same N3 finding, not in the KEV
+  catalog but with EPSS $0.85$ ($\ge \theta_{\text{epss}} = 0.70$), is LEV on
+  likelihood alone and lands on the same 16/32-day clocks.
+\item \emph{Neither present.} Sub-threshold EPSS, not in the KEV catalog, and not
+  caught by the \code{FRD-LEV} unauthenticated-automation floor
+  (Section~\ref{sec:remediation}) $\rightarrow$ the finding is scored purely on its
   CVSS vector and stays in the slow column at its base tier.
 \end{itemize}
 
@@ -309,17 +319,6 @@ from the word and scope:
 \label{eq:pain}
 \end{equation}
 
-\paragraph{Technical-impact floor (optional refinement).}
-Where an authoritative source (e.g.\ CISA Vulnrichment SSVC) provides a
-\emph{technical impact} of \code{total}, the impacts that the CVE \emph{does} touch
-may be floored to High before Eq.~\eqref{eq:isc}:
-\[
-\hat{X} = \begin{cases} 0.56 & X>0 \ \text{and}\ \text{tech.\ impact}=\code{total} \\ X & \text{otherwise} \end{cases}
-\qquad X \in \{C,I,A\}.
-\]
-Crucially the floor \rfckw{must not} invent impact on a dimension the CVE marks
-None ($X=0$ stays $0$); \code{partial} or absent leaves the vector unchanged.
-
 \section{Fail-safe behavior}
 Missing metadata \rfckw{must not} \emph{lower} PAIN. If a system has not been
 classified yet, the method assumes the worst rather than the best: an asset that
@@ -347,29 +346,50 @@ axes:
 \]
 where, for a provider-selected EPSS threshold $\theta_{\text{epss}}$ (this memo uses
 $0.70$):
-\[
-\text{LEV} \;=\; \big(\text{EPSS} \ge \theta_{\text{epss}}\big)\ \lor\ \big(\text{exploitation} = \text{active}\big),
-\qquad
-\text{IRV} = \text{asset is internet-reachable}.
-\]
+\begin{align*}
+\text{LEV} \;&=\; \big(\text{EPSS} \ge \theta_{\text{epss}}\big)\ \lor\ \big(\text{CVE} \in \text{KEV}\big)\ \lor\ \big(\text{IRV}_{\text{direct}} \land \text{unauthenticated automation}\big),\\
+\text{IRV} \;&=\; \text{the \emph{finding} is internet-reachable (evaluated per vulnerability, not per asset).}
+\end{align*}
+The third LEV disjunct is not a provider option: it implements the \code{FRD-LEV}
+floor note that ``any vulnerability that an automated unauthenticated system can
+exploit over the internet is a likely exploitable vulnerability.'' A deterministic
+proxy suffices: the finding is IRV via \emph{direct} exposure and its CVSS vector
+permits unauthenticated automation (\code{AV:N/PR:N/UI:N}).
 
 \begin{definitionbox}
-\emph{Internet-reachable} means the vulnerable surface can be reached by an
-unauthenticated internet-originating actor, either directly through a public IP
-address or through a public-facing load balancer, ingress, route, or equivalent
-edge path whose edge does not itself enforce authentication. A route gated by
-native edge authentication --- an identity-aware proxy or equivalent that
-authenticates every request before it reaches the workload --- is treated as
-\emph{not} internet-reachable (NIRV), on the view that an unauthenticated attacker
-cannot reach the vulnerable surface. How a given platform discovers public IPs,
-routes, and edge authentication is an implementation concern, out of scope here.
+Internet reachability is a property of the \emph{(vulnerability, asset) pair}, not
+of the asset alone. Per \code{FRD-IRV}, an internet-reachable vulnerability is one
+that ``might be exploited or otherwise triggered by a payload originating from a
+source on the public internet'' --- explicitly including resources with \emph{no
+direct internet route} that process payloads received indirectly;
+\code{VER-EVA-EIR}'s canonical example is SQL injection reaching a database on a
+private network through the application tier. The determination is therefore made
+per finding:
+\[
+\mathrm{IRV}(v,a) \;=\; \big[\,\text{direct exposure} \ \lor\ \text{transitive payload exposure}\,\big]
+\ \land\ \text{per-vulnerability filters},
+\]
+where the filters are execution evidence, trigger-surface match, and trigger
+mechanism (content-triggered vs.\ peer-bound), and \emph{every term defaults to
+reachable} absent deterministic evidence. Two corrections to common intuitions:
+(a) \code{FRD-IRV} imposes no unauthenticated requirement --- ``unauthenticated
+automated exploitation'' belongs to the \code{FRD-LEV} exploitability floor, not
+to reachability; (b) edge authentication (an identity-aware proxy and a client VPN
+alike) excludes a backend from IRV only when it functions as a
+\emph{remote-access boundary}: the boundary rejects unauthenticated traffic before
+the vulnerable code processes it, the authorized principal set is restricted,
+enumerable, and organization-controlled, and the backend validates the boundary's
+signed identity assertion. Edge authentication functioning as customer
+authentication for the service itself (its general internet user base) is an
+exploitability signal, not an IRV exclusion. The full
+discovery method is specified in the companion paper \emph{An Exclusion-Gated
+Method for Determining Internet Reachability of Vulnerabilities under the FedRAMP
+VDR/VER Rules}.
 \end{definitionbox}
 
-Both the exploitation state here and the technical impact in
-Section~\ref{sec:math} are sourced from \emph{CISA Vulnrichment}, an Authorized Data
-Publisher (ADP) in the CVE Program; that choice is itself a design opinion (see
-Appendix~\ref{app:opinions}). The day-valued tables are given in
-Appendix~\ref{app:matrix}. PAIN-1 carries no FedRAMP deadline.
+Restricting the threat inputs to EPSS and the KEV catalog --- and to nothing else ---
+is itself a design opinion (see Appendix~\ref{app:opinions}). The day-valued tables
+are given in Appendix~\ref{app:matrix}. PAIN-1 carries no FedRAMP deadline.
 
 \section{Worked examples}
 \begin{plain}
@@ -412,7 +432,10 @@ score (CR/IR/AR) is doing the work.
 
 \paragraph{Example 3 --- availability-only DoS on a message backbone.}
 A CVE with $C\!=\!0,\ I\!=\!0,\ A\!=\!0.56$ (e.g.\ a parser DoS), on an asset with
-CR=IR=AR=$1.5$, $m=0$. EPSS $=0.76$, not internet-reachable.
+CR=IR=AR=$1.5$, $m=0$. EPSS $=0.76$. The vulnerable parser sits on the
+inter-broker replication surface, which receives no internet-derived data, so the
+finding is not internet-reachable (taint-excluded under the companion method ---
+had the flaw been in \emph{message-payload} parsing it would be transitively IRV).
 \begin{align*}
 \mathrm{ISC} &= 1-(1-0)(1-0)(1-0.84) = 1-0.16 = 0.84, \\
 S &= 0.84/0.915 = 0.918 \;\Rightarrow\; W=\text{Debilitating},\ m=0 \;\Rightarrow\; \boxed{\text{N4}}.
@@ -431,15 +454,176 @@ S &= 0.28/0.915 = 0.306 \;\Rightarrow\; W=\text{Narrow} \;\Rightarrow\; \boxed{\
 A confidentiality leak on a service that holds only operational metadata is
 reconnaissance, not a debilitating breach --- captured by the low CR.
 
-\paragraph{Example 5 --- the technical-impact floor.}
-A ``weak'' RCE with $C\!=\!I\!=\!A\!=\!0.22$ (Low) on a High/High/High asset,
-single-agency. Without the floor:
-\(
-\mathrm{ISC}=1-(1-0.33)^3=0.699,\ S=0.764\Rightarrow\text{Disruptive}\Rightarrow\text{N3}.
-\)
-If an authoritative source reports technical impact \code{total}, the touched
-dimensions floor to $0.56$, giving $S=1.0 \Rightarrow \text{Debilitating}
-\Rightarrow \boxed{\text{N4}}$.
+\section{Mitigation and the PAIN Ladder}
+\label{sec:ladder}
+\begin{plain}
+FedRAMP does not demand that every flaw be \emph{fixed} inside its deadline --- it
+demands that the potential damage come \emph{down the ladder} on schedule. There are
+two ways to climb down: make the flaw hurt less if it fires (its \emph{row} drops to
+a lower N-level), or make it harder to reach or exploit (its \emph{column} moves to a
+slower clock). Every step down must be backed by evidence somebody signed, every step
+is recorded, and no step may claim the damage is exactly zero --- ``zero'' is a
+different kind of claim with its own paperwork (VEX).
+\end{plain}
+
+FedRAMP's response model is a ladder, not a binary. \code{VER-RPT-VDT} requires
+reporting the ``time and Potential Agency Impact N-rating of each completed and
+evaluated reduction in Potential Agency Impact N-rating'' and the ``estimated time
+and target Potential Agency Impact N-rating of next reduction in Potential Agency
+Impact N-rating'' --- the rule \emph{expects} PAIN to be re-estimated downward as
+mitigations land --- and the \code{VDR-TFR-PVR} timeframes are satisfied by partial
+mitigation to a lower N-rating (Appendix~\ref{app:matrix}). A deterministic
+classifier therefore needs a deterministic \emph{lever}: a governed way to recompute
+PAIN when a mitigation changes the facts.
+
+\paragraph{The lever is the other half of CVSS Environmental.} Section~\ref{sec:math}
+uses one half of the Environmental group, the Security Requirements (CR/IR/AR). The
+other half is the \emph{Modified Base} metrics, which the CVSS specification provides
+precisely for capturing mitigations, configurations, and compensating controls
+present in a specific environment. The two halves split cleanly along the model's
+own seam:
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item \textbf{Asset side --- static.} CR/IR/AR and the multi-agency flag describe
+  what the asset \emph{is}. They never move to make a deadline.
+\item \textbf{Vulnerability side --- dynamic.} The Modified impact metrics
+  (\code{MC}/\code{MI}/\code{MA}) describe what the flaw can still do \emph{here},
+  given the controls actually deployed. They are evidence-gated and move as
+  mitigations land.
+\end{itemize}
+Recomputation runs through the same arithmetic --- substitute the modified values
+for $C,I,A$ in Eq.~\eqref{eq:isc} --- and the word, the N-level, and the deadline
+follow exactly as before. No new formula, no side channel.
+
+\paragraph{Concrete row-movers.} These are ordinary hardening actions, not magic
+wands; each has a defensible causal story for the dimension it lowers:
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item Drop the vulnerable process to a non-root user with a read-only filesystem ---
+  the effective Integrity (and often Confidentiality) of an RCE falls.
+\item Scope the application's database credential to a single schema --- a SQL
+  injection's C/I falls: the payload still arrives, but it reaches less.
+\item Disable the vulnerable feature --- the impact of a code path that cannot be
+  invoked falls. (Removing the vulnerable code \emph{outright} goes further and
+  graduates to a VEX disposition; see below.)
+\item Confine egress --- default-deny outbound rules break exploit chains that
+  need a second stage.
+\item Rate-limit the affected endpoint --- Availability impact falls for
+  volume-dependent flaws.
+\end{itemize}
+
+\paragraph{Worked example: Log4Shell egress-deny.} In December 2021, most
+organizations' first effective Log4Shell mitigation was not a WAF. One of the most
+widely deployed was default-deny egress --- a NetworkPolicy or security-group change
+blocking outbound LDAP/RMI from application subnets. Log4Shell's RCE requires a
+second-stage fetch of the malicious class from the attacker's LDAP server, so
+blocking egress breaks the chain; but DNS-based exfiltration of environment
+variables (\code{\$\{env:AWS\_SECRET\_ACCESS\_KEY\}}) remained observed in the wild
+--- which is exactly why the Modified Confidentiality drops to Low and never to
+None. The arithmetic runs through Eqs.~\eqref{eq:isc}--\eqref{eq:pain} unchanged.
+Base, with $C\!=\!I\!=\!A\!=\!0.56$ (High) on a CR=IR=AR=$1.5$ (High) multi-agency
+asset:
+\begin{align*}
+\mathrm{ISC} &= \min\!\big[\,1-(1-0.84)^3,\ 0.915\,\big] = 0.915,\quad
+S = 1.000 \;\Rightarrow\; \text{Debilitating},\ m=1 \;\Rightarrow\; \text{N5},
+\end{align*}
+on the Class~C LEV+IRV clock of \textbf{2 days} (Log4Shell is LEV twice over:
+KEV-listed, and caught by the \code{FRD-LEV} floor). With the evidenced egress-deny,
+$\mathrm{MC}=\mathrm{MI}=\mathrm{MA}=0.22$ (Low):
+\begin{align*}
+\mathrm{ISC} &= 1-(1-0.33)^3 = 0.699,\quad
+S = 0.699/0.915 = 0.764 \;\Rightarrow\; \text{Disruptive},\ m=1 \;\Rightarrow\;
+\boxed{\text{N4}}.
+\end{align*}
+The N5 timeframe is satisfied by the reduction, the reduction is reported under
+\code{VER-RPT-VDT}, and work proceeds on the N4 clock. The evidence is the
+NetworkPolicy object snapshot and the data-flow graph showing the egress edge
+removed (the companion method's telemetry). One clock is untouched: Log4Shell is a
+KEV, so the \code{VDR-TFR-KEV} remediation date runs independently of any
+reduction.
+
+\paragraph{Guardrails.} The lever only ever lowers apparent risk, so it carries the
+same governance as the disposition overlay of Section~\ref{sec:vex}:
+\begin{enumerate}[leftmargin=1.7em,nosep,topsep=3pt]
+\item A modification \rfckw{may} only \emph{lower} a dimension on cited, signed
+  evidence, and \rfckw{must} be re-evaluated whenever the control it relies on
+  changes. The evidence bar scales with the PAIN being reduced.
+\item A modification \rfckw{may} lower High to Low but \rfckw{must not} lower any
+  dimension to None. Claiming \emph{zero} impact is an applicability claim, and it
+  travels as a VEX disposition (\code{not\_affected}), not as a metric modification.
+\item The audit trail records base $\rightarrow$ modified per dimension with the
+  evidence references, mirroring the retained-PAIN pattern: the pre-mitigation
+  rating stays on record and the reduction is attributable and reversible.
+\end{enumerate}
+
+\paragraph{The rest of the menu, from the same incidents.} The guardrails are not
+hypothetical --- each has already played out in public:
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item \textbf{Code removal (Log4Shell).} Apache's own interim recommendation
+  removes the vulnerable class from the jar entirely:\\[2pt]
+  {\footnotesize\code{zip -q -d log4j-core-*.jar org/apache/logging/log4j/core/lookup/JndiLookup.class}}\\[2pt]
+  In this model that claim travels as a VEX disposition
+  (\code{vulnerable\_code\_not\_present}) evidenced by the modified jar hash --- not
+  as a Modified-impact claim (guardrail~2).
+\item \textbf{Config kill-switch, and the re-evaluation lesson (Log4Shell).} The
+  JVM flag \code{-Dlog4j2.formatMsgNoLookups=true} was initially treated as a
+  complete mitigation --- until CVE-2021-45046 showed non-default configurations (Thread
+  Context Map patterns) where lookups still fired, and the flag was downgraded to
+  insufficient. That is guardrail~1 playing out in the real world: mitigations carry
+  timestamps and are re-evaluated when the facts change; a one-time silent
+  suppression would have outlived its justification.
+\item \textbf{regreSSHion (CVE-2024-6387).} The published mitigation is one line of
+  \code{sshd\_config}: \code{LoginGraceTime 0}, closing the pre-authentication RCE
+  race at the cost of a connection-exhaustion DoS risk --- a mitigation that
+  \emph{trades} impact dimensions (Modified C/I fall, Modified A is retained or
+  worsens), and one no WAF could ever address.
+\item \textbf{Spring4Shell (CVE-2022-22965).} Spring's interim workaround was a
+  \code{@ControllerAdvice} restricting the data binder's \code{disallowedFields}
+  (\code{"class.*"} and friends) --- an application-configuration mitigation shipped
+  while framework upgrades were scheduled.
+\end{itemize}
+
+\paragraph{Column moves: the other axis.} Reachability and exploitability
+mitigations do not touch the impact metrics at all --- they move the finding's
+\emph{column}. Network segmentation that verifiably cuts the payload path (per the
+companion Exclusion-Gated method's data-flow evidence) flips IRV to NIRV; a
+qualifying remote-access boundary (the companion method's Gate~3) defeats the
+\code{FRD-LEV} unauthenticated-automation floor. \code{VDR-TFR-PVR} is satisfied by landing on
+\emph{any} longer clock, whether the step down was a row or a column. The textual
+hook for the column half is \code{FRD-PMV}/\code{FRD-FMV}: FedRAMP defines
+mitigation over \emph{likelihood or} PAIN, and an evidence-backed reachability or
+exploitability reduction is the likelihood half.
+
+\paragraph{Where the ladder ends.} The descent is bounded, not endless. It
+terminates in one of four states: \emph{remediation}; \emph{full mitigation}
+(\code{FRD-FMV}: the vulnerability ``will still exist (with negligible risk) until
+it has been remediated,'' the remaining remediation handled in routine operations
+per \code{VDR-TFR-RMN}, KEVs excepted); \emph{PAIN-1}, which carries no timeframe
+(Appendix~\ref{app:matrix}) and likewise returns the finding to routine operations;
+or \emph{formal acceptance} --- \code{VER-TFR-MAV} requires categorizing any
+vulnerability that is not or will not be fully mitigated or remediated within 192
+days of evaluation as an accepted vulnerability, tracked on the accepted track of
+Section~\ref{sec:vex}. It is no coincidence that 192 days is also the largest cell
+in the timeframe matrix: the grid and the acceptance boundary meet by construction.
+Nor does each rung demand a fresh mitigation. Each step lands on a strictly longer
+clock (at Class~C, LEV$+$IRV: $2 \rightarrow 4 \rightarrow 16 \rightarrow 48$
+days), so the common pattern is a single mitigation that buys schedule, followed by
+remediation on the longer clock --- or, where remediation is genuinely impossible,
+acceptance at the 192-day boundary rather than an indefinite treadmill.
+
+\paragraph{WAF realism.} A WAF virtual patch is one item on this menu, not the
+presumed answer. \code{VER-EVA-EIR} calls payload interception ``the simplest way''
+to prevent exploitation --- not the expected way. Narrow, CVE-specific virtual
+patches are often practical (blocking Log4Shell's JNDI lookup strings); generic
+rules --- say, parameterized SQL-injection signatures across a real API surface ---
+carry false-positive risk to legitimate customer traffic, and the claimed mitigation
+\rfckw{must} be re-validated whenever the rule set changes. The incident record
+above bears this out: under real deadline pressure, the mitigations that actually
+shipped were configuration flags, code removal, privilege and egress confinement,
+and binding restrictions --- surgical, testable, and zero risk to customer traffic
+--- while the WAF rule was the fallback for the workloads that could not be touched
+(appliances, vendor binaries). That is precisely its position in this method. The
+companion Exclusion-Gated paper develops the corresponding posture recommendation:
+keep the finding IRV and attest the perimeter mitigation via signed VEX rather than
+reclassifying reachability on WAF evidence.
 
 \section{Reference architectures and sample scans}
 \subsection{Single-agency, Class C}
@@ -503,10 +687,10 @@ make the decoupling explicit.
 \footnotesize
 \begin{tabular}{l l c c c c r}
 \toprule
-\textbf{CVE} & \textbf{Resource (archetype)} & \textbf{Classical} & \textbf{EPSS} & \textbf{Internet} & \textbf{PAIN} & \textbf{Remediation} \\
+\textbf{CVE} & \textbf{Resource (archetype)} & \textbf{Classical} & \textbf{EPSS} & \textbf{IRV} & \textbf{PAIN} & \textbf{Remediation} \\
 \midrule
 CVE-2026-xxx1 & ingress \tagn{(public-edge)}        & \cellcolor{crit!25}CRITICAL & 0.97 & yes & \cellcolor{high!35}N4 & 4 days \\
-CVE-2026-xxx2 & payments-db \tagn{(data-sensitive)} & \cellcolor{crit!25}CRITICAL & 0.94 & no  & \cellcolor{high!35}N4 & 8 days \\
+CVE-2026-xxx2 & payments-db \tagn{(data-sensitive)} & \cellcolor{crit!25}CRITICAL & 0.94 & yes\,(t) & \cellcolor{high!35}N4 & 4 days \\
 CVE-2026-xxx3 & redis \tagn{(identity-secrets)}     & \cellcolor{high!25}HIGH     & 0.50 & no  & \cellcolor{high!35}N4 & 64 days \\
 CVE-2026-xxx4 & kafka \tagn{(data-backbone)}        & \cellcolor{low!30}LOW       & 0.76 & no  & \cellcolor{high!35}N4 & 8 days \\
 CVE-2026-xxx5 & web \tagn{(app-tier)}               & \cellcolor{med!35}MEDIUM    & 0.20 & yes & \cellcolor{med!35}N3 & 128 days \\
@@ -515,9 +699,15 @@ CVE-2026-xxx6 & coredns \tagn{(platform-foundation)}& \cellcolor{med!35}MEDIUM  
 \end{tabular}
 \caption{Sample VDR scan output (fictional data, placeholder CVE IDs; Class~C, single-agency). PAIN is
 computed from the archetype's CR/IR/AR and the CVE impact vector; the deadline is
-$M[\text{C}][\text{PAIN}][\text{column}]$. Note CVE-2026-xxx4: a \emph{Low} vendor
-severity still yields N4 because it is an availability-High DoS on a
-High-availability-requirement asset (Example~3).}
+$M[\text{C}][\text{PAIN}][\text{column}]$. The IRV column is evaluated \emph{per
+finding} via the companion Exclusion-Gated method; (t) marks transitive payload
+exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
+(SQL-injection-class) finding on a datastore that is not internet-accessible is
+still IRV, tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
+vendor severity that still yields N4 (availability-High DoS on a
+High-availability-requirement asset; Example~3) --- stays NIRV because its
+vulnerable parser sits on the inter-broker replication surface, which receives no
+internet-derived data.}
 \label{tab:scan}
 \end{table}
 
@@ -579,11 +769,11 @@ agencies and are tagged multi-agency.}
 \footnotesize
 \begin{tabular}{l l c c c c r}
 \toprule
-\textbf{CVE} & \textbf{Resource (archetype)} & \textbf{Classical} & \textbf{EPSS} & \textbf{Internet} & \textbf{PAIN} & \textbf{Remediation} \\
+\textbf{CVE} & \textbf{Resource (archetype)} & \textbf{Classical} & \textbf{EPSS} & \textbf{IRV} & \textbf{PAIN} & \textbf{Remediation} \\
 \midrule
 CVE-2026-yyy1 & gateway \tagn{(public-edge)}         & \cellcolor{crit!25}CRITICAL & 0.90 & yes & \cellcolor{crit!30}N5 & 12 hours \\
 CVE-2026-yyy2 & shared-idp \tagn{(identity-secrets)} & \cellcolor{crit!25}CRITICAL & 0.95 & no  & \cellcolor{crit!30}N5 & 1 day \\
-CVE-2026-yyy3 & event-bus \tagn{(data-backbone)}     & \cellcolor{low!30}LOW       & 0.80 & no  & \cellcolor{crit!30}N5 & 1 day \\
+CVE-2026-yyy3 & event-bus \tagn{(data-backbone)}     & \cellcolor{low!30}LOW       & 0.80 & yes\,(t) & \cellcolor{crit!30}N5 & 12 hours \\
 CVE-2026-yyy4 & agency-db \tagn{(data-sensitive)}    & \cellcolor{high!25}HIGH     & 0.40 & no  & \cellcolor{crit!30}N5 & 8 days \\
 CVE-2026-yyy5 & tenant-pod \tagn{(app-tier)}         & \cellcolor{med!35}MEDIUM    & 0.10 & no  & \cellcolor{med!35}N3 & 64 days \\
 CVE-2026-yyy6 & shared-dns \tagn{(platform-foundation)} & \cellcolor{med!35}MEDIUM & 0.05 & no  & \cellcolor{low!30}N2 & 192 days \\
@@ -592,9 +782,12 @@ CVE-2026-yyy6 & shared-dns \tagn{(platform-foundation)} & \cellcolor{med!35}MEDI
 \caption{Sample VDR scan output (fictional data, placeholder CVE IDs; Class~D, multi-agency). Multi-agency
 scope escalates Disruptive/Debilitating findings, and Class~D carries the tightest
 deadlines --- an internet-facing exploitable flaw on the shared edge remediates in
-\textbf{12 hours} (CVE-2026-yyy1). CVE-2026-yyy3 again shows a \emph{Low} vendor
-severity at N5 (availability DoS on the shared backbone). A confidentiality leak on
-shared DNS (CVE-2026-yyy6) stays N2 --- ``Narrow'' does not escalate with scope.}
+\textbf{12 hours} (CVE-2026-yyy1). CVE-2026-yyy3 shows a \emph{Low} vendor severity
+at N5 also remediating in \textbf{12 hours}: a content-triggered DoS in
+message-payload parsing on the shared backbone is transitively internet-reachable
+(t) through the tenant pods, even though the bus itself is not internet-accessible.
+A confidentiality leak on shared DNS (CVE-2026-yyy6) stays N2 and NIRV ---
+``Narrow'' does not escalate with scope.}
 \label{tab:scand}
 \end{table}
 
@@ -619,7 +812,7 @@ own instruments for the directive's pillars:
 SSVC drives prioritization & \textbf{PAIN} (Potential Agency Impact, N1--N5) & SSVC not named; PAIN replaces it \\
 VEX communicates exploitability & \textbf{LEV} (exploitation) + disposition (\S\ref{sec:vex}) & VEX not named; role split across LEV and VER disposition \\
 CSAF machine-readable advisories & VER JSON reporting (\S\ref{sec:vex}) & format unspecified; CycloneDX VEX proposed (companion) \\
-KEV catalog due dates & \texttt{VDR-TFR-KEV} (defers to CISA dates) & retained intact \\
+KEV catalog due dates & \texttt{VDR-TFR-KEV} (defers to CISA dates) & retained intact; also consumed as a LEV input \\
 (none) & \textbf{IRV/NIRV} and Certification \textbf{Class} & added as timeframe axes \\
 \bottomrule
 \end{tabular}
@@ -633,11 +826,13 @@ rule --- and FedRAMP publishes PAIN's \emph{output} buckets and the timeframe ta
 but not the \emph{classifier} that produces an N-level. That gap is exactly what
 Section~\ref{sec:math} fills, which is why this method is expressed in CVSS
 Environmental terms (the missing input was PAIN, not an exploitability score) rather
-than in SSVC. SSVC and VEX retain narrower roles: this memo consumes CISA
-Vulnrichment's SSVC \emph{Exploitation} metric as one input to LEV
-(Section~\ref{sec:remediation}), while VEX carries the post-detection
-\emph{disposition} of each finding (Section~\ref{sec:vex}). Neither is mandated by the
-rule by name.
+than in SSVC. The directive's other instruments retain narrower roles: this memo
+consumes the \emph{KEV catalog} directly as one input to LEV
+(Section~\ref{sec:remediation}) --- arguably a cleaner story than substituting for
+it, since BOD~26-04's own exploitation instrument is kept intact rather than
+replaced by a derived signal --- while VEX carries the post-detection
+\emph{disposition} of each finding (Section~\ref{sec:vex}). Neither SSVC nor VEX is
+mandated by the rule by name.
 
 \section{Assigning CR/IR/AR: archetypes (an example, not a standard)}
 \label{sec:archetypes}
@@ -771,7 +966,7 @@ suppression cannot outlive the condition that justified it.
 The method trusts the type-tags on each system: if someone mislabels a critical
 system as trivial, its flaws will look smaller than they really are. Its integrity
 therefore depends on the trustworthiness of two inputs --- the asset archetype tags
-and the VER axes (EPSS / exploitation / reachability). Tag spoofing that
+and the VER axes (EPSS / KEV membership / reachability). Tag spoofing that
 \emph{lowers} an archetype is a downgrade attack; the fail-safe default and governed
 calibration mitigate accidental under-classification, but tag assignment
 \rfckw{should} be controlled like any other security setting. Finally, the method
@@ -861,8 +1056,10 @@ N2 & 96 & 160 & 192 & 48 & 128 & 192 & 24  & 96 & 192 \\
 \vspace{0.5em}
 \begin{minipage}{0.95\textwidth}
 \footnotesize
-\emph{Note:} Values represent days to remediate, mitigate, or attest after detection;
-$0.5$ represents 12 hours.
+\emph{Note:} Values are days measured from \emph{completed evaluation}
+(\texttt{VDR-TFR-PVR} runs its timeframes from evaluation, not detection) within
+which the finding \rfckw{should} be remediated, fully mitigated, or at least
+partially mitigated to a lower PAIN rating; $0.5$ represents 12 hours.
 \end{minipage}
 \end{table}
 
@@ -888,33 +1085,44 @@ on. Each item below names the value we use, why, and the fact that an implementa
   (Section~\ref{sec:remediation}). Higher means fewer findings on the fast track;
   FedRAMP leaves the framework to the provider.
 \item \textbf{LEV is a union, not a blend.} A finding is Likely Exploitable if
-  EPSS $\ge \theta_{\text{epss}}$ \emph{or} exploitation is observed ``active'' ---
-  whichever fires, with no weighting between them.
+  EPSS $\ge \theta_{\text{epss}}$, \emph{or} it is listed in the CISA KEV catalog,
+  \emph{or} it is internet-reachable via direct exposure and its vector permits
+  unauthenticated automation (\code{AV:N/PR:N/UI:N}) --- whichever fires, with no
+  weighting among them. The third disjunct is not provider discretion: it
+  implements the \code{FRD-LEV} floor note that ``any vulnerability that an
+  automated unauthenticated system can exploit over the internet is a likely
+  exploitable vulnerability.''
 \item \textbf{Impact-only severity, normalized by $0.915$.} We take CVSS's
   \emph{Modified Impact Sub-Score} and rescale it to $[0,1]$ (Eq.~\ref{eq:s}) rather
   than computing the full 0--10 environmental score. PAIN is about \emph{impact on the
   asset}, so we intentionally drop the exploitability half of the base score (and the
   $6.42$ coefficient) from the severity term; exploitability re-enters separately as
   the LEV/IRV remediation columns.
-\item \textbf{Technical impact is a floor, not the primary signal.} ``technical
-  impact = total'' raises each \emph{in-scope} CVSS dimension to High; it never
-  invents impact on a dimension the CVE marks None, and ``partial''/absent leaves the
-  vector unchanged. (An earlier draft made technical impact primary with CVSS as the
-  fallback; we reversed that.)
-\item \textbf{CISA Vulnrichment as the authoritative enrichment source.} The
-  exploitation state (active / PoC / none) and the technical impact (total / partial)
-  are taken from \emph{CISA Vulnrichment}, CISA's Authorized Data Publisher (ADP)
-  enrichment of CVE records. Deferring to an ADP's assessment --- rather than a
-  bespoke or purely commercial judgment --- keeps these inputs authoritative and
-  governed; an adopter \rfckw{may} substitute or augment with another source (a
-  vendor SSVC decision, a commercial threat-intelligence feed, or the CISA KEV
-  catalog). EPSS, by contrast, supplies the statistical exploitation \emph{likelihood}
-  (item~2); the two are complementary.
+\item \textbf{CISA Vulnrichment is deliberately excluded.} Two CISA Vulnrichment
+  SSVC values are natural candidate inputs: the exploitation state (as a
+  LEV input) and the technical impact (as an impact floor). We adopt neither. The
+  exploitation role is served by KEV membership --- the instrument BOD~26-04
+  itself names --- and a technical-impact floor is rejected because an opaque,
+  externally-fixed impact floor cannot coexist with the evidence-based
+  Modified~C/I/A mitigation lever of Section~\ref{sec:ladder}: when a fixed floor
+  and cited local evidence disagree, there is no principled precedence between
+  them, and the Environmental layer already re-weights impact per deployment. EPSS
+  and the KEV catalog remain the two governed threat inputs. An adopter \rfckw{may}
+  reintroduce enrichment sources, at its own risk of exactly that conflict.
+\item \textbf{Modifications lower High to Low, never to None; evidence scales with
+  the PAIN reduced.} The mitigation lever of Section~\ref{sec:ladder} lets cited,
+  signed evidence lower a Modified impact dimension, but never to None: a claim of
+  \emph{zero} impact is an applicability claim and must travel as a VEX disposition
+  (Section~\ref{sec:vex}), where it is separately governed, auditable, and
+  reversible. And the evidence bar scales with the stakes --- lowering an N5 to an
+  N4 demands stronger corroboration than lowering an N2 to an N1, mirroring the
+  disposition guardrails. Both rules are ours, not FedRAMP's; an adopter tightening
+  or relaxing them \rfckw{should} do so in governed configuration.
 \item \textbf{Scope is purely hierarchical.} An asset is multi-agency only if the
   asset itself, a containing boundary, or the provider default is tagged so
-  (most-specific wins); there is no automatic per-archetype escalation. (An earlier
-  draft auto-escalated ``shared-infrastructure'' archetypes to multi-agency; we
-  removed that in favor of explicit, operator-controlled tagging.)
+  (most-specific wins); there is no automatic per-archetype escalation. (The
+  tempting shortcut --- auto-escalating ``shared-infrastructure'' archetypes to
+  multi-agency --- is rejected in favor of explicit, operator-controlled tagging.)
 \item \textbf{``Archetype'', not ``type''.} We classify assets by their
   \emph{role/usage pattern}, not their intrinsic kind, and the label reflects that:
   the same software lands in different archetypes by how it is used (an in-memory
@@ -952,7 +1160,6 @@ on. Each item below names the value we use, why, and the fact that an implementa
   rule dictates.
 \end{enumerate}
 
-\clearpage
 \section{Document version history}
 \label{app:history}
 This memo is a living document. Table~\ref{tab:history} tracks its version history.
@@ -986,8 +1193,20 @@ various other team members at stackArmor who helped make it possible.
   Requirements cited: \texttt{VDR-TFR-PVR}, \texttt{VDR-TFR-KEV},
   \texttt{VDR-TFR-PDD/PCD/PSD}. Pinned permalink: \vdrcite{} (commit of 2026-06-24;
   generated from upstream \texttt{fedramp/rules}). Accessed 2026-06-27.
+\item[{[VER]}] FedRAMP, \emph{Vulnerability Evaluation and Reporting (VER)}, Rev5.
+  Requirements cited: \texttt{VER-EVA-EIR}, \texttt{VER-EVA-EFP},
+  \texttt{VER-EVA-AIA}, \texttt{VER-RPT-VDT}, \texttt{VER-TFR-MAV},
+  \texttt{VER-RPT-AVI}. Pinned permalink: \vercite{} (commit of 2026-06-24).
+  Accessed 2026-07-01.
+\item[{[DEF]}] FedRAMP, \emph{FedRAMP Definitions}. Definitions cited:
+  \texttt{FRD-IRV}, \texttt{FRD-LEV}. Pinned permalink: \defcite{} (commit of
+  2026-06-24). Accessed 2026-07-01.
+\item[{[EGR]}] M.~Venne, \emph{An Exclusion-Gated Method for Determining Internet
+  Reachability of Vulnerabilities under the FedRAMP VDR/VER Rules}, stackArmor,
+  July 2026. Companion paper specifying the reachability determination used here.
 \item[{[BOD]}] CISA, \emph{Binding Operational Directive 26-04}, 2026-06-10.
-\item[{[VR]}] CISA \emph{Vulnrichment}, Authorized Data Publisher (ADP), CVE Program.
+\item[{[KEV]}] CISA, \emph{Known Exploited Vulnerabilities (KEV) Catalog}. LEV
+  input; \texttt{VDR-TFR-KEV} schedule.
 \item[{[CVSS]}] FIRST, \emph{CVSS v3.1 Specification} --- Environmental metric group
   and Modified Impact Sub-Score.
 \item[{[EPSS]}] FIRST, \emph{Exploit Prediction Scoring System}.
