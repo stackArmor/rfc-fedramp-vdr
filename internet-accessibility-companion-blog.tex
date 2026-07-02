@@ -118,16 +118,21 @@ is five gates, each a question with a deterministic answer:
   monitoring vendor. A rule that happens to be narrow but points at address space
   nobody can identify excludes nothing.
 \item \textbf{Whose login is in front of it?} This is where intuitions most often
-  fail. A VPN or identity-aware proxy in front of an \emph{enrolled workforce} ---
-  issued credentials, managed devices, named principals --- is a real boundary,
-  and it excludes. But when the login wall is the front door of the customer
-  application, open to the application's general internet user base,
-  authentication excludes nothing: internet data still flows through the login and
-  into the backend. SQL injection behind a customer sign-in page is still
-  internet-reachable. (What the login \emph{does} earn you is an exploitability
-  argument --- it defeats FedRAMP's ``an automated unauthenticated system can
-  exploit it'' floor --- which shortens nothing about the data path but can
-  support a likely-exploitable downgrade.)
+  fail. A VPN or identity-aware proxy that exists to let \emph{your own people} in
+  --- admin consoles, operations tooling, internal dashboards --- is a real
+  boundary, and it excludes: strangers are rejected before the backend sees a
+  byte. But when the login wall is the front door of the customer application,
+  authentication excludes nothing: internet data still flows through the login
+  and into the backend. SQL injection behind a customer sign-in page is still
+  internet-reachable. The difference is the boundary's \emph{role}, not the size
+  of the crowd behind it --- a change-management tool behind an IAP at a large
+  provider can have a hundred thousand authorized users and still be remote
+  access. And deciding which role a given login plays is a human call: the
+  operator declares it, and the auditor validates it. (What a customer login
+  \emph{does} earn you is an exploitability argument --- it defeats FedRAMP's
+  ``an automated unauthenticated system can exploit it'' floor --- which
+  shortens nothing about the data path but can support a likely-exploitable
+  downgrade.)
 \item \textbf{What does Kubernetes expose?} Ingress rules, gateway routes, and
   load-balancer services are readable directly from the cluster. The gate also
   covers what route-centric inventories miss --- NodePorts that open a port on
@@ -215,8 +220,9 @@ The common excuses, against the evidence the method actually demands:
 \midrule
 ``it's behind the firewall'' & every allowed source range is attributed to you or
 your customer --- narrow-but-unclaimed rules don't count \\
-``it's behind the VPN / SSO'' & the population behind the login is your enrolled
-workforce, not the application's internet user base \\
+``it's behind the VPN / SSO'' & the boundary's role is remote access for your own
+people, not the customer product's front door --- declared by the operator,
+validated by the auditor \\
 ``it has no public IP'' & no data path reaches it either --- proven by
 deny-by-default rules or an attested-complete flow map, not by quiet logs \\
 ``that package isn't even used'' & runtime execution evidence shows the code never
