@@ -260,6 +260,10 @@ Phase B follows the data, not the network diagram. Wherever internet-originated 
 \label{sec:phasec}
 Phase C brings back precision on tainted assets, honoring the \code{FRD-IRV} note that ``internet-reachability applies only to the specific vulnerable machine-based information resources processing the payload.'' Each filter is a deterministic exclusion with a defined evidence source and a matching VEX justification (per the companion paper, \emph{A CycloneDX VEX Profile for FedRAMP Rev5 VDR/VER}). When evidence is missing or unclear, each filter defaults to ``applies''---the vulnerability stays IRV.
 
+\begin{plain}
+Phase B only says internet data reaches the machine. Phase C asks, for each individual flaw on that machine: could that data actually set \emph{this} flaw off? Three checks. Does the vulnerable code ever run at all (Filter 1)? Does the data that arrives even come in the format that triggers this flaw (Filter 2)? And is this the kind of bug that travels in data, or one that needs a direct connection from the attacker (Filter 3)? Each check needs solid evidence to cross a flaw off; without it, the flaw stays on the internet-reachable list.
+\end{plain}
+
 \subsection{Filter 1: Execution Evidence}
 The strongest and most general filter asks a blunt question: can the vulnerable code run at all? Two tiers of evidence:
 \begin{itemize}[leftmargin=1.5em, nosep]
