@@ -116,8 +116,8 @@
       </div>
     </div>
     <div class="card">
-      <h3>Internet Reachability — Exclusion Gates</h3>
-      <p class="sub">An Exclusion-Gated Method for Determining Internet Reachability of Vulnerabilities under the FedRAMP VDR/VER Rules — a three-phase pipeline (direct-exposure gates including remote-access boundaries, transitive payload-exposure taint analysis, and per-vulnerability filters) that determines IRV status per vulnerability with default-to-reachable semantics, and recommends signed VEX attestation over reachability reclassification for WAF-mitigated findings.</p>
+      <h3>Internet Reachability — Finding-Level Model</h3>
+      <p class="sub">A Finding-Level Model for Internet Reachability under the FedRAMP VDR/VER Rules — argues that blanket internet-reachable labeling is impractical, and computes IRV per finding from an explicit equation: the exposed surface the internet can deliver to a component (five evaluation gates, protocol-aware propagation) intersected with the surface the vulnerability requires, with assessment-verified input sanitization (code review, SAST, DAST, tests) terminating downstream reachability and default-to-reachable semantics throughout. Retains the signed-VEX attestation recommendation for WAF-mitigated findings.</p>
       <div class="actions">
         <a class="btn primary" href="internet-reachability.pdf">View PDF</a>
         <a class="btn ghost" href="internet-reachability.pdf" download>Download</a>

@@ -33,6 +33,10 @@
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
 
+% Indicator function: double-struck 1 (amssymb's \mathbb has no digits).
+\usepackage{dsfont}
+\newcommand{\ind}{\mathds{1}}
+
 \title{\bfseries A Finding-Level Model for Internet Reachability\\ under the FedRAMP VDR/VER Rules}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
 \date{July 2026}
@@ -112,8 +116,8 @@ We tag each \emph{asset} with its internet-reachability $R(a)$ as a first-class,
 \[
 \boxed{\;
 \begin{aligned}
-\mathrm{IRV}(v,a)\;=\;&R(a)\ \cdot\ \mathbb{1}\!\left[\mathrm{AV}(v)=N\right]\\
-&\cdot\ \mathbb{1}\!\left[\text{protocol/version of }v\text{ on the exposed surface}\right]
+\mathrm{IRV}(v,a)\;=\;&R(a)\ \cdot\ \ind\!\left[\mathrm{AV}(v)=N\right]\\
+&\cdot\ \ind\!\left[\text{protocol/version of }v\text{ on the exposed surface}\right]
 \end{aligned}
 \;}
 \]
@@ -123,7 +127,7 @@ A vulnerability gets the tight ``internet-facing'' clock only if \emph{all three
 true: the machine is reachable from the internet, \emph{and} the flaw can be attacked
 over the network at all, \emph{and} the exact service/protocol the flaw lives in is
 actually one the internet can reach. Miss any one and it gets the slower ``internal''
-clock. (The $\mathbb{1}[\cdots]$ is just ``1 if true, 0 if false''; multiply them, and
+clock. (The $\ind[\cdots]$ is just ``1 if true, 0 if false''; multiply them, and
 one zero makes the whole thing zero.)
 \end{plain}
 \begin{itemize}[leftmargin=1.6em,nosep]
@@ -145,7 +149,7 @@ Let $D$ be a space of \textbf{delivery descriptors} --- the ``shapes'' of traffi
   unauthenticated internet actor can actually get \emph{to component $a$} (from infra).
 \end{itemize}
 \begin{equation}
-\mathrm{IRV}(v,a)\;=\;\mathbb{1}\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right]
+\mathrm{IRV}(v,a)\;=\;\ind\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right]
 \label{eq:setform}
 \end{equation}
 \begin{plain}
@@ -158,7 +162,7 @@ matches --- the internet can reach the web door, but the attack needs the SSH do
 that one isn't open --- there's simply no way in, so it's not reachable. (That
 ``nothing matches'' is what $\cap=\varnothing$ means: no shared door.)
 \end{plain}
-This is the same statement: the asset tag is exactly $R(a)=\mathbb{1}[E(a)\neq\varnothing]$
+This is the same statement: the asset tag is exactly $R(a)=\ind[E(a)\neq\varnothing]$
 (the asset has \emph{some} internet-deliverable surface), and the \code{AV:N} and
 protocol/version factors are ``$X(v)$ meets that surface.'' A non-empty intersection
 already implies $R(a)=1$, so the asset tag is the necessary first factor---not a
@@ -180,7 +184,7 @@ conditions, checked \emph{at that path's own enforcement point}:
 
 \begin{keybox}
 \[
-R(a)\;=\;\mathbb{1}\!\Big[\ \exists\,P\in\mathrm{paths}(a):\ \mathrm{reachable}(P)\ \Big]
+R(a)\;=\;\ind\!\Big[\ \exists\,P\in\mathrm{paths}(a):\ \mathrm{reachable}(P)\ \Big]
 \]
 \[
 \mathrm{reachable}(P)\;=\;\mathrm{route}(P)\ \wedge\ \mathrm{open}(P)\ \wedge\ \neg\,\mathrm{auth}(P)\ \wedge\ \mathrm{live}(P)
@@ -263,8 +267,8 @@ exists) ANDed with the vulnerability factors:
 \begin{keybox}
 \[
 \begin{aligned}
-\mathrm{IRV}(v,a)=\;&\underbrace{\mathbb{1}\!\big[\exists\,P\in\mathrm{paths}(a):\mathrm{reachable}(P)\big]}_{\text{asset reachable: }R(a)\ \text{(OR across paths)}}\\[4pt]
-&\cdot\ \underbrace{\mathbb{1}[\mathrm{AV}(v){=}N]\cdot\mathbb{1}[\pi(v)\text{ exposed}]\cdot\mathbb{1}[\nu(v)\text{ exposed}]}_{\text{the flaw rides that surface}}
+\mathrm{IRV}(v,a)=\;&\underbrace{\ind\!\big[\exists\,P\in\mathrm{paths}(a):\mathrm{reachable}(P)\big]}_{\text{asset reachable: }R(a)\ \text{(OR across paths)}}\\[4pt]
+&\cdot\ \underbrace{\ind[\mathrm{AV}(v){=}N]\cdot\ind[\pi(v)\text{ exposed}]\cdot\ind[\nu(v)\text{ exposed}]}_{\text{the flaw rides that surface}}
 \end{aligned}
 \]
 \end{keybox}
@@ -731,7 +735,7 @@ opportunity with a different evidence maturity:
 $\kappa$ (AV) & \textbf{Yes} --- in the CVSS base vector, machine-readable \\
 $\tau,\pi$ (port/proto exposed) & \textbf{Mostly} --- SG rules, LB listeners, sockets, CPE \\
 $\pi,\nu$ that the \emph{vuln} needs & \textbf{Often not} --- buried in prose; needs enrichment/LLM \\
-sanitization of internal edges & \textbf{Earned} --- code review, SAST, recurring DAST, tests; collected in assessment \\
+sanitization (internal edges) & \textbf{Earned} --- code review, SAST, DAST, tests; assessor-collected \\
 \bottomrule
 \end{tabular}
 \end{center}

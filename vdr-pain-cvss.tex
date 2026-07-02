@@ -59,6 +59,9 @@
 \newcommand{\tagn}[1]{{\footnotesize\ttfamily #1}}
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
+% Indicator function: double-struck 1 (amssymb's \mathbb has no digits).
+\usepackage{dsfont}
+\newcommand{\ind}{\mathds{1}}
 \newcommand{\vdrcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/providers/rev5/rules/vulnerability-detection-and-response.md}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\vercite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/providers/rev5/rules/vulnerability-evaluation-and-reporting.md}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\defcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/definitions.md}{FedRAMP/2026-markdown@2a75592}}
@@ -366,7 +369,7 @@ direct internet route} that process payloads received indirectly;
 private network through the application tier. The determination is therefore made
 per finding:
 \[
-\mathrm{IRV}(v,a)\;=\;\mathbb{1}\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right],
+\mathrm{IRV}(v,a)\;=\;\ind\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right],
 \]
 where $E(a)$ is the \emph{exposed surface} --- the delivery shapes (attack-vector
 class, protocol, version) an internet actor can actually get to component $a$,
