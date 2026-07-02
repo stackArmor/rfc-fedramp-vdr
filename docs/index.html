@@ -115,14 +115,24 @@
         <a class="btn ghost" href="vex-cyclonedx.pdf" download>Download</a>
       </div>
     </div>
+    <div class="card">
+      <h3>Internet Reachability — Exclusion Gates</h3>
+      <p class="sub">An Exclusion-Gated Method for Determining Internet Reachability of Vulnerabilities under the FedRAMP VDR/VER Rules — a three-phase pipeline (direct-exposure gates including remote-access boundaries, transitive payload-exposure taint analysis, and per-vulnerability filters) that determines IRV status per vulnerability with default-to-reachable semantics, and recommends signed VEX attestation over reachability reclassification for WAF-mitigated findings.</p>
+      <div class="actions">
+        <a class="btn primary" href="internet-reachability.pdf">View PDF</a>
+        <a class="btn ghost" href="internet-reachability.pdf" download>Download</a>
+      </div>
+      <p class="secondary-link">Prefer a lighter read? <a href="internet-reachability-companion-blog.pdf">Companion Blog</a></p>
+    </div>
   </div>
 
   <h2>Build from source</h2>
   <p class="note">These are informational documents. PDFs are rendered from the LaTeX sources:</p>
   <pre>brew install tectonic        # one-time
-tectonic vdr-pain-cvss.tex   # -&gt; vdr-pain-cvss.pdf
-tectonic vlev-proposal.tex   # -&gt; vlev-proposal.pdf
-tectonic vex-cyclonedx.tex   # -&gt; vex-cyclonedx.pdf</pre>
+tectonic vdr-pain-cvss.tex         # -&gt; vdr-pain-cvss.pdf
+tectonic vlev-proposal.tex         # -&gt; vlev-proposal.pdf
+tectonic vex-cyclonedx.tex         # -&gt; vex-cyclonedx.pdf
+tectonic internet-reachability.tex # -&gt; internet-reachability.pdf</pre>
 </main>
 
 <footer class="wrap">
