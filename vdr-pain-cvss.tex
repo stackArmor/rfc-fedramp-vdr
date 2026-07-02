@@ -587,7 +587,10 @@ mitigations do not touch the impact metrics at all --- they move the finding's
 companion Exclusion-Gated method's data-flow evidence) flips IRV to NIRV; a
 qualifying remote-access boundary (the companion method's Gate~3) defeats the
 \code{FRD-LEV} unauthenticated-automation floor. \code{VDR-TFR-PVR} is satisfied by landing on
-\emph{any} longer clock, whether the step down was a row or a column.
+\emph{any} longer clock, whether the step down was a row or a column. The textual
+hook for the column half is \code{FRD-PMV}/\code{FRD-FMV}: FedRAMP defines
+mitigation over \emph{likelihood or} PAIN, and an evidence-backed reachability or
+exploitability reduction is the likelihood half.
 
 \paragraph{Where the ladder ends.} The descent is bounded, not endless. It
 terminates in one of four states: \emph{remediation}; \emph{full mitigation}
