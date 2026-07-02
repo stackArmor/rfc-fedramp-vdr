@@ -537,6 +537,143 @@ map is complete and no path leads there. ``We watched for a month and saw nothin
 not enough on its own --- quiet logs prove the past, not the future.
 \end{plain}
 
+\section{Sanitization as Surface Termination}
+\label{sec:sanitization}
+Production applications do not pass raw internet input to their datastores and
+workers. They bind query parameters instead of concatenating strings. They validate
+uploads against schemas, check types and bounds, encode output, reject what does not
+parse. This is not a security exotic---it is what competent software does, taught in
+every secure-coding curriculum and enforced by every mature code-review culture. The
+maximalist reading of \code{FRD-IRV} treats all of that engineering as if it did not
+exist: data flowed downstream, therefore every downstream flaw is reachable. This
+section makes the engineering count---as \emph{evidence}, not as assumption.
+
+The mechanics come straight from Section~\ref{sec:propagation}. A component that
+sanitizes internet-sourced input before handing data onward applies a Sanitize
+transfer function on the internal leg: the content-triggered descriptors it
+neutralizes are removed from every downstream component's exposed surface $E$. The
+granularity is per vulnerability class, and that precision matters in both
+directions. Parameterized queries strip CWE-89 delivery from the edge to the
+database---and say nothing about CWE-502 deserialization on the same edge. Each
+class's exclusion is earned separately, which is what keeps the claim honest: a
+provider demonstrates the specific neutralization, not a general aura of carefulness.
+
+\begin{quote}
+\textbf{Exclusion criterion.} A content-triggered vulnerability $v$ (class
+$c$) on downstream asset $a$ may be excluded from transitive reachability if
+and only if every internal edge that carries internet-derived data toward $a$
+passes through a component whose handling of that data neutralizes class $c$,
+and the provider can produce evidence of that neutralization on request:
+code-review records covering the input-handling paths, SAST results showing
+the class is guarded on those paths, DAST or unit/integration tests
+exercising the sanitization against class-$c$ payloads. The demonstration is
+made to the 3PAO during assessment and to the authorizing agency or FedRAMP
+on request.
+\end{quote}
+
+This is not an invented discount. The \code{VER-EVA-EIR} interception note quoted in
+Section~\ref{sec:position} names the preventions that end reachability---``intercept,
+inspect, filter, \emph{sanitize}, reject, or otherwise deflect''---and concludes that
+``once this prevention is in place the vulnerability should no longer be considered an
+internet-reachable vulnerability.'' Sanitization is on FedRAMP's own list, and the
+note's conclusion is FedRAMP granting exactly this exclusion. What the rules leave
+open is the evidence bar, and that is this paper's contribution: the claim is
+auditable, not asserted. ``We sanitize our inputs'' earns nothing; a code-review
+record over the data-access layer, a SAST run scoped to the input-handling paths, a
+test suite that fires class-$c$ payloads at the boundary and shows them neutralized
+---each is an artifact an assessor can examine and re-run.
+
+The fail-safe holds with no exceptions. No evidence, no exclusion: an undemonstrated
+sanitization claim leaves the descriptors propagating intact, and the finding stays
+IRV. Evidence gaps widen the IRV set, never shrink it. The claim also carries a
+revocation discipline: sanitization evidence attaches to the code paths it examined,
+so a major refactor of the input-handling tier re-opens the question, the same way a
+perimeter change re-opens a WAF claim. Continuous integration makes this cheap---the
+unit and integration tests that demonstrate the sanitization run on every build, so
+the evidence re-validates itself at exactly the cadence the code changes.
+
+One line must be drawn carefully: this section is about sanitization \emph{in the
+application's own code}, not at the perimeter. A WAF also sanitizes---at a bolt-on
+device in front of the stack, with failure modes (signature bypass, rule toggles,
+detection-only mode) that Section~\ref{sec:waf} examines in detail, which is why that
+section recommends attesting WAF mitigations rather than reclassifying on them.
+In-code sanitization is different in kind: it is the component's own behavior, shipped
+with the application, versioned with it, and exercised by its test suite. When
+demonstrated, it earns the NIRV call directly.
+
+\begin{plain}
+Your application almost certainly cleans what the internet sends before passing it
+along --- that is what parameterized queries and input validation are. FedRAMP's own
+rules say a dangerous payload stopped before the vulnerable code sees it makes the
+flaw not internet-reachable, and ``sanitize'' is on FedRAMP's list of ways to stop it.
+So the right question for an auditor is not ``does internet data ever flow to this
+database?'' but ``show me the code review, the scanner results, or the tests that
+prove the cleaning happens.'' Show them, and the downstream flaw comes off the urgent
+clock. Can't show them, and it stays on --- the cautious default always wins a tie.
+\end{plain}
+
+\section{The Model, Worked}
+\label{sec:examples}
+\begin{enumerate}[leftmargin=1.8em]
+\item \textbf{\code{AV:L} on an internet-facing web host.}\\
+  $X(v)=\{\kappa{=}L\}$, \quad $E(a)\subseteq\{\kappa{=}N\}$
+  \quad$\Rightarrow\quad \varnothing \Rightarrow$ \textbf{NIRV}.
+\item \textbf{\code{sshd} CVE; public host; SSH open only to the corporate
+  network.}\\
+  The host has a public IP and serves HTTPS to the world on \code{tcp/443}, but its
+  security group allows \code{tcp/22} \emph{only} from the corporate range
+  \code{w.x.y.z/24}. Building $E(a)$: start from $D_\top$ (all traffic); the firewall
+  hop drops \code{tcp/22} for every source outside \code{w.x.y.z/24}---which is the
+  entire internet---while \code{tcp/443} survives. So the SSH descriptor is not on the
+  exposed surface: $\pi{=}\code{ssh}\notin E(a)$.\\
+  The exploit needs SSH: $X(v)=\{\pi{=}\code{ssh}\}$. Since $E(a)$ has no \code{ssh}
+  entry, $E(a)\cap X(v)=\varnothing \Rightarrow$ \textbf{NIRV}---even though the box
+  itself is plainly ``internet-facing'' (its web port is wide open). The reachable
+  \emph{surface} and the reachable \emph{box} are different things, which is the whole
+  point of scoring per finding.
+\item \textbf{HTTP/2 ``rapid-reset''-style CVE; backend behind a load balancer that
+  speaks \code{h2} to clients but \code{http/1.1} to the backend.}\\
+  The load balancer terminates the client's HTTP/2 connection and opens a fresh
+  \code{http/1.1} connection to the backend behind it. Building $E(\text{backend})$: the
+  load-balancer hop rewrites the version field, $\nu:\code{h2}\!\mapsto\!\code{http/1.1}$,
+  so \code{h2} never reaches the backend---$\nu{=}\code{h2}\notin E(\text{backend})$.\\
+  The exploit needs HTTP/2: $X(v)=\{\nu{=}\code{h2}\}$. No overlap $\Rightarrow$
+  \textbf{NIRV for the backend}, because the flaw can only be triggered with a protocol
+  version the backend never actually receives.\\[3pt]
+  \emph{What about the load balancer itself?} It \emph{does} terminate \code{h2}, so for
+  that component $\code{h2}\in E(\text{lb})$ and the same CVE is \textbf{IRV}. But that is
+  only \emph{your} finding to remediate if you run the load balancer's software (e.g.\ a
+  self-managed nginx/Envoy). On a \textbf{cloud-managed} load balancer (AWS ALB, GCP
+  external LB, Azure Front Door) the data-plane software is the provider's
+  responsibility, not yours---so it never appears in your scan in the first place.
+  Either way the per-component split is correct: the flaw lives where \code{h2} is
+  actually spoken.\\[3pt]
+  \emph{Precondition:} the backend NIRV conclusion holds only if the load balancer is the
+  \textbf{sole path} to that backend port---exactly what a backend security group
+  locked to the load balancer's source guarantees. If the backend also accepts a
+  \emph{direct} path on that port, an attacker can send \code{h2} straight to it, so
+  $\code{h2}\in E(\text{backend})$ (the surface is the \emph{union} over all paths) and
+  the finding is IRV again.
+\item \textbf{SQL injection on a private-subnet database behind the application
+  tier.}\\
+  FedRAMP's canonical case. The database has no public IP, no internet-gateway route,
+  and no fronting load balancer: $R(\text{db})=0$, so no connection channel exists.
+  But the application tier receives internet requests and queries the database with
+  data derived from them, so under the maximalist reading every CWE-89 finding on the
+  database is IRV.\\
+  Now apply the Sanitize hop. The provider demonstrates that every code path from
+  request data to SQL goes through parameterized queries: code review of the
+  data-access layer on record, SAST clean for CWE-89 on those paths, integration
+  tests firing injection payloads at the API and showing them handled inert. The
+  internal edge app\,$\rightarrow$\,db therefore strips the CWE-89 descriptors:
+  $X(v)\cap E(\text{db})=\varnothing \Rightarrow$ \textbf{NIRV}, with the evidence
+  bundle as the audit artifact.\\[3pt]
+  The precision cuts both ways. The same database's CWE-502 finding in a replication
+  listener is untouched by the CWE-89 evidence and stays IRV unless separately
+  excluded. And a provider that cannot produce the evidence keeps the maximalist
+  answer: IRV, full stop---not as a penalty, but as the fail-safe doing its job.
+\end{enumerate}
+
 \section{Perimeter Mitigation: Permitted Downgrade, Recommended Attestation}
 \label{sec:waf}
 One design question remains: what should happen to a vulnerability's IRV status when a Web Application Firewall rule---or a comparable payload-inspecting control, such as a virtual patch or an OWASP core-rule-set deployment---verifiably blocks the traffic that triggers it? There are only two choices: \emph{reclassify} the finding NIRV, or \emph{keep it IRV} and publish a signed Vulnerability Exploitability eXchange (VEX) attestation that it is mitigated at the perimeter. The conclusion of this section, up front: \textbf{FedRAMP permits the reclassification; we recommend the attestation.}
