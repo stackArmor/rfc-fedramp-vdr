@@ -1013,8 +1013,9 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \code{change-record}      & control & M & M & M & ITSM/ticketing (record only) \\
 \code{platform-foundation}& control & L & H & H & DNS, NTP, service discovery, L4 internal LBs (metadata only) \\
 \code{data-sensitive}     & data    & H & H & H & PII/CUI datastores \\
-\code{data-backbone}      & data    & H & H & H & queues, brokers, the system-of-record DB \\
-\code{app-tier}           & data    & M & M & H & stateless services, APIs, UIs, caches \\
+\code{data-backbone}      & data    & H & H & H & payload queues and brokers, the system-of-record DB \\
+\code{telemetry-backbone} & data    & M & M & M & metrics/trace pipelines, telemetry queues, event buses carrying no agency payload \\
+\code{app-tier}           & data    & M & M & M & stateless services, APIs, UIs, caches \\
 \code{batch-analytics}    & data    & M & M & L & ETL, reporting, analytics jobs \\
 \code{public-edge}        & data    & L & L & H & load balancers, public web, ingress \\
 \code{internal-tooling}   & data    & L & L & L & dashboards, metrics/log agents \\
@@ -1024,6 +1025,20 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \bottomrule
 \end{tabular}
 \end{table}
+
+Two assignments deserve their reasoning on the record. First, \code{data-backbone}
+is reserved for components that carry agency payload data; a bus that moves only
+metrics, traces, and heartbeats is \code{telemetry-backbone}, one grade lower on
+every dimension. Routing payload data through a telemetry bus is a
+misclassification finding, not a reason to keep every bus at High. Second, the
+availability grades split deliberately between the edge and the application tier.
+\code{public-edge} keeps AR High because a CVE-grade denial of service hits every
+replica at once---redundancy defends against hardware failure, not against a flaw
+shared by the whole class---and an edge-class outage closes the front door for
+every user. \code{app-tier} sits at Medium because its blast radius is one service
+degrading. The same availability-High CVE therefore scores Debilitating on the
+edge and Disruptive on the application tier, which matches how an operations team
+actually experiences the two events.
 
 \section{Remediation deadline matrices}
 \label{app:matrix}
