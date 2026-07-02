@@ -701,7 +701,7 @@ CVE-2026-xxx6 & coredns \tagn{(platform-foundation)}& \cellcolor{med!35}MEDIUM  
 computed from the archetype's CR/IR/AR and the CVE impact vector; the deadline is
 $M[\text{C}][\text{PAIN}][\text{column}]$. The IRV column is evaluated \emph{per
 finding} via the companion Exclusion-Gated method; (t) marks transitive payload
-exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a payload-carried
+exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
 (SQL-injection-class) finding on a datastore that is not internet-accessible is
 still IRV, tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
 vendor severity that still yields N4 (availability-High DoS on a
@@ -783,7 +783,7 @@ CVE-2026-yyy6 & shared-dns \tagn{(platform-foundation)} & \cellcolor{med!35}MEDI
 scope escalates Disruptive/Debilitating findings, and Class~D carries the tightest
 deadlines --- an internet-facing exploitable flaw on the shared edge remediates in
 \textbf{12 hours} (CVE-2026-yyy1). CVE-2026-yyy3 shows a \emph{Low} vendor severity
-at N5 also remediating in \textbf{12 hours}: a payload-carried DoS in
+at N5 also remediating in \textbf{12 hours}: a content-triggered DoS in
 message-payload parsing on the shared backbone is transitively internet-reachable
 (t) through the tenant pods, even though the bus itself is not internet-accessible.
 A confidentiality leak on shared DNS (CVE-2026-yyy6) stays N2 and NIRV ---
