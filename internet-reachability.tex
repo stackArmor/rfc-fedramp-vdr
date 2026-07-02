@@ -14,6 +14,11 @@
 
 \emergencystretch=1.5em
 
+% Key-equation box: frames the model's load-bearing equations.
+\definecolor{boxblue}{HTML}{2C3E50}
+\newtcolorbox{keybox}{enhanced,breakable,colback=boxblue!5,colframe=boxblue!55,
+  boxrule=0.5pt,arc=2pt,left=8pt,right=8pt,top=5pt,bottom=5pt}
+
 % Plain-language callout: a non-technical summary readers can rely on without
 % reading the detail around it. Matches the box used in the companion method memo.
 \newtcolorbox{plain}{
@@ -100,80 +105,194 @@ Reachability is one of three dials, and rarely decisive alone: the tightest cloc
 
 \section{The Finding-Level Model}
 \label{sec:model}
-% populated in Task 2
+We tag each \emph{asset} with its internet-reachability $R(a)$ as a first-class, reusable property---useful on its own for inventory and attack-surface work. But the remediation timeline is decided per \emph{finding}: a pair $(v,a)$, vulnerability $v$ on component $a$, combining that asset tag with facts about the vulnerability itself.
 
-\section{Method Overview: Three Phases}
-\label{sec:method}
-The method evaluates the pair $(v, a)$---vulnerability $v$ on asset $a$---through three phases, illustrated in Figure~\ref{fig:phases}.
+\paragraph{Factored form (operational).}
+\begin{keybox}
+\[
+\boxed{\;
+\begin{aligned}
+\mathrm{IRV}(v,a)\;=\;&R(a)\ \cdot\ \mathbb{1}\!\left[\mathrm{AV}(v)=N\right]\\
+&\cdot\ \mathbb{1}\!\left[\text{protocol/version of }v\text{ on the exposed surface}\right]
+\end{aligned}
+\;}
+\]
+\end{keybox}
+\begin{plain}
+A vulnerability gets the tight ``internet-facing'' clock only if \emph{all three} are
+true: the machine is reachable from the internet, \emph{and} the flaw can be attacked
+over the network at all, \emph{and} the exact service/protocol the flaw lives in is
+actually one the internet can reach. Miss any one and it gets the slower ``internal''
+clock. (The $\mathbb{1}[\cdots]$ is just ``1 if true, 0 if false''; multiply them, and
+one zero makes the whole thing zero.)
+\end{plain}
+\begin{itemize}[leftmargin=1.6em,nosep]
+\item $R(a)$ --- the \textbf{asset tag}: is the resource internet-reachable at all
+  (computed by the gates of Section~\ref{sec:asset-tag}). If $R(a)=0$, every finding on the asset is NIRV for the direct channel---the
+  cheap short-circuit; you never open the CVE.
+\item If $R(a)=1$, evaluate the internet-exposed remediation column \emph{only} when the
+  vuln is \code{AV:N} \textbf{and} its protocol/version actually rides the exposed
+  surface. Otherwise that finding drops to the NIRV column even though the asset is
+  tagged reachable.
+\end{itemize}
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.92\textwidth}
-\centering
-\textbf{Default state: every vulnerability on every asset is assumed internet-reachable (IRV).}
-\medskip
-
-\fbox{\begin{minipage}{0.95\textwidth}
-\textbf{Phase A --- Direct Exposure $E(a)$} \emph{(asset-level; identifies entry points)}
-\begin{enumerate}[label=\bfseries Gate \arabic*:, leftmargin=4.5em, itemsep=2pt, nosep]
-\item \textnormal{IP and routing: no public IP / NAT / LB mapping and no internet-gateway route.}
-\item \textnormal{Firewall source population: all permitted sources enumerable and attributable to identified organizations.}
-\item \textnormal{Remote-access boundary authentication: a dedicated edge component (IAP, VPN---never the application's own login page) rejects unauthenticated traffic, its declared, assessor-validated role is remote access for the organization's own people and tooling (not customer authentication for the service), and the backend keeps its own independent login behind it.}
-\item \textnormal{Kubernetes/container routing: no public Gateway route, Ingress, NodePort, \code{hostNetwork}/\code{hostPort}, or LoadBalancer exposure.}
-\end{enumerate}
-\textnormal{Plus a process-level refinement (Gate 5): software that binds no exposed listening socket is not \emph{directly} exposed. Phase A output feeds Phase B; \textbf{it excludes nothing from IRV scope by itself.}}
-\end{minipage}}
-
-\medskip $\downarrow$ \medskip
-
-\fbox{\begin{minipage}{0.95\textwidth}
-\textbf{Phase B --- Transitive Payload Exposure $T(a)$} \emph{(asset-level; data-flow graph)}\\
-\textnormal{Propagate taint from Phase A entry points across observed data flows (NetworkPolicies + flow telemetry). Assets with \emph{no} flow path from any entry point are pruned: all their vulnerabilities are NIRV. Tainted assets proceed to Phase C.}
-\end{minipage}}
-
-\medskip $\downarrow$ \medskip
-
-\fbox{\begin{minipage}{0.95\textwidth}
-\textbf{Phase C --- Per-Vulnerability Filters} \emph{(vulnerability-level, on tainted assets)}
-\begin{enumerate}[label=\bfseries Filter \arabic*:, leftmargin=4.5em, itemsep=2pt, nosep]
-\item \textnormal{Execution evidence: vulnerable code not present in, or never loaded into, the execute path.}
-\item \textnormal{Trigger-surface matching: required protocol/format never delivered on any inbound tainted edge.}
-\item \textnormal{Trigger-mechanism class: peer-bound vulnerability classes on assets that are not directly exposed.}
-\end{enumerate}
-\end{minipage}}
-
-\medskip
-
-\textbf{Final classification: vulnerabilities surviving all three phases are IRV.}
-\end{minipage}
-\caption{The three-phase exclusion-gated method. Phase A computes direct exposure, Phase B prunes assets unreachable by internet-derived data, and Phase C filters individual vulnerabilities on payload-exposed assets.}
-\label{fig:phases}
-\end{figure}
-
-The phases compose into a single decision rule. Let $E(a)$ denote that asset $a$ is directly exposed (survives Phase A), $T(a)$ that $a$ is transitively payload-exposed (Phase B), and let $\mathrm{exec}(v,a)$, $\mathrm{surface}(v,a)$, and $\mathrm{mech}(v,a)$ denote that Phase C filters 1--3 respectively \emph{apply} (i.e., fail to exclude). Then:
+\paragraph{Set form (why the two vuln factors are one test).}
+Let $D$ be a space of \textbf{delivery descriptors} --- the ``shapes'' of traffic:
+\begin{itemize}[leftmargin=1.6em,nosep]
+\item $X(v)\subseteq D$ --- the \textbf{required surface}: the delivery shapes under
+  which $v$ can actually be triggered (from the CVE).
+\item $E(a)\subseteq D$ --- the \textbf{exposed surface}: the delivery shapes an
+  unauthenticated internet actor can actually get \emph{to component $a$} (from infra).
+\end{itemize}
 \begin{equation}
-\mathrm{IRV}(v,a) \;=\; \bigl[\,E(a) \;\lor\; T(a)\,\bigr] \;\land\; \mathrm{exec}(v,a) \;\land\; \mathrm{surface}(v,a) \;\land\; \mathrm{mech}(v,a)
-\label{eq:decision}
+\mathrm{IRV}(v,a)\;=\;\mathbb{1}\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right]
+\label{eq:setform}
 \end{equation}
-Every term defaults to \emph{true} unless hard evidence says otherwise. That default is the method's central safety property: missing telemetry, unknown trigger surfaces, or unclassifiable vulnerabilities can only make the IRV set \emph{larger}, never quietly smaller.
+\begin{plain}
+Picture two lists. \textbf{List $E$} is every door the internet can actually get to on
+this component --- for example, ``the web door is open to everyone.'' \textbf{List $X$}
+is every door this particular attack could use --- for example, ``this exploit only
+works through the SSH door.'' Now just lay the two lists side by side. If the \emph{same
+door} shows up on both, the attacker has a way in --- internet-reachable. If nothing
+matches --- the internet can reach the web door, but the attack needs the SSH door, and
+that one isn't open --- there's simply no way in, so it's not reachable. (That
+``nothing matches'' is what $\cap=\varnothing$ means: no shared door.)
+\end{plain}
+This is the same statement: the asset tag is exactly $R(a)=\mathbb{1}[E(a)\neq\varnothing]$
+(the asset has \emph{some} internet-deliverable surface), and the \code{AV:N} and
+protocol/version factors are ``$X(v)$ meets that surface.'' A non-empty intersection
+already implies $R(a)=1$, so the asset tag is the necessary first factor---not a
+discarded one. The set form is also what carries the transitive cases FedRAMP cares
+about: for a downstream component, $E(a)$ is not what the internet can \emph{connect}
+to but what internet-originated \emph{content} can still be delivered to it through
+the tiers in between---the subject of Sections~\ref{sec:propagation}
+and~\ref{sec:sanitization}. Every factor in either form defaults to \emph{reachable}
+unless evidence says otherwise; that fail-safe is developed in
+Section~\ref{sec:failsafe}.
+
+\section{Computing the Asset Tag $R(a)$: The Five Gates}
+\label{sec:asset-tag}
+The asset tag is not a single chain of ANDs. There are \emph{several independent ways}
+to be exposed---directly on a public IP, or behind a public load balancer, or via a
+container ingress---and the asset is reachable if \textbf{any one} path is open. So
+$R(a)$ is an \textbf{OR across paths}, and each path is its own \textbf{AND} of
+conditions, checked \emph{at that path's own enforcement point}:
+
+\begin{keybox}
+\[
+R(a)\;=\;\mathbb{1}\!\Big[\ \exists\,P\in\mathrm{paths}(a):\ \mathrm{reachable}(P)\ \Big]
+\]
+\[
+\mathrm{reachable}(P)\;=\;\mathrm{route}(P)\ \wedge\ \mathrm{open}(P)\ \wedge\ \neg\,\mathrm{auth}(P)\ \wedge\ \mathrm{live}(P)
+\]
+\end{keybox}
+
+\noindent A path $P$ is \emph{reachable} when all four conditions hold:
+\begin{itemize}[leftmargin=1.6em,nosep,topsep=2pt]
+\item $\mathrm{route}(P)$ --- a network route physically exists to the asset (a public
+  IP plus a gateway route, or a public load balancer that forwards to it); a wide-open
+  firewall on a private, unrouted box is still unreachable;
+\item $\mathrm{open}(P)$ --- its public entry point accepts traffic from sources beyond
+  an enumerable, attributed set (Gate~2 gives the decision rule; breadth beyond a
+  \code{/20} is the red flag that triggers review);
+\item $\neg\,\mathrm{auth}(P)$ --- nothing along the path forces the visitor to log in
+  before the packet reaches the vulnerable component;
+\item $\mathrm{live}(P)$ --- it ends at a port something is actually listening on.
+\end{itemize}
+Only the \textbf{public entry point} counts toward ``open.'' A backend security group
+that merely lets the load balancer through is what makes the path \emph{connect}
+($\mathrm{route}/\mathrm{live}$)---it does not make the path narrow. The two common
+archetypes make the OR concrete:
+
+\begin{keybox}
+\[
+R(a)\;=\;
+\underbrace{\Big[\ \mathrm{pubIP}(a)\ \wedge\ \mathrm{route}_{\text{IGW}}(a)\ \wedge\ \mathrm{fwOpen}(a)\ \wedge\ \neg\,\mathrm{edgeAuth}(a)\ \Big]}_{\text{direct: public IP on the host itself}}
+\]
+\[
+\lor\quad
+\underbrace{\bigvee_{L\,\in\,\mathrm{pubLB}(a)}\Big[\ \mathrm{forwards}(L,a)\ \wedge\ \mathrm{lbOpen}(L)\ \wedge\ \neg\,\mathrm{edgeAuth}(L)\ \Big]}_{\text{via a public load balancer / ingress (no public IP or IGW route needed)}}
+\]
+\end{keybox}
+
+\noindent\textbf{What the symbols mean:}
+\begin{itemize}[leftmargin=1.6em,nosep]
+\item $\mathrm{paths}(a)$ --- the set of internet-ingress paths that terminate at $a$
+  (direct, one per fronting load balancer / ingress, etc.).
+\item $\mathrm{pubIP}(a)$ --- the host itself has a routable \textbf{public IP}; and
+  $\mathrm{route}_{\text{IGW}}(a)$ --- its subnet has an active default route to an
+  \textbf{internet gateway}. \emph{Both are required only for the direct path}---an
+  LB-fronted backend typically has neither. Gate~1 evaluates them.
+\item $\mathrm{fwOpen}(a)=\exists\,q:\ \mathrm{listen}(a,q)\wedge \exists\,r\in\mathrm{allow}(a,q):\mathrm{prefix}(r)<P$
+  --- on the \textbf{host's own} firewall, some \emph{listening} port is opened to a
+  source wider than the threshold. (Size is the screening form; Gate~2 refines the
+  decision to source \emph{attribution}.)
+\item $\mathrm{pubLB}(a)$ --- the public load balancers / ingresses that forward to $a$;
+  $\mathrm{forwards}(L,a)$ --- $L$ is public-facing and routes traffic to a \emph{live
+  listening} port on $a$ (for containers this is Gate~4: target of an
+  \code{HTTPRoute}/\code{TCPRoute} on a public gateway, an \code{Ingress} on a public
+  LB, or a public \code{NodePort}).
+\item $\mathrm{lbOpen}(L)$ --- the \textbf{load balancer's own} source restriction is
+  wider than the threshold (it is \emph{not} IP-locked to an attributed set; same
+  Gate~2 rule, evaluated at the LB).
+\item $P=20$ --- the \textbf{breadth threshold}. ``Broader than a \code{/20}'' means a
+  bigger address block, i.e.\ a \emph{smaller} prefix number, $\mathrm{prefix}(r)<20$.
+\item $\mathrm{edgeAuth}(\cdot)$ --- a bypass-free identity-aware proxy (Google IAP, AWS
+  Verified Access, ALB OIDC/Cognito) that authenticates every request. Evaluated on the
+  \textbf{host} for the direct path, and on the \textbf{load balancer} for the LB path.
+  Gate~3 gives the qualifying conditions.
+\end{itemize}
 
 \begin{plain}
-Every flaw starts out presumed internet-reachable. It leaves that list only by passing hard-evidence checks: no internet-derived data ever reaches its host (Phases A--B), or the data that does arrive can never trigger this particular flaw (Phase C). Missing telemetry or an unrecognized bug class defaults to ``still reachable'' --- so evidence gaps make the urgent list longer, never quietly shorter.
+There is more than one way to be exposed, so this is an ``OR.'' A box counts as
+internet-facing if \emph{either}:\\
+\textbf{(A) it's directly on the internet} --- it has its own public IP, a route out,
+its own firewall opens a live port to a wide slice of the internet (wider than
+$\sim$4{,}000 addresses), and there's no login proxy on the host; \emph{or}\\
+\textbf{(B) a public load balancer exposes it} --- some public LB forwards to a port the
+box is actually listening on, that LB isn't locked down to a small IP range, and that LB
+doesn't force a login first.\\
+Note case (B) needs \emph{no} public IP and \emph{no} internet-gateway route on the box
+itself --- which is why any single formula written only for case (A) misclassifies
+LB-fronted backends. And each ``open?'' and ``login wall?'' check is done where that
+path actually enforces it: on the host for (A), on the load balancer for (B).
 \end{plain}
 
-\section{Phase A: Direct Exposure Gates}
-\label{sec:phasea}
-Phase A answers the classic accessibility question: which assets can the public internet deliver packets to directly? Its output is the set of \emph{entry points}---the places where internet data first lands. To be explicit: \textbf{Phase A feeds Phase B; failing a Phase A gate does not, by itself, exclude anything from IRV scope.} The private-subnet database in FedRAMP's SQL-injection example fails Gate 1 and is still IRV for its injection flaws, because Phase B will find the data path through the application tier.
+\paragraph{The whole thing.} The finding-level rule is the asset OR (some open path
+exists) ANDed with the vulnerability factors:
+\begin{keybox}
+\[
+\begin{aligned}
+\mathrm{IRV}(v,a)=\;&\underbrace{\mathbb{1}\!\big[\exists\,P\in\mathrm{paths}(a):\mathrm{reachable}(P)\big]}_{\text{asset reachable: }R(a)\ \text{(OR across paths)}}\\[4pt]
+&\cdot\ \underbrace{\mathbb{1}[\mathrm{AV}(v){=}N]\cdot\mathbb{1}[\pi(v)\text{ exposed}]\cdot\mathbb{1}[\nu(v)\text{ exposed}]}_{\text{the flaw rides that surface}}
+\end{aligned}
+\]
+\end{keybox}
+\begin{plain}
+The full checklist: \emph{at least one} internet path into the box is open (OR across
+paths), \emph{and} the flaw is network-attackable on a protocol/version that path
+actually delivers. If no path is open the first factor is zero; if the flaw isn't
+network-reachable the later factors are zero --- either way the finding gets the slower
+internal-remediation clock. (Because a protocol can be delivered on one path but not
+another --- e.g.\ HTTP/2 direct but downgraded through the LB --- ``$\pi/\nu$ exposed''
+means ``on at least one \emph{reachable} path,'' which the surface union $E(a)$ handles
+automatically.)
+\end{plain}
 
-\subsection{Gate 1: IP Address and Routing}
-An asset is directly exposed at the network layer only if two preconditions hold:
+The five gates that follow are the evaluation procedures for these predicates. Each
+gate is deterministic, names its evidence, and---like every factor in the
+model---defaults to \emph{exposed} when the evidence is incomplete.
+
+\subsection{Gate 1: IP Address and Routing --- Evaluating $\mathrm{route}(P)$}
+Gate 1 evaluates $\mathrm{pubIP}(a)$ and $\mathrm{route}_{\text{IGW}}(a)$, the two preconditions of the direct path. An asset is directly exposed at the network layer only if both hold:
 \begin{enumerate}[leftmargin=1.5em, nosep]
 \item The asset holds a routable public IP address, or belongs to a NAT or load-balancer pool that maps public traffic to it.
 \item The subnet's routing table has an active route to an internet gateway (\code{0.0.0.0/0} via an IGW or equivalent).
 \end{enumerate}
-Assets failing either condition---private and isolated subnets, egress-only NAT configurations---are not entry points. They remain fully eligible for transitive payload exposure in Phase B.
+Assets failing either condition---private and isolated subnets, egress-only NAT configurations---have $R(a)=0$ on the direct path, and if no load-balancer path exists either, $R(a)=0$ outright. That closes the \emph{connection} channel only. Internet-originated \emph{content} can still be relayed to such an asset by the tiers in front of it---the private-subnet database in FedRAMP's SQL-injection example fails this gate and can still host reachable injection flaws---which is exactly what the surface-propagation and sanitization analysis of Sections~\ref{sec:propagation} and~\ref{sec:sanitization} decides.
 
-\subsection{Gate 2: Firewall Source Population and Attribution}
+\subsection{Gate 2: Firewall Source Population --- Evaluating $\mathrm{open}(P)$}
+In the equations, $\mathrm{open}(P)$ appears as a breadth test---wider than a \code{/20}. Operationally, breadth is only the red flag; \emph{attribution} makes the call.
 Even with a public IP and an internet route, an asset whose inbound rules restrict sources to specific known networks is not exposed to the general internet. The tempting way to formalize that is a size rule---exclude whenever every permitted source prefix is \code{/20} or smaller---but any size rule fails in both directions. It can be gamed: one hundred separate \code{/24} rules each pass the per-rule test while together covering more address space than a \code{/16}. And it flags safe configurations: a single allowlisted partner \code{/16} fails the test even though it represents exactly one known organization.
 
 The gate therefore looks at each listening port, takes the \emph{union} of every source range permitted by any firewall rule, security group, or WAF-layer IP restriction that governs it, and asks who owns that space:
@@ -186,9 +305,9 @@ Size survives only as a red flag. A union larger than a \code{/20}-equivalent (4
 An allowlist earns an exclusion by being \emph{accounted for}, not by being small. If every permitted address range can be traced to a named organization you have a relationship with, the door is closed to the general internet; if parts of the allowlist are anonymous, it is not --- no matter how narrow the individual ranges look.
 \end{plain}
 
-\subsection{Gate 3: Remote-Access Boundaries (Edge Authentication)}
+\subsection{Gate 3: Remote-Access Boundaries --- Evaluating $\neg\,\mathrm{auth}(P)$}
 \label{sec:gate3}
-Many architectures put backends behind a boundary that checks identity at the edge: an identity-aware proxy (Google Identity-Aware Proxy, AWS Verified Access, ALB OIDC/Cognito authentication) or a client VPN. Both reject unauthenticated traffic before the backend ever processes it. The boundary must be exactly that---a component \emph{separate from the application}. An application's own login page never qualifies: the login form, credential parsing, password reset, and session issuance are unauthenticated internet input processed by the application itself, so the pre-authentication attack surface \emph{is} the application. Yet for true edge components, convention treats the two kinds very differently: backends behind a VPN are habitually called ``internal,'' while backends behind an IAP are often scored as exposed. This gate applies one functional test to both:
+This gate is the $\mathrm{edgeAuth}(\cdot)$ predicate of the symbol legend, evaluated on the host for the direct path and on the load balancer for the LB path. Many architectures put backends behind a boundary that checks identity at the edge: an identity-aware proxy (Google Identity-Aware Proxy, AWS Verified Access, ALB OIDC/Cognito authentication) or a client VPN. Both reject unauthenticated traffic before the backend ever processes it. The boundary must be exactly that---a component \emph{separate from the application}. An application's own login page never qualifies: the login form, credential parsing, password reset, and session issuance are unauthenticated internet input processed by the application itself, so the pre-authentication attack surface \emph{is} the application. Yet for true edge components, convention treats the two kinds very differently: backends behind a VPN are habitually called ``internal,'' while backends behind an IAP are often scored as exposed. This gate applies one functional test to both:
 \begin{quote}
 \emph{Edge authentication qualifies for exclusion from direct exposure when it functions as \textbf{remote-access control} for the organization's own people and tooling---the clientless-VPN role, fronting admin consoles, operations tooling, and internal dashboards. It does not qualify when it functions as \textbf{customer authentication} for the service itself. The difference is the boundary's role, not the size of the crowd behind it.}
 \end{quote}
@@ -215,8 +334,8 @@ In practice, the failing case is rare. Almost every identity-aware proxy in a Fe
 
 No matter how the boundary is configured, the perimeter itself is internet-accessible. The VPN server, the load balancer, the proxy---anything that touches traffic before the login check---is exposed by definition. A login wall cannot protect the thing that \emph{is} the login wall. The two technologies differ only in how much sits in front of that check. A VPN turns strangers away before a connection ever reaches anything behind it, so the VPN server is the only exposed piece. An identity-aware proxy decides later: the cloud load balancer has already accepted the connection and parsed the request before the login check runs, so the load balancer and its parsing stack are exposed too. Behind the boundary, the exclusion works the same either way; what differs is which front-line components are internet-accessible.
 
-\subsection{Gate 4: Kubernetes and Container Routing}
-Containers need their own check, because a pod's exposure is decoupled from its node's. A pod is a direct-exposure entry point if and only if it is the active target of at least one of:
+\subsection{Gate 4: Kubernetes and Container Routing --- Enumerating $\mathrm{pubLB}(a)$}
+Containers need their own check, because a pod's exposure is decoupled from its node's. For container estates this gate enumerates the load-balancer path family---the $\mathrm{pubLB}(a)$ and $\mathrm{forwards}(L,a)$ terms. A pod is a direct-exposure entry point if and only if it is the active target of at least one of:
 \begin{enumerate}[label=(\alph*), leftmargin=2.5em, nosep]
 \item a Gateway API route (\code{HTTPRoute}, \code{TCPRoute}, etc.) bound to a public-facing Gateway;
 \item an \code{Ingress} bound to a public load balancer;
@@ -224,16 +343,16 @@ Containers need their own check, because a pod's exposure is decoupled from its 
 \item a \code{NodePort} service on nodes reachable from the internet; or
 \item \code{hostNetwork:\ true} or a \code{hostPort} mapping on a node with public exposure---this includes DaemonSets, which frequently run with host networking on every node and are easy to overlook in route-centric inventories.
 \end{enumerate}
-Pods exposed only through internal load balancers or cluster-internal Services are not entry points (but remain Phase B candidates). Two verifiability caveats:
+Pods exposed only through internal load balancers or cluster-internal Services are not entry points (though relayed content still reaches them; Section~\ref{sec:propagation}). Two verifiability caveats:
 \begin{itemize}[leftmargin=1.5em, nosep]
 \item \textbf{NodePort cannot be decided from inside the cluster.} A NodePort opens the port on every node, but whether the internet can reach it depends on node public IPs and cloud firewall rules---information the Kubernetes API does not have. The gate \rfckw{must} combine cluster state with the node-level Gate 1/Gate 2 results, or fall back to an explicit, recorded operator assertion. With neither, the NodePort is treated as exposed.
 \item \textbf{Init containers.} In an exposed pod, \code{initContainers} run once, finish before the main containers start, and listen on nothing afterward, so they are not directly exposed. The exception is \code{restartPolicy:\ Always}, which turns an init container into a long-running sidecar; those are treated as primary containers.
 \end{itemize}
 
-\subsection{Gate 5: Process-to-Port Refinement (and Its Limit)}
-Not every package on an exposed host is itself exposed. Software \rfckw{may} be excluded from \emph{direct} exposure when it maps, deterministically, to running processes that hold no internet-exposed listening socket---\code{sshd} vulnerabilities on a public web server whose port 22 is locked to attributed sources under Gate 2, for example. The mapping (package manifest joined with socket-ownership telemetry) \rfckw{must} be automated and reproducible per asset.
+\subsection{Gate 5: Process-to-Port Refinement --- Evaluating $\mathrm{live}(P)$}
+The $\mathrm{live}(P)$ condition asks whether a path ends at a port something actually listens on---and its per-process refinement is where the asset tag sharpens into per-software precision. Not every package on an exposed host is itself exposed. Software \rfckw{may} be excluded from \emph{direct} exposure when it maps, deterministically, to running processes that hold no internet-exposed listening socket---\code{sshd} vulnerabilities on a public web server whose port 22 is locked to attributed sources under Gate 2, for example. The mapping (package manifest joined with socket-ownership telemetry) \rfckw{must} be automated and reproducible per asset.
 
-This gate has a hard limit, and it is the central lesson of Section~\ref{sec:vuln-not-resource}. A queue worker on a private VM with \emph{no listening socket at all}---a thumbnail generator, a log ingester, exactly the Log4Shell shape---is still IRV for its parser flaws if it parses internet-uploaded files. ``Binds no exposed port'' only excludes a vulnerability together with the Phase B condition ``consumes no internet-tainted data.'' Gate 5 refines direct exposure; it is never a standalone NIRV call.
+This gate has a hard limit, and it echoes the lesson of Section~\ref{sec:position}. A queue worker on a private VM with \emph{no listening socket at all}---a thumbnail generator, a log ingester, exactly the Log4Shell shape---is still IRV for its parser flaws if it parses internet-uploaded files. ``Binds no exposed port'' closes only the connection channel; the content channel closes only when no internal edge delivers the flaw's trigger class---either because topology rules the path out or because demonstrated sanitization neutralizes it (Sections~\ref{sec:propagation} and~\ref{sec:sanitization}). Gate 5 refines direct exposure; it is never a standalone NIRV call.
 
 \section{Phase B: Transitive Payload Exposure}
 \label{sec:phaseb}
