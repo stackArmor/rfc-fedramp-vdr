@@ -290,10 +290,6 @@ The last filter sorts vulnerability classes by \emph{how the trigger arrives}, k
 \end{itemize}
 Two cautions keep this filter honest. First, stored XSS is content-triggered: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by the content of the data and follow it wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. The sound unit of exclusion is the combination in Equation~\ref{eq:decision}---class, position, and taint together---and any vulnerability whose CWE is missing or fits neither group defaults to content-triggered and stays IRV.
 
-\begin{plain}
-Two kinds of bugs. A content-triggered bug is like a letter bomb: the danger is in the letter itself, so it goes off wherever the mail is forwarded, no matter how many desks it crosses --- a poisoned search string, a booby-trapped file. A peer-bound bug is like picking a lock: you have to be standing at the door yourself, and you cannot pick a lock by mail. Interior machines only accept connections from their own neighbors, so an internet attacker never stands at their door --- which is why handshake, login-check, and connection-flood flaws can be crossed off on machines the internet cannot connect to. Sorting a bug into the wrong pile (``XSS is client-side,'' ``DoS is peer-bound'') is exactly the reckless shortcut the rules warn against, so anything unclassifiable is treated as content-triggered.
-\end{plain}
-
 \section{Perimeter Mitigation: Permitted Downgrade, Recommended Attestation}
 \label{sec:waf}
 The last design question: how should a provider represent vulnerabilities shielded by a Web Application Firewall or a comparable payload-inspecting perimeter (virtual patches, OWASP core rule set deployments)? Two approaches compete:
