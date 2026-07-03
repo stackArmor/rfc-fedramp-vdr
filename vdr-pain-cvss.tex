@@ -513,6 +513,32 @@ wands; each has a defensible causal story for the dimension it lowers:
   volume-dependent flaws.
 \end{itemize}
 
+\paragraph{High availability: automatic where the exploit cannot chase it.}
+Verified redundancy is a legitimate Modified-Availability (\code{MA}) evidence
+class, and its facts are machine-checkable up front: replica count, \emph{required}
+zone anti-affinity (a \code{preferred} rule is a scheduling hint, not a guarantee
+--- verify the actual pod spread), a PodDisruptionBudget, and health-checked
+automatic restart. Where those facts hold, the credit applies
+\emph{automatically}: \code{MA} High$\rightarrow$Low, recomputed through
+Eq.~\eqref{eq:isc}, with the detected facts as the recorded evidence. The one
+carve-out is scoped by the companion reachability method: a finding that is
+\emph{internet-reachable} does not take the automatic step, because IRV is
+precisely the statement that an attacker can deliver the trigger --- and
+re-deliver it. Replication defends against \emph{uncorrelated} failures; every
+replica in every zone runs the identical vulnerable code, and the load balancer
+obligingly delivers a repeated exploit to all of them. For that corner the step
+is still available, but with a per-finding citation stating why the trigger
+cannot be repeated at line rate (expensive to construct, rate-limited,
+state-dependent). Everywhere else --- the majority of findings, where no internet
+path delivers the trigger --- nothing is hammering the replicas, and redundancy
+covers exactly the accidental and one-shot failures it was built for. Adopting
+the automatic rule is a governed-configuration choice signed once
+(Appendix~\ref{app:opinions}), with the residual on record: an attacker already
+inside the boundary can still repeat a trigger against an NIRV finding. There is
+still no graduated zone schedule: the availability impact metric takes the values
+High, Low, and None, None is reserved for the VEX disposition path, so the ladder
+has exactly one rung here regardless of how many zones the deployment spans.
+
 \paragraph{Worked example: Log4Shell egress-deny.} In December 2021, most
 organizations' first effective Log4Shell mitigation was not a WAF. One of the most
 widely deployed was default-deny egress --- a NetworkPolicy or security-group change
@@ -1016,8 +1042,9 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \code{change-record}      & control & M & M & M & ITSM/ticketing (record only) \\
 \code{platform-foundation}& control & L & H & H & DNS, NTP, service discovery, L4 internal LBs (metadata only) \\
 \code{data-sensitive}     & data    & H & H & H & PII/CUI datastores \\
-\code{data-backbone}      & data    & H & H & H & queues, brokers, the system-of-record DB \\
-\code{app-tier}           & data    & M & M & H & stateless services, APIs, UIs, caches \\
+\code{data-backbone}      & data    & H & H & H & payload queues and brokers, the system-of-record DB \\
+\code{telemetry-backbone} & data    & M & M & M & metrics/trace pipelines, telemetry queues, event buses carrying no agency payload \\
+\code{app-tier}           & data    & M & M & M & stateless services, APIs, UIs, caches \\
 \code{batch-analytics}    & data    & M & M & L & ETL, reporting, analytics jobs \\
 \code{public-edge}        & data    & L & L & H & load balancers, public web, ingress \\
 \code{internal-tooling}   & data    & L & L & L & dashboards, metrics/log agents \\
@@ -1027,6 +1054,20 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \bottomrule
 \end{tabular}
 \end{table}
+
+Two assignments deserve their reasoning on the record. First, \code{data-backbone}
+is reserved for components that carry agency payload data; a bus that moves only
+metrics, traces, and heartbeats is \code{telemetry-backbone}, one grade lower on
+every dimension. Routing payload data through a telemetry bus is a
+misclassification finding, not a reason to keep every bus at High. Second, the
+availability grades split deliberately between the edge and the application tier.
+\code{public-edge} keeps AR High because a CVE-grade denial of service hits every
+replica at once---redundancy defends against hardware failure, not against a flaw
+shared by the whole class---and an edge-class outage closes the front door for
+every user. \code{app-tier} sits at Medium because its blast radius is one service
+degrading. The same availability-High CVE therefore scores Debilitating on the
+edge and Disruptive on the application tier, which matches how an operations team
+actually experiences the two events.
 
 \section{Remediation deadline matrices}
 \label{app:matrix}
@@ -1121,6 +1162,17 @@ on. Each item below names the value we use, why, and the fact that an implementa
   N4 demands stronger corroboration than lowering an N2 to an N1, mirroring the
   disposition guardrails. Both rules are ours, not FedRAMP's; an adopter tightening
   or relaxing them \rfckw{should} do so in governed configuration.
+\item \textbf{Automatic high-availability credit is scoped by reachability.}
+  Verified redundancy (replicas, required zone anti-affinity with observed spread,
+  PodDisruptionBudget, automatic restart) applies \code{MA}
+  High$\rightarrow$Low automatically for findings that are \emph{not}
+  internet-reachable; internet-reachable findings take the step only with a
+  per-finding citation explaining why the trigger cannot be repeated at line
+  rate. Rationale: IRV means the attacker can re-deliver the exploit, and
+  replication defends against uncorrelated failure, not a flaw every replica
+  shares. An adopter \rfckw{may} tighten this (citation everywhere) or, at its
+  own risk, relax the reachability carve-out; either choice belongs in governed
+  configuration with the residual documented.
 \item \textbf{Scope is purely hierarchical.} An asset is multi-agency only if the
   asset itself, a containing boundary, or the provider default is tagged so
   (most-specific wins); there is no automatic per-archetype escalation. (The
