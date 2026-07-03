@@ -14,6 +14,11 @@
 
 \emergencystretch=1.5em
 
+% Key-equation box: frames the model's load-bearing equations.
+\definecolor{boxblue}{HTML}{2C3E50}
+\newtcolorbox{keybox}{enhanced,breakable,colback=boxblue!5,colframe=boxblue!55,
+  boxrule=0.5pt,arc=2pt,left=8pt,right=8pt,top=5pt,bottom=5pt}
+
 % Plain-language callout: a non-technical summary readers can rely on without
 % reading the detail around it. Matches the box used in the companion method memo.
 \newtcolorbox{plain}{
@@ -28,7 +33,11 @@
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
 
-\title{\bfseries An Exclusion-Gated Method for Determining\\ Internet Reachability of Vulnerabilities\\ under the FedRAMP VDR/VER Rules}
+% Indicator function: double-struck 1 (amssymb's \mathbb has no digits).
+\usepackage{dsfont}
+\newcommand{\ind}{\mathds{1}}
+
+\title{\bfseries A Finding-Level Model for Internet Reachability\\ under the FedRAMP VDR/VER Rules}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
 \date{July 2026}
 
@@ -37,7 +46,7 @@
 
 \begin{abstract}
 \noindent
-Few evaluation steps carry more weight under the FedRAMP Vulnerability Detection and Response (VDR) and Vulnerability Evaluation and Reporting (VER) rules---launched on 2026-06-24 as part of the FedRAMP Consolidated Rules for 2026, and applicable to both 20x and Rev5 offerings---than deciding whether a vulnerability is internet-reachable. The Internet-Reachable Vulnerability (IRV) determination (\code{FRD-IRV}, \code{VER-EVA-EIR}) decides which findings land on the tightest \code{VDR-TFR-PVR} clocks and which are Not Internet-reachable Vulnerabilities (NIRV). FedRAMP defines reachability as a property of \emph{vulnerabilities}, not of network topology. A database on a private subnet, with no route to the internet, still hosts internet-reachable SQL-injection vulnerabilities if it processes data that came from the internet. Tools that only compute the internet-\emph{accessibility} of resources therefore miss exactly the cases the definition exists to catch. This paper proposes a three-phase \textbf{Exclusion-Gated Reachability Method}. Phase~A finds the assets the internet can reach directly, using four exclusion gates (routing, firewall source attribution, remote-access boundary authentication, and container routing) plus a process-level refinement. Phase~B follows internet-derived data across the observed data-flow graph and prunes the assets that data can never reach. Phase~C applies three per-vulnerability filters---execution evidence, trigger-surface matching, and trigger-mechanism class---to what remains. Every filter defaults to ``reachable'' unless hard evidence says otherwise, and every exclusion maps to a machine-readable Vulnerability Exploitability eXchange (VEX) justification. Finally, we take up the Web Application Firewall (WAF) question. FedRAMP explicitly permits treating perimeter-intercepted vulnerabilities as no longer internet-reachable; we recommend the stricter posture of keeping them classified IRV and attesting the mitigation via signed VEX---noting the \code{VDR-TFR-KEV} carve-out that Known Exploited Vulnerabilities must still be remediated on CISA BOD 26-04 due dates even when fully mitigated.
+Few evaluation steps carry more weight under the FedRAMP Vulnerability Detection and Response (VDR) and Vulnerability Evaluation and Reporting (VER) rules---launched on 2026-06-24 as part of the FedRAMP Consolidated Rules for 2026, and applicable to both 20x and Rev5 offerings---than deciding whether a vulnerability is internet-reachable. The Internet-Reachable Vulnerability (IRV) determination (\code{FRD-IRV}, \code{VER-EVA-EIR}) decides which findings land on the tightest \code{VDR-TFR-PVR} clocks and which are Not Internet-reachable Vulnerabilities (NIRV). Read maximally, FedRAMP's wording---any resource that ever processes internet-derived data hosts internet-reachable vulnerabilities---makes nearly every finding in a connected system IRV. A determination that answers ``yes'' for everything prioritizes nothing, and it buries the provider in per-finding documentation and remediation clocks the rules never intended. This paper proposes a \textbf{finding-level model} instead: reachability is computed, factor by factor, from an explicit equation---the delivery surface the internet can actually present to a component, intersected with the delivery surface the vulnerability actually requires---with every factor backed by evidence and defaulting to \emph{reachable} whenever evidence is missing. Five evaluation gates compute the asset's exposure; transfer functions propagate the exposed surface through every routing, filtering, authentication, and sanitization hop; and the vulnerability's own trigger requirements finish the calculation. The model's practical center is sanitization: FedRAMP's own interception note lists \emph{sanitize} among the preventions that remove IRV status, and most production applications already sanitize internet-sourced input. Verifying that sanitization is assessment work---the 3PAO collects the evidence through code review, static analysis, unit tests, and the web-application (DAST) scanning FedRAMP continuous monitoring already requires---and verified sanitization terminates reachability for the neutralized vulnerability classes downstream, concentrating scrutiny where it belongs: on the components that process data from unauthenticated users. Because that evidence stream is standing, the model converges in the steady state: for most reporting scenarios the internet-reachable set approximates the internet-accessible set. The convergence is conditional---providers must stand ready to re-prioritize and re-triage the moment threat intelligence surfaces a zero-day that defeats known sanitization techniques, WAF configurations, and other protections, which is the scenario FedRAMP's broad wording exists to govern. Where the evidence is not collected, the conservative default holds. Finally, we retain our Web Application Firewall (WAF) recommendation: FedRAMP permits treating perimeter-intercepted vulnerabilities as no longer internet-reachable, but the stricter posture is to keep them classified IRV and attest the mitigation via signed Vulnerability Exploitability eXchange (VEX)---noting the \code{VDR-TFR-KEV} carve-out that Known Exploited Vulnerabilities must still be remediated on CISA BOD 26-04 due dates even when fully mitigated.
 \end{abstract}
 
 \section{Introduction}
@@ -45,35 +54,19 @@ On 2026-06-24, FedRAMP launched the Consolidated Rules for 2026, including the V
 
 Getting reachability wrong is costly in both directions. Call too many internal flaws IRV, and the security team drowns in artificial emergencies on clocks the rules never meant to impose. Call a genuinely reachable flaw NIRV---FedRAMP's term for a Not Internet-reachable Vulnerability (\code{FRD-IRV})---and an exploitable path stays open past its intended clock. \code{VER-EVA-ELX} adds a warning: evaluations made ``recklessly or deliberately'' wrong will damage a provider's FedRAMP Certification.
 
-The hard part is that modern cloud architectures are layered and constantly changing. Blanket assumptions---every asset in a public subnet is reachable, every container in a GKE/EKS cluster is reachable---are too coarse. Manual, case-by-case declarations are unverifiable and will not survive a rigorous 3PAO or agency review. This paper proposes an \textbf{Exclusion-Gated Reachability Method}: every vulnerability is assumed internet-reachable \emph{by default}, and is excluded only when hard, auditable evidence rules it out. The method runs in three phases, described in Section~\ref{sec:method}.
+The hard part is that FedRAMP's definition, taken to the letter, does not discriminate. Section~\ref{sec:position} argues that the maximalist reading---everything that ever touches internet-derived data is internet-reachable---is unworkable: it erases the prioritization the timeframe matrix exists to provide, and it sets documentation and remediation obligations no provider can carry. The determination has to be a \emph{computation}, made per finding from evidence. Section~\ref{sec:model} gives that computation as an explicit equation whose every factor is defined, evaluated by a named procedure, and defaulted to ``reachable'' when the evidence is missing. And one of those factors reflects something almost every production application already does: sanitize its internet-sourced input. FedRAMP's own rules name sanitization as a prevention that removes internet reachability---the model's job is to say exactly what evidence confirms it, and whose job it is to collect that evidence.
 
-Most reachability tooling in the market today computes the internet-\emph{accessibility} of resources and stops there. Section~\ref{sec:vuln-not-resource} explains why that is not the question FedRAMP asks---and why the wrong question produces false negatives on the very examples FedRAMP's own rule notes use as motivation: SQL injection and Log4Shell.
-
-\section{Reachability Attaches to Vulnerabilities, Not Resources}
-\label{sec:vuln-not-resource}
+\section{The Problem with ``Everything Is Reachable''}
+\label{sec:position}
 FedRAMP defines an Internet-Reachable Vulnerability (\code{FRD-IRV}) as:
 \begin{quote}
 ``A vulnerability in a machine-based information resource that might be exploited or otherwise triggered by a payload originating from a source on the public internet.''
 \end{quote}
-The definition's notes remove any ambiguity about topology: it explicitly ``includes machine-based information resources that have no direct route to/from the internet but receive payloads or otherwise take action triggered by internet activity,'' while also limiting scope in the other direction---``internet-reachability applies only to the specific vulnerable machine-based information resources processing the payload.''
+The definition's notes push the scope wide: it explicitly ``includes machine-based information resources that have no direct route to/from the internet but receive payloads or otherwise take action triggered by internet activity.'' The evaluation rule \code{VER-EVA-EIR} states the design intent directly: ``FedRAMP focuses on internet-reachable (rather than internet-accessible) to ensure that any service that might receive a payload from the internet is prioritized if that service has a vulnerability that can be triggered by processing the data in the payload.'' Its notes supply two canonical examples---SQL injection reaching a private-network database through the application tier, and Log4Shell, ``where exploitation was possible via vulnerable internet-reachable resources deep in the application stack that were often not internet-accessible themselves.''
 
-The evaluation rule \code{VER-EVA-EIR} states the design intent directly: ``FedRAMP focuses on internet-reachable (rather than internet-accessible) to ensure that any service that might receive a payload from the internet is prioritized if that service has a vulnerability that can be triggered by processing the data in the payload.'' Its notes supply two canonical examples. The first is SQL injection, ``where an application stack behind a load balancer and firewall with no ability to route traffic to or from the internet can receive a payload indirectly from the internet that triggers the manipulation or compromise of data in a database that can only be accessed by an authorized connection from the application server on a private network.'' The second is Log4Shell, ``where exploitation was possible via vulnerable internet-reachable resources deep in the application stack that were often not internet-accessible themselves.''
+Read those words to the letter and follow the data. In a working cloud service, internet-derived data touches almost everything: the request flows to the application, the application writes to the database, the database replicates, events land on the message bus, workers consume the events, logs aggregate the lot. Under the maximal reading, every one of those components ``might receive a payload from the internet,'' so essentially every vulnerability anywhere in the connected system is IRV. The word \emph{might} does the sweeping: it asks for possibility, not for a demonstrated path, and possibility is everywhere.
 
-These examples doom any method that treats reachability and accessibility as the same thing. A routing-and-firewall analysis will correctly conclude that the private-subnet database is not internet-accessible---and will then mark its vulnerabilities NIRV, which is exactly the false negative \code{FRD-IRV} exists to prevent. \code{VER-EVA-EFA} points the same direction: it lists \emph{Reachability} (``How might a threat actor reach the vulnerability and how likely is that?'') among the evaluation factors, alongside exploitability, prevalence, and privilege. A sound method must answer a question about where data flows, not where packets route:
-
-\begin{quote}
-\emph{Can data that originated on the public internet arrive---directly or through any chain of intermediaries---at the vulnerable code, in a form that could trigger the vulnerability?}
-\end{quote}
-
-Accessibility analysis remains necessary---it identifies the entry points where internet data comes ashore---but it is only the first phase of the determination, not the determination itself. This paper keeps the two words strictly apart. \emph{Internet-accessible} describes an entry point: an asset that accepts traffic arriving directly from the public internet. \emph{Internet-reachable} is FedRAMP's broader status: it applies to any vulnerability that internet-originated data can reach and trigger, whether its host is an entry point or sits downstream of one. Every internet-accessible asset hosts candidates for reachability; the reverse is nowhere close to true.
-
-\begin{plain}
-The question is not ``can the internet connect to this server?'' but ``can data that started on the internet ever reach this flaw?'' A database with no internet route still hosts internet-reachable injection flaws, because the attacker's input walks in through the public application and is handed to the database by your own tier-to-tier plumbing. Tools that stop at server exposure answer the wrong question --- and go wrong on exactly the cases FedRAMP names (SQL injection, Log4Shell).
-\end{plain}
-
-\section{Scope Realism: What the IRV Determination Actually Controls}
-\label{sec:scope}
-Before presenting the method, it helps to be clear about the stakes, because the IRV determination alone does not set the tight clock. The \code{VDR-TFR-PVR} matrix is indexed by \emph{three} evaluations at once: the PAIN rating picks the row, and the combination of likely exploitability and internet reachability picks the column (LEV\,+\,IRV, LEV\,+\,NIRV, or NLEV). Table~\ref{tab:pain} reproduces the Class~C matrix, likely the most common certification class.
+That reading is not practical, and the structure of FedRAMP's own rules says so. The \code{VDR-TFR-PVR} matrix (Table~\ref{tab:pain} shows Class C, likely the most common certification class) separates the IRV and NIRV columns precisely so that reachable findings move faster than unreachable ones---a 2$\times$ to 4$\times$ difference in the LEV rows. Declare everything IRV and that column collapses: the matrix degenerates to its leftmost clocks, and the determination FedRAMP asks providers to make per vulnerability (\code{VER-RPT-VDT}) becomes a rubber stamp that consumes evaluation and reporting effort while conveying nothing. Prioritization only exists if the classifier can say \emph{no}.
 
 \begin{table}[H]
 \centering
@@ -87,93 +80,223 @@ PAIN-3 & 16 days & 32 days & 128 days \\
 PAIN-2 & 48 days & 128 days & 192 days \\
 \bottomrule
 \end{tabular}
-\caption{\code{VDR-TFR-PVR} mitigation/remediation timeframes for Class C certifications. Classes A and B share a more generous schedule on the same structure; Class D is tighter.}
+\caption{\code{VDR-TFR-PVR} mitigation/remediation timeframes for Class C certifications. Classes A and B share a more generous schedule on the same structure; Class D is tighter. The IRV/NIRV distinction is worth a factor of 2--4 on the clock---but only if some findings can actually earn NIRV.}
 \label{tab:pain}
 \end{table}
 
-Three observations keep the reachability problem in proportion:
+The burden lands twice. Every IRV call must be evaluated, recorded, and reported per vulnerability under \code{VER-RPT-VDT}, so blanket reachability converts the reporting obligation into a treadmill covering the entire finding inventory. And every likely-exploitable finding in that inventory lands on the tightest clocks in its row---2 to 16 days at Class C---across the whole estate at once, a remediation posture no provider of realistic size can sustain. Nothing in the rules suggests they were designed to be unsatisfiable. \code{VER-EVA-ELX} says the quiet part aloud for the exploitability axis: ``the simple reality is that most traditional vulnerabilities discovered by scanners or during assessment are not likely to be exploitable.'' The rules are built for discrimination---for sorting findings into different treatments---and a reachability determination that cannot discriminate defeats their design.
+
+The way out is also in FedRAMP's own text. The \code{VER-EVA-EIR} notes continue: ``the simplest way to prevent exploitation of internet-reachable vulnerabilities is to intercept, inspect, filter, \emph{sanitize}, reject, or otherwise deflect triggering payloads before they are processed by the vulnerable resource; once this prevention is in place the vulnerability should no longer be considered an internet-reachable vulnerability.'' \emph{Sanitize} is FedRAMP's word, on FedRAMP's list of preventions that remove reachability. And sanitization is not exotic: parameterized queries, schema validation, type and bounds checking, output encoding---this is what production applications already do to internet-sourced input before handing it downstream. The honest question for an assessment is therefore not ``does internet data ever flow toward this component?''---in a connected system it nearly always does---but ``is the sanitization the application already performs \emph{verified}?'' That verification is the auditor's job, and the evidence stream already exists: FedRAMP continuous monitoring requires regular web-application (DAST) scanning, and the CSP's development lifecycle produces code reviews, static-analysis results, and test suites as a matter of course. The 3PAO's task is to collect and weigh that evidence, not to invent a new documentation regime---and the scrutiny it buys should land where the risk concentrates: on the components that process data from \emph{unauthenticated} users, the entry points and the pre-authentication surfaces they feed, rather than uniformly across the estate. This paper's model (Section~\ref{sec:model}) makes reachability a per-finding computation in which verified sanitization is a first-class factor, every factor is evidence-backed, and every evidence gap defaults the finding to reachable. Run to its conclusion (Section~\ref{sec:steady-state}), the model restores proportionality: with the standing evidence in place, the reachable set converges on the accessible set for everyday reporting---and expands back toward FedRAMP's full breadth precisely when threat intelligence says the known protections no longer hold.
+
+One distinction stays load-bearing throughout, so we fix the vocabulary now. \emph{Internet-accessible} describes an entry point: an asset that accepts traffic arriving directly from the public internet. \emph{Internet-reachable} is FedRAMP's broader status: it applies to any vulnerability that internet-originated data can reach and trigger, whether its host is an entry point or sits downstream of one. Every internet-accessible asset hosts candidates for reachability; the reverse is nowhere close to true.
+
+\begin{plain}
+FedRAMP's definition, taken to the letter, would label nearly every flaw in a connected system ``internet-reachable'' --- because in a real system, data that started on the internet eventually touches almost everything. A label that everything carries means nothing: it can't tell the security team what to fix first, and it puts the whole estate on the fastest deadlines at once. But FedRAMP's own rules also say that stopping the dangerous input before it reaches the flaw --- including \emph{sanitizing} it --- makes the flaw not internet-reachable. Most applications already clean the input they pass along, and checking that is what audits are for: the web-application scans FedRAMP already requires in continuous monitoring, plus the code reviews and tests the development team already runs, are the proof. So: compute reachability per finding, let the auditor collect the sanitization evidence, put the extra scrutiny on whatever handles input from strangers who never logged in --- and when the evidence isn't there, keep the cautious default.
+\end{plain}
+
+\section{Scope Realism: What the IRV Determination Actually Controls}
+\label{sec:scope}
+Before presenting the model, it helps to be clear about the stakes, because the IRV determination alone does not set the tight clock. The \code{VDR-TFR-PVR} matrix is indexed by \emph{three} evaluations at once: the PAIN rating picks the row, and the combination of likely exploitability and internet reachability picks the column (LEV\,+\,IRV, LEV\,+\,NIRV, or NLEV), as Table~\ref{tab:pain} showed. Three observations keep the reachability problem in proportion:
 \begin{itemize}[leftmargin=1.5em]
 \item \textbf{LEV gates the tight columns.} The IRV and NIRV columns only differ for vulnerabilities that are also likely exploitable, and \code{VER-EVA-ELX} is blunt that those are a minority: ``the simple reality is that most traditional vulnerabilities discovered by scanners or during assessment are not likely to be exploitable.'' So reachability matters most for the LEV subset. Note, though, that reachability feeds the LEV call itself: \code{FRD-LEV} requires the vulnerability to be ``reachable by a likely threat actor,'' and its floor note makes any vulnerability ``that an automated unauthenticated system can exploit over the internet'' automatically LEV.
 \item \textbf{The timeframes are \rfckw{should}-level and are satisfied by mitigation.} \code{VDR-TFR-PVR} asks providers to ``partially mitigate, fully mitigate, or remediate'' \emph{to a lower Potential Agency Impact N-rating} within the timeframe. A partial mitigation that provably lowers the PAIN rating satisfies the clock. (FedRAMP's definition of mitigation is broader than the rule's wording suggests: \code{FRD-PMV} covers reductions in likelihood \emph{or} PAIN---Section~\ref{sec:waf} returns to this.) That does not end the process---the finding continues on the new, longer clock, and each reduction is reported under \code{VER-RPT-VDT}---but the descent is bounded. It ends in remediation, full mitigation, PAIN-1 (which carries no timeframe), or formal acceptance: \code{VER-TFR-MAV} requires any vulnerability that will not be fully mitigated or remediated within 192 days of evaluation to be categorized as an accepted vulnerability. No single timeframe demands full remediation (with the KEV exception discussed in Section~\ref{sec:waf}).
-\item \textbf{The goal is determinism, not deadline-shrinking.} This method does not exist to shrink the IRV list through aggressive interpretation. It exists to make each call deterministic, evidence-backed, and auditable, so the LEV\,+\,IRV set a provider reports under \code{VER-RPT-VDT} can be defended line by line---to a 3PAO, an agency, or FedRAMP itself.
+\item \textbf{The goal is determinism, not deadline-shrinking.} This model does not exist to shrink the IRV list through aggressive interpretation. It exists to make each call deterministic, evidence-backed, auditable, \emph{and proportionate}, so the LEV\,+\,IRV set a provider reports under \code{VER-RPT-VDT} can be defended line by line---to a 3PAO, an agency, or FedRAMP itself.
 \end{itemize}
 
 \begin{plain}
 Reachability is one of three dials, and rarely decisive alone: the tightest clocks bind only flaws that are \emph{also} likely exploitable --- a minority --- and each clock is satisfied by demonstrably knocking the risk down a rung, not only by a full fix. So the goal here is not to argue findings off the urgent list; it is to make every reachability call one you can prove to an auditor.
 \end{plain}
 
-\section{Method Overview: Three Phases}
-\label{sec:method}
-The method evaluates the pair $(v, a)$---vulnerability $v$ on asset $a$---through three phases, illustrated in Figure~\ref{fig:phases}.
+\section{The Finding-Level Model}
+\label{sec:model}
+We tag each \emph{asset} with its internet-reachability $R(a)$ as a first-class, reusable property---useful on its own for inventory and attack-surface work. But the remediation timeline is decided per \emph{finding}: a pair $(v,a)$, vulnerability $v$ on component $a$, combining that asset tag with facts about the vulnerability itself.
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.92\textwidth}
-\centering
-\textbf{Default state: every vulnerability on every asset is assumed internet-reachable (IRV).}
-\medskip
+\paragraph{Factored form (operational).}
+\begin{keybox}
+\[
+\boxed{\;
+\begin{aligned}
+\mathrm{IRV}(v,a)\;=\;&R(a)\ \cdot\ \ind\!\left[\mathrm{AV}(v)=N\right]\\
+&\cdot\ \ind\!\left[\text{protocol/version of }v\text{ on the exposed surface}\right]
+\end{aligned}
+\;}
+\]
+\end{keybox}
+\begin{plain}
+A vulnerability gets the tight ``internet-facing'' clock only if \emph{all three} are
+true: the machine is reachable from the internet, \emph{and} the flaw can be attacked
+over the network at all, \emph{and} the exact service/protocol the flaw lives in is
+actually one the internet can reach. Miss any one and it gets the slower ``internal''
+clock. (The $\ind[\cdots]$ is just ``1 if true, 0 if false''; multiply them, and
+one zero makes the whole thing zero.)
+\end{plain}
+\begin{itemize}[leftmargin=1.6em,nosep]
+\item $R(a)$ --- the \textbf{asset tag}: is the resource internet-reachable at all
+  (computed by the gates of Section~\ref{sec:asset-tag}). If $R(a)=0$, every finding on the asset is NIRV for the direct channel---the
+  cheap short-circuit; you never open the CVE.
+\item If $R(a)=1$, evaluate the internet-exposed remediation column \emph{only} when the
+  vuln is \code{AV:N} \textbf{and} its protocol/version actually rides the exposed
+  surface. Otherwise that finding drops to the NIRV column even though the asset is
+  tagged reachable.
+\end{itemize}
 
-\fbox{\begin{minipage}{0.95\textwidth}
-\textbf{Phase A --- Direct Exposure $E(a)$} \emph{(asset-level; identifies entry points)}
-\begin{enumerate}[label=\bfseries Gate \arabic*:, leftmargin=4.5em, itemsep=2pt, nosep]
-\item \textnormal{IP and routing: no public IP / NAT / LB mapping and no internet-gateway route.}
-\item \textnormal{Firewall source population: all permitted sources enumerable and attributable to identified organizations.}
-\item \textnormal{Remote-access boundary authentication: a dedicated edge component (IAP, VPN---never the application's own login page) rejects unauthenticated traffic, its declared, assessor-validated role is remote access for the organization's own people and tooling (not customer authentication for the service), and the backend keeps its own independent login behind it.}
-\item \textnormal{Kubernetes/container routing: no public Gateway route, Ingress, NodePort, \code{hostNetwork}/\code{hostPort}, or LoadBalancer exposure.}
-\end{enumerate}
-\textnormal{Plus a process-level refinement (Gate 5): software that binds no exposed listening socket is not \emph{directly} exposed. Phase A output feeds Phase B; \textbf{it excludes nothing from IRV scope by itself.}}
-\end{minipage}}
-
-\medskip $\downarrow$ \medskip
-
-\fbox{\begin{minipage}{0.95\textwidth}
-\textbf{Phase B --- Transitive Payload Exposure $T(a)$} \emph{(asset-level; data-flow graph)}\\
-\textnormal{Propagate taint from Phase A entry points across observed data flows (NetworkPolicies + flow telemetry). Assets with \emph{no} flow path from any entry point are pruned: all their vulnerabilities are NIRV. Tainted assets proceed to Phase C.}
-\end{minipage}}
-
-\medskip $\downarrow$ \medskip
-
-\fbox{\begin{minipage}{0.95\textwidth}
-\textbf{Phase C --- Per-Vulnerability Filters} \emph{(vulnerability-level, on tainted assets)}
-\begin{enumerate}[label=\bfseries Filter \arabic*:, leftmargin=4.5em, itemsep=2pt, nosep]
-\item \textnormal{Execution evidence: vulnerable code not present in, or never loaded into, the execute path.}
-\item \textnormal{Trigger-surface matching: required protocol/format never delivered on any inbound tainted edge.}
-\item \textnormal{Trigger-mechanism class: peer-bound vulnerability classes on assets that are not directly exposed.}
-\end{enumerate}
-\end{minipage}}
-
-\medskip
-
-\textbf{Final classification: vulnerabilities surviving all three phases are IRV.}
-\end{minipage}
-\caption{The three-phase exclusion-gated method. Phase A computes direct exposure, Phase B prunes assets unreachable by internet-derived data, and Phase C filters individual vulnerabilities on payload-exposed assets.}
-\label{fig:phases}
-\end{figure}
-
-The phases compose into a single decision rule. Let $E(a)$ denote that asset $a$ is directly exposed (survives Phase A), $T(a)$ that $a$ is transitively payload-exposed (Phase B), and let $\mathrm{exec}(v,a)$, $\mathrm{surface}(v,a)$, and $\mathrm{mech}(v,a)$ denote that Phase C filters 1--3 respectively \emph{apply} (i.e., fail to exclude). Then:
+\paragraph{Set form (why the two vuln factors are one test).}
+Let $D$ be a space of \textbf{delivery descriptors} --- the ``shapes'' of traffic:
+\begin{itemize}[leftmargin=1.6em,nosep]
+\item $X(v)\subseteq D$ --- the \textbf{required surface}: the delivery shapes under
+  which $v$ can actually be triggered (from the CVE).
+\item $E(a)\subseteq D$ --- the \textbf{exposed surface}: the delivery shapes an
+  unauthenticated internet actor can actually get \emph{to component $a$} (from infra).
+\end{itemize}
 \begin{equation}
-\mathrm{IRV}(v,a) \;=\; \bigl[\,E(a) \;\lor\; T(a)\,\bigr] \;\land\; \mathrm{exec}(v,a) \;\land\; \mathrm{surface}(v,a) \;\land\; \mathrm{mech}(v,a)
-\label{eq:decision}
+\mathrm{IRV}(v,a)\;=\;\ind\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right]
+\label{eq:setform}
 \end{equation}
-Every term defaults to \emph{true} unless hard evidence says otherwise. That default is the method's central safety property: missing telemetry, unknown trigger surfaces, or unclassifiable vulnerabilities can only make the IRV set \emph{larger}, never quietly smaller.
+\begin{plain}
+Picture two lists. \textbf{List $E$} is every door the internet can actually get to on
+this component --- for example, ``the web door is open to everyone.'' \textbf{List $X$}
+is every door this particular attack could use --- for example, ``this exploit only
+works through the SSH door.'' Now just lay the two lists side by side. If the \emph{same
+door} shows up on both, the attacker has a way in --- internet-reachable. If nothing
+matches --- the internet can reach the web door, but the attack needs the SSH door, and
+that one isn't open --- there's simply no way in, so it's not reachable. (That
+``nothing matches'' is what $\cap=\varnothing$ means: no shared door.)
+\end{plain}
+This is the same statement: the asset tag is exactly $R(a)=\ind[E(a)\neq\varnothing]$
+(the asset has \emph{some} internet-deliverable surface), and the \code{AV:N} and
+protocol/version factors are ``$X(v)$ meets that surface.'' A non-empty intersection
+already implies $R(a)=1$, so the asset tag is the necessary first factor---not a
+discarded one. The set form is also what carries the transitive cases FedRAMP cares
+about: for a downstream component, $E(a)$ is not what the internet can \emph{connect}
+to but what internet-originated \emph{content} can still be delivered to it through
+the tiers in between---the subject of Sections~\ref{sec:propagation}
+and~\ref{sec:sanitization}. Every factor in either form defaults to \emph{reachable}
+unless evidence says otherwise; that fail-safe is developed in
+Section~\ref{sec:failsafe}.
+
+\section{Computing the Asset Tag $R(a)$: The Five Gates}
+\label{sec:asset-tag}
+The asset tag is not a single chain of ANDs. There are \emph{several independent ways}
+to be exposed---directly on a public IP, or behind a public load balancer, or via a
+container ingress---and the asset is reachable if \textbf{any one} path is open. So
+$R(a)$ is an \textbf{OR across paths}, and each path is its own \textbf{AND} of
+conditions, checked \emph{at that path's own enforcement point}:
+
+\begin{keybox}
+\[
+R(a)\;=\;\ind\!\Big[\ \exists\,P\in\mathrm{paths}(a):\ \mathrm{reachable}(P)\ \Big]
+\]
+\[
+\mathrm{reachable}(P)\;=\;\mathrm{route}(P)\ \wedge\ \mathrm{open}(P)\ \wedge\ \neg\,\mathrm{auth}(P)\ \wedge\ \mathrm{live}(P)
+\]
+\end{keybox}
+
+\noindent A path $P$ is \emph{reachable} when all four conditions hold:
+\begin{itemize}[leftmargin=1.6em,nosep,topsep=2pt]
+\item $\mathrm{route}(P)$ --- a network route physically exists to the asset (a public
+  IP plus a gateway route, or a public load balancer that forwards to it); a wide-open
+  firewall on a private, unrouted box is still unreachable;
+\item $\mathrm{open}(P)$ --- its public entry point accepts traffic from sources beyond
+  an enumerable, attributed set (Gate~2 gives the decision rule; breadth beyond a
+  \code{/20} is the red flag that triggers review);
+\item $\neg\,\mathrm{auth}(P)$ --- nothing along the path forces the visitor to log in
+  before the packet reaches the vulnerable component;
+\item $\mathrm{live}(P)$ --- it ends at a port something is actually listening on.
+\end{itemize}
+Only the \textbf{public entry point} counts toward ``open.'' A backend security group
+that merely lets the load balancer through is what makes the path \emph{connect}
+($\mathrm{route}/\mathrm{live}$)---it does not make the path narrow. The two common
+archetypes make the OR concrete:
+
+\begin{keybox}
+\[
+R(a)\;=\;
+\underbrace{\Big[\ \mathrm{pubIP}(a)\ \wedge\ \mathrm{route}_{\text{IGW}}(a)\ \wedge\ \mathrm{fwOpen}(a)\ \wedge\ \neg\,\mathrm{edgeAuth}(a)\ \Big]}_{\text{direct: public IP on the host itself}}
+\]
+\[
+\lor\quad
+\underbrace{\bigvee_{L\,\in\,\mathrm{pubLB}(a)}\Big[\ \mathrm{forwards}(L,a)\ \wedge\ \mathrm{lbOpen}(L)\ \wedge\ \neg\,\mathrm{edgeAuth}(L)\ \Big]}_{\text{via a public load balancer / ingress (no public IP or IGW route needed)}}
+\]
+\end{keybox}
+
+\noindent\textbf{What the symbols mean:}
+\begin{itemize}[leftmargin=1.6em,nosep]
+\item $\mathrm{paths}(a)$ --- the set of internet-ingress paths that terminate at $a$
+  (direct, one per fronting load balancer / ingress, etc.).
+\item $\mathrm{pubIP}(a)$ --- the host itself has a routable \textbf{public IP}; and
+  $\mathrm{route}_{\text{IGW}}(a)$ --- its subnet has an active default route to an
+  \textbf{internet gateway}. \emph{Both are required only for the direct path}---an
+  LB-fronted backend typically has neither. Gate~1 evaluates them.
+\item $\mathrm{fwOpen}(a)=\exists\,q:\ \mathrm{listen}(a,q)\wedge \exists\,r\in\mathrm{allow}(a,q):\mathrm{prefix}(r)<P$
+  --- on the \textbf{host's own} firewall, some \emph{listening} port is opened to a
+  source wider than the threshold. (Size is the screening form; Gate~2 refines the
+  decision to source \emph{attribution}.)
+\item $\mathrm{pubLB}(a)$ --- the public load balancers / ingresses that forward to $a$;
+  $\mathrm{forwards}(L,a)$ --- $L$ is public-facing and routes traffic to a \emph{live
+  listening} port on $a$ (for containers this is Gate~4: target of an
+  \code{HTTPRoute}/\code{TCPRoute} on a public gateway, an \code{Ingress} on a public
+  LB, or a public \code{NodePort}).
+\item $\mathrm{lbOpen}(L)$ --- the \textbf{load balancer's own} source restriction is
+  wider than the threshold (it is \emph{not} IP-locked to an attributed set; same
+  Gate~2 rule, evaluated at the LB).
+\item $P=20$ --- the \textbf{breadth threshold}. ``Broader than a \code{/20}'' means a
+  bigger address block, i.e.\ a \emph{smaller} prefix number, $\mathrm{prefix}(r)<20$.
+\item $\mathrm{edgeAuth}(\cdot)$ --- a bypass-free identity-aware proxy (Google IAP, AWS
+  Verified Access, ALB OIDC/Cognito) that authenticates every request. Evaluated on the
+  \textbf{host} for the direct path, and on the \textbf{load balancer} for the LB path.
+  Gate~3 gives the qualifying conditions.
+\end{itemize}
 
 \begin{plain}
-Every flaw starts out presumed internet-reachable. It leaves that list only by passing hard-evidence checks: no internet-derived data ever reaches its host (Phases A--B), or the data that does arrive can never trigger this particular flaw (Phase C). Missing telemetry or an unrecognized bug class defaults to ``still reachable'' --- so evidence gaps make the urgent list longer, never quietly shorter.
+There is more than one way to be exposed, so this is an ``OR.'' A box counts as
+internet-facing if \emph{either}:\\
+\textbf{(A) it's directly on the internet} --- it has its own public IP, a route out,
+its own firewall opens a live port to a wide slice of the internet (wider than
+$\sim$4{,}000 addresses), and there's no login proxy on the host; \emph{or}\\
+\textbf{(B) a public load balancer exposes it} --- some public LB forwards to a port the
+box is actually listening on, that LB isn't locked down to a small IP range, and that LB
+doesn't force a login first.\\
+Note case (B) needs \emph{no} public IP and \emph{no} internet-gateway route on the box
+itself --- which is why any single formula written only for case (A) misclassifies
+LB-fronted backends. And each ``open?'' and ``login wall?'' check is done where that
+path actually enforces it: on the host for (A), on the load balancer for (B).
 \end{plain}
 
-\section{Phase A: Direct Exposure Gates}
-\label{sec:phasea}
-Phase A answers the classic accessibility question: which assets can the public internet deliver packets to directly? Its output is the set of \emph{entry points}---the places where internet data first lands. To be explicit: \textbf{Phase A feeds Phase B; failing a Phase A gate does not, by itself, exclude anything from IRV scope.} The private-subnet database in FedRAMP's SQL-injection example fails Gate 1 and is still IRV for its injection flaws, because Phase B will find the data path through the application tier.
+\paragraph{The whole thing.} The finding-level rule is the asset OR (some open path
+exists) ANDed with the vulnerability factors:
+\begin{keybox}
+\[
+\begin{aligned}
+\mathrm{IRV}(v,a)=\;&\underbrace{\ind\!\big[\exists\,P\in\mathrm{paths}(a):\mathrm{reachable}(P)\big]}_{\text{asset reachable: }R(a)\ \text{(OR across paths)}}\\[4pt]
+&\cdot\ \underbrace{\ind[\mathrm{AV}(v){=}N]\cdot\ind[\pi(v)\text{ exposed}]\cdot\ind[\nu(v)\text{ exposed}]}_{\text{the flaw rides that surface}}
+\end{aligned}
+\]
+\end{keybox}
+\begin{plain}
+The full checklist: \emph{at least one} internet path into the box is open (OR across
+paths), \emph{and} the flaw is network-attackable on a protocol/version that path
+actually delivers. If no path is open the first factor is zero; if the flaw isn't
+network-reachable the later factors are zero --- either way the finding gets the slower
+internal-remediation clock. (Because a protocol can be delivered on one path but not
+another --- e.g.\ HTTP/2 direct but downgraded through the LB --- ``$\pi/\nu$ exposed''
+means ``on at least one \emph{reachable} path,'' which the surface union $E(a)$ handles
+automatically.)
+\end{plain}
 
-\subsection{Gate 1: IP Address and Routing}
-An asset is directly exposed at the network layer only if two preconditions hold:
+The five gates that follow are the evaluation procedures for these predicates. Each
+gate is deterministic, names its evidence, and---like every factor in the
+model---defaults to \emph{exposed} when the evidence is incomplete.
+
+\subsection{Gate 1: IP Address and Routing --- Evaluating $\mathrm{route}(P)$}
+Gate 1 evaluates $\mathrm{pubIP}(a)$ and $\mathrm{route}_{\text{IGW}}(a)$, the two preconditions of the direct path. An asset is directly exposed at the network layer only if both hold:
 \begin{enumerate}[leftmargin=1.5em, nosep]
 \item The asset holds a routable public IP address, or belongs to a NAT or load-balancer pool that maps public traffic to it.
 \item The subnet's routing table has an active route to an internet gateway (\code{0.0.0.0/0} via an IGW or equivalent).
 \end{enumerate}
-Assets failing either condition---private and isolated subnets, egress-only NAT configurations---are not entry points. They remain fully eligible for transitive payload exposure in Phase B.
+Assets failing either condition---private and isolated subnets, egress-only NAT configurations---have $R(a)=0$ on the direct path, and if no load-balancer path exists either, $R(a)=0$ outright. That closes the \emph{connection} channel only. Internet-originated \emph{content} can still be relayed to such an asset by the tiers in front of it---the private-subnet database in FedRAMP's SQL-injection example fails this gate and can still host reachable injection flaws---which is exactly what the surface-propagation and sanitization analysis of Sections~\ref{sec:propagation} and~\ref{sec:sanitization} decides.
 
-\subsection{Gate 2: Firewall Source Population and Attribution}
+\subsection{Gate 2: Firewall Source Population --- Evaluating $\mathrm{open}(P)$}
+In the equations, $\mathrm{open}(P)$ appears as a breadth test---wider than a \code{/20}. Operationally, breadth is only the red flag; \emph{attribution} makes the call.
 Even with a public IP and an internet route, an asset whose inbound rules restrict sources to specific known networks is not exposed to the general internet. The tempting way to formalize that is a size rule---exclude whenever every permitted source prefix is \code{/20} or smaller---but any size rule fails in both directions. It can be gamed: one hundred separate \code{/24} rules each pass the per-rule test while together covering more address space than a \code{/16}. And it flags safe configurations: a single allowlisted partner \code{/16} fails the test even though it represents exactly one known organization.
 
 The gate therefore looks at each listening port, takes the \emph{union} of every source range permitted by any firewall rule, security group, or WAF-layer IP restriction that governs it, and asks who owns that space:
@@ -186,9 +309,9 @@ Size survives only as a red flag. A union larger than a \code{/20}-equivalent (4
 An allowlist earns an exclusion by being \emph{accounted for}, not by being small. If every permitted address range can be traced to a named organization you have a relationship with, the door is closed to the general internet; if parts of the allowlist are anonymous, it is not --- no matter how narrow the individual ranges look.
 \end{plain}
 
-\subsection{Gate 3: Remote-Access Boundaries (Edge Authentication)}
+\subsection{Gate 3: Remote-Access Boundaries --- Evaluating $\neg\,\mathrm{auth}(P)$}
 \label{sec:gate3}
-Many architectures put backends behind a boundary that checks identity at the edge: an identity-aware proxy (Google Identity-Aware Proxy, AWS Verified Access, ALB OIDC/Cognito authentication) or a client VPN. Both reject unauthenticated traffic before the backend ever processes it. The boundary must be exactly that---a component \emph{separate from the application}. An application's own login page never qualifies: the login form, credential parsing, password reset, and session issuance are unauthenticated internet input processed by the application itself, so the pre-authentication attack surface \emph{is} the application. Yet for true edge components, convention treats the two kinds very differently: backends behind a VPN are habitually called ``internal,'' while backends behind an IAP are often scored as exposed. This gate applies one functional test to both:
+This gate is the $\mathrm{edgeAuth}(\cdot)$ predicate of the symbol legend, evaluated on the host for the direct path and on the load balancer for the LB path. Many architectures put backends behind a boundary that checks identity at the edge: an identity-aware proxy (Google Identity-Aware Proxy, AWS Verified Access, ALB OIDC/Cognito authentication) or a client VPN. Both reject unauthenticated traffic before the backend ever processes it. The boundary must be exactly that---a component \emph{separate from the application}. An application's own login page never qualifies: the login form, credential parsing, password reset, and session issuance are unauthenticated internet input processed by the application itself, so the pre-authentication attack surface \emph{is} the application. Yet for true edge components, convention treats the two kinds very differently: backends behind a VPN are habitually called ``internal,'' while backends behind an IAP are often scored as exposed. This gate applies one functional test to both:
 \begin{quote}
 \emph{Edge authentication qualifies for exclusion from direct exposure when it functions as \textbf{remote-access control} for the organization's own people and tooling---the clientless-VPN role, fronting admin consoles, operations tooling, and internal dashboards. It does not qualify when it functions as \textbf{customer authentication} for the service itself. The difference is the boundary's role, not the size of the crowd behind it.}
 \end{quote}
@@ -215,8 +338,8 @@ In practice, the failing case is rare. Almost every identity-aware proxy in a Fe
 
 No matter how the boundary is configured, the perimeter itself is internet-accessible. The VPN server, the load balancer, the proxy---anything that touches traffic before the login check---is exposed by definition. A login wall cannot protect the thing that \emph{is} the login wall. The two technologies differ only in how much sits in front of that check. A VPN turns strangers away before a connection ever reaches anything behind it, so the VPN server is the only exposed piece. An identity-aware proxy decides later: the cloud load balancer has already accepted the connection and parsed the request before the login check runs, so the load balancer and its parsing stack are exposed too. Behind the boundary, the exclusion works the same either way; what differs is which front-line components are internet-accessible.
 
-\subsection{Gate 4: Kubernetes and Container Routing}
-Containers need their own check, because a pod's exposure is decoupled from its node's. A pod is a direct-exposure entry point if and only if it is the active target of at least one of:
+\subsection{Gate 4: Kubernetes and Container Routing --- Enumerating $\mathrm{pubLB}(a)$}
+Containers need their own check, because a pod's exposure is decoupled from its node's. For container estates this gate enumerates the load-balancer path family---the $\mathrm{pubLB}(a)$ and $\mathrm{forwards}(L,a)$ terms. A pod is a direct-exposure entry point if and only if it is the active target of at least one of:
 \begin{enumerate}[label=(\alph*), leftmargin=2.5em, nosep]
 \item a Gateway API route (\code{HTTPRoute}, \code{TCPRoute}, etc.) bound to a public-facing Gateway;
 \item an \code{Ingress} bound to a public load balancer;
@@ -224,72 +347,489 @@ Containers need their own check, because a pod's exposure is decoupled from its 
 \item a \code{NodePort} service on nodes reachable from the internet; or
 \item \code{hostNetwork:\ true} or a \code{hostPort} mapping on a node with public exposure---this includes DaemonSets, which frequently run with host networking on every node and are easy to overlook in route-centric inventories.
 \end{enumerate}
-Pods exposed only through internal load balancers or cluster-internal Services are not entry points (but remain Phase B candidates). Two verifiability caveats:
+Pods exposed only through internal load balancers or cluster-internal Services are not entry points (though relayed content still reaches them; Section~\ref{sec:propagation}). Two verifiability caveats:
 \begin{itemize}[leftmargin=1.5em, nosep]
 \item \textbf{NodePort cannot be decided from inside the cluster.} A NodePort opens the port on every node, but whether the internet can reach it depends on node public IPs and cloud firewall rules---information the Kubernetes API does not have. The gate \rfckw{must} combine cluster state with the node-level Gate 1/Gate 2 results, or fall back to an explicit, recorded operator assertion. With neither, the NodePort is treated as exposed.
 \item \textbf{Init containers.} In an exposed pod, \code{initContainers} run once, finish before the main containers start, and listen on nothing afterward, so they are not directly exposed. The exception is \code{restartPolicy:\ Always}, which turns an init container into a long-running sidecar; those are treated as primary containers.
 \end{itemize}
 
-\subsection{Gate 5: Process-to-Port Refinement (and Its Limit)}
-Not every package on an exposed host is itself exposed. Software \rfckw{may} be excluded from \emph{direct} exposure when it maps, deterministically, to running processes that hold no internet-exposed listening socket---\code{sshd} vulnerabilities on a public web server whose port 22 is locked to attributed sources under Gate 2, for example. The mapping (package manifest joined with socket-ownership telemetry) \rfckw{must} be automated and reproducible per asset.
+\subsection{Gate 5: Process-to-Port Refinement --- Evaluating $\mathrm{live}(P)$}
+The $\mathrm{live}(P)$ condition asks whether a path ends at a port something actually listens on---and its per-process refinement is where the asset tag sharpens into per-software precision. Not every package on an exposed host is itself exposed. Software \rfckw{may} be excluded from \emph{direct} exposure when it maps, deterministically, to running processes that hold no internet-exposed listening socket---\code{sshd} vulnerabilities on a public web server whose port 22 is locked to attributed sources under Gate 2, for example. The mapping (package manifest joined with socket-ownership telemetry) \rfckw{must} be automated and reproducible per asset.
 
-This gate has a hard limit, and it is the central lesson of Section~\ref{sec:vuln-not-resource}. A queue worker on a private VM with \emph{no listening socket at all}---a thumbnail generator, a log ingester, exactly the Log4Shell shape---is still IRV for its parser flaws if it parses internet-uploaded files. ``Binds no exposed port'' only excludes a vulnerability together with the Phase B condition ``consumes no internet-tainted data.'' Gate 5 refines direct exposure; it is never a standalone NIRV call.
+This gate has a hard limit, and it echoes the lesson of Section~\ref{sec:position}. A queue worker on a private VM with \emph{no listening socket at all}---a thumbnail generator, a log ingester, exactly the Log4Shell shape---is still IRV for its parser flaws if it parses internet-uploaded files. ``Binds no exposed port'' closes only the connection channel; the content channel closes only when no internal edge delivers the flaw's trigger class---either because topology rules the path out or because verified sanitization neutralizes it (Sections~\ref{sec:propagation} and~\ref{sec:sanitization}). Gate 5 refines direct exposure; it is never a standalone NIRV call.
 
-\section{Phase B: Transitive Payload Exposure}
-\label{sec:phaseb}
-Phase B implements the \code{FRD-IRV} note that reachability ``includes machine-based information resources that have no direct route to/from the internet but receive payloads or otherwise take action triggered by internet activity.'' It works on the \emph{data-flow graph}, not the routing graph. Nodes are assets (or workloads). A directed edge $a \rightarrow b$ exists when data observed leaving $a$ arrives at $b$ and is processed there---requests, messages, files, replication streams. An asset is \textbf{payload-exposed} (tainted), written $T(a)$, if any directed path leads to it from any Phase A entry point.
+\section{The Descriptor Space}
+\label{sec:descriptors}
+Attack vector, protocol, and ALPN are all just \emph{fields} of one tuple:
+\[
+d=\langle\,\kappa,\ \tau,\ \pi,\ \nu,\ \delta\,\rangle
+\]
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{c l l}
+\toprule
+\textbf{field} & \textbf{meaning} & \textbf{source} \\
+\midrule
+$\kappa\in\{N,A,L,P\}$ & attack-vector class & CVSS \textbf{AV} \\
+$\tau$ & transport + port (e.g.\ \code{tcp/443}) & sockets / SG / LB listeners \\
+$\pi$ & L7 protocol (\code{ssh},\code{http},\code{tls},\code{dns}) & service identity / CPE \\
+$\nu$ & protocol version / \textbf{ALPN} (\code{http/1.1},\code{h2},\code{h3}) & negotiated per hop \\
+$\delta$ & direction (inbound-listen / outbound) & path role \\
+\bottomrule
+\end{tabular}
+\end{center}
+The $\kappa$ field is exactly the CVSS \textbf{Attack Vector} (\code{AV}) base metric,
+and its four values are CVSS's own: $N$ = Network (remotely exploitable---the internet
+counts), $A$ = Adjacent (same local network only), $L$ = Local (needs a shell or local
+session), $P$ = Physical (needs to touch the device). The other fields ($\tau,\pi,\nu$)
+are \emph{not} in the CVSS vector---they come from the deployment and the CVE details.
 
-Perfect data-flow analysis is impossible at this scale, so the method deliberately over-counts, using two kinds of evidence:
-\begin{itemize}[leftmargin=1.5em]
-\item \textbf{Kubernetes estates:} the union of the flows the NetworkPolicies allow (the declared graph) and the flows actually seen by CNI or mesh telemetry, such as Cilium Hubble or Istio flow logs (the observed graph). The two kinds of evidence do different jobs. Observed flows only ever \emph{add} edges the declared picture missed: seeing traffic proves a path exists, but not seeing traffic never proves one does not, because nothing stops a new flow from starting tomorrow. Only enforcement can rule paths out---policies that cover every workload, with default-deny behind them. Where NetworkPolicies are missing or default-allow, every path \rfckw{must} be assumed open, and the permissive posture is itself a finding.
-\item \textbf{Non-Kubernetes estates:} the union of the flows that firewall and security-group rules allow (the declared graph) and the flows actually seen in VPC flow logs joined with host-level socket telemetry---which process held the socket, which peers it exchanged data with (the observed graph)---giving per-process flow edges rather than bare IP adjacency. The same division of labor applies: observed flows add edges the rules missed, and only deny-by-default firewall and security-group rules can rule paths out. Where the rules are default-allow or overly broad, every path \rfckw{must} be assumed open, and the permissive posture is itself a finding.
+\medskip
+Recall the two sets from Section~\ref{sec:model}: $X(v)$ is the \textbf{required surface}---the
+descriptors the exploit needs in order to fire---and $E(a)$ is the \textbf{exposed
+surface}---the descriptors the internet can actually deliver to the component.
+Reachability is just whether they overlap, $E(a)\cap X(v)\neq\varnothing$. Two
+descriptors \emph{match} when they agree on every field; a field set to the wildcard
+$\star$ matches \emph{any} value.
+
+\paragraph{What the wildcard is for.} Every descriptor has the five fields above, but
+you cannot always fill them all in---e.g.\ a CVE write-up may never state which
+protocol \emph{version} is affected. That unknown field is set to $\star$ rather than
+guessed. Since $\star$ matches anything, it makes an overlap \emph{more} likely, so a
+missing fact safely errs toward IRV (the fail-safe of Section~\ref{sec:failsafe}); a field is pinned to a
+specific value only when there is evidence for it.
+
+\medskip
+\noindent With the fields recalled---$\kappa$ = attack-vector class (the CVSS
+\code{AV}), $\pi$ = L7 protocol, $\nu$ = protocol version / ALPN---the one intersection
+test quietly does three jobs at once:
+\begin{itemize}[leftmargin=1.6em]
+\item \textbf{AV gating (the $\kappa$ field) is free.} An \code{AV:L} (local-only) vuln
+  needs $X(v)=\{\kappa{=}L\}$. But $E(a)$ is the \emph{internet}-exposed surface, so it
+  only ever contains $\kappa{=}N$ (network) descriptors. The two can never share a
+  $\kappa$, so $E(a)\cap X(v)=\varnothing \Rightarrow$ \textbf{NIRV, regardless of how
+  exposed the asset is.} No special case---the algebra does it. (Same for \code{AV:A}
+  adjacent and \code{AV:P} physical.)
+\item \textbf{Protocol gating is the $\pi$ field.} An \code{ssh} exploit
+  ($X(v)$ has $\pi{=}\code{ssh}$) is NIRV unless \code{ssh} is on the exposed surface
+  $E(a)$---even if the box exposes HTTP.
+\item \textbf{ALPN gating is the $\nu$ field.} An HTTP/2-only exploit
+  ($\pi{=}\code{http},\ \nu{=}\code{h2}$) is NIRV if $E(a)$ carries only
+  \code{http/1.1}.
 \end{itemize}
-Taint then spreads by simple repetition: start with the Phase A entry points, mark any asset that receives data from a marked asset, and repeat until nothing new gets marked. Because the flow evidence is collected continuously, the graph---and with it the IRV determination---rebuilds itself as the architecture changes, consistent with the automation posture of \code{VDR-CSO-ADT}.
 
-Phase B is the method's one wholesale pruning step, and it is built to err on the safe side:
-\begin{itemize}[leftmargin=1.5em, nosep]
-\item \textbf{No permitted path means NIRV, wholesale.} If no path \emph{can} reach asset $a$ from any entry point---an isolated batch cluster behind default-deny policy, an air-gapped management enclave, a database whose only permitted client is an untainted internal tool---then no internet payload can arrive there, and \emph{every} vulnerability on $a$ is NIRV. The claim \rfckw{must} rest on one of two things: enforcement that denies the paths (default-deny rules covering the asset, with the policy snapshots as evidence), or an explicit operator attestation that the flow map is complete and no path in it leads to the asset. Quiet telemetry alone is never sufficient: watching the flow logs for a month and seeing nothing arrive proves only that nothing arrived that month. A monthly batch job, a failover path, or a disaster-recovery runbook can produce its first-ever flow the day after the window closes.
-\item \textbf{A path is not a conviction.} Taint means internet-derived data reaches the asset in some form---not that every flaw on the asset can be triggered by it. Tainted assets go on to the per-vulnerability filters of Phase C.
-\item \textbf{Direction and age matter.} Edges point one way: an asset that only \emph{pulls} data from a tainted source still receives that data, so it is tainted; an asset that only \emph{pushes} data to one is not. And observed flows \rfckw{must} carry a bounded observation window, so flows that no longer exist age out of the graph.
-\end{itemize}
+The $\pi$ field is where the classic interior false positive dies. EternalBlue---the
+SMB flaw behind WannaCry---gets flagged by a scanner on an interior Windows server
+that internet-derived data genuinely reaches. But the flow telemetry shows that the
+only thing arriving on its inbound edges is PostgreSQL database traffic from the
+application tier: $\pi{=}\code{smb}\notin E(a)$. EternalBlue fires only when the
+machine \emph{parses SMB messages}, so $X(v)=\{\pi{=}\code{smb}\}$, the intersection is
+empty, and the finding is excludable---with the flow records as the audit evidence.
+The exclusion polices itself in both directions. It rests on continuously observed
+flows: if someone later mounts a file share on that server and an SMB edge appears,
+the exclusion collapses on the next derivation. And it is narrow by construction: the
+same server's flaws in \emph{PostgreSQL} parsing stay IRV, and an upload service that
+accepts arbitrary files excludes nothing, because ``arbitrary files'' matches every
+parser's trigger surface. The CVE-to-surface mapping comes from enrichment data
+(affected component, CPE, vendor advisory); where the required surface cannot be
+determined, $X(v)$ wildcards to $\star$ and the vulnerability stays IRV.
 
-\begin{plain}
-Phase B follows the data, not the network diagram. Wherever internet-originated data flows --- requests, queued messages, uploaded files, replication --- every system it touches stays in scope. A system drops out entirely, flaws and all, only when something actually rules the paths out: deny-by-default rules that cover it, or the operator's signed statement that the flow map is complete and no path leads there. ``We watched for a month and saw nothing'' is not enough on its own --- quiet logs prove the past, not the future.
-\end{plain}
-
-\section{Phase C: Per-Vulnerability Filters on Payload-Exposed Assets}
-\label{sec:phasec}
-Phase C brings back precision on tainted assets, honoring the \code{FRD-IRV} note that ``internet-reachability applies only to the specific vulnerable machine-based information resources processing the payload.'' Each filter is a deterministic exclusion with a defined evidence source and a matching VEX justification (per the companion paper, \emph{A CycloneDX VEX Profile for FedRAMP Rev5 VDR/VER}). When evidence is missing or unclear, each filter defaults to ``applies''---the vulnerability stays IRV.
-
-\begin{plain}
-Phase B only says internet data reaches the machine. Phase C asks, for each individual flaw on that machine: could that data actually set \emph{this} flaw off? Three checks. Does the vulnerable code ever run at all (Filter 1)? Does the data that arrives even come in the format that triggers this flaw (Filter 2)? And is this the kind of bug that travels in data, or one that needs a direct connection from the attacker (Filter 3)? Each check needs solid evidence to cross a flaw off; without it, the flaw stays on the internet-reachable list.
-\end{plain}
-
-\subsection{Filter 1: Execution Evidence}
-The strongest and most general filter asks a blunt question: can the vulnerable code run at all? Two tiers of evidence:
+\subsection{Execution Evidence: The Zeroth Factor}
+\label{sec:exec-evidence}
+A descriptor intersection can only fire in code that runs. Execution evidence
+therefore zeroes a finding regardless of any surface computation, in two tiers:
 \begin{itemize}[leftmargin=1.5em, nosep]
 \item \textbf{The package never runs:} it is installed (so scanners flag it), but no process from it has run during the observation window---build leftovers, disabled agents, unused OS components. VEX justification: \code{code\_not\_present}.
 \item \textbf{The vulnerable function never runs:} the library loads, but runtime telemetry (eBPF-based library and symbol tracing, for example) shows the vulnerable function is never called. VEX justification: \code{code\_not\_reachable}.
 \end{itemize}
 (The corresponding CISA status-justification labels, under the companion profile's optional crosswalk, are \code{vulnerable\_code\_not\_present} and \code{vulnerable\_code\_not\_in\_execute\_path} respectively.)
-This filter works for every class of flaw---injection, parser bugs, protocol bugs alike---which makes it the highest-yield filter to automate. It also generalizes Gate 5: Gate 5 only removes \emph{direct} exposure for processes that listen on nothing, while execution evidence rules out triggering entirely, no matter how tainted data arrives.
+This evidence works for every class of flaw---injection, parser bugs, protocol bugs alike---which makes it the highest-yield exclusion to automate. It also generalizes Gate 5: Gate 5 only removes \emph{direct} exposure for processes that listen on nothing, while execution evidence rules out triggering entirely, no matter how the data arrives.
 
-\subsection{Filter 2: Trigger-Surface Matching}
-Every vulnerability needs its trigger delivered in a specific form---a protocol, a file format, an API endpoint. A flaw in a PDF parser cannot be set off by a JPEG; a flaw in Windows file sharing cannot be set off by database traffic. That required form is the vulnerability's \emph{trigger surface}. Phase B already knows more than ``these two machines talk'': the flow telemetry records \emph{what} is actually delivered on each edge (protocol, port, and often the application protocol, from mesh or eBPF-level classification). Filter 2 checks the two against each other:
-\begin{quote}
-\textbf{Exclusion criterion.} Vulnerability $v$ on tainted asset $a$ is excluded if the trigger surface required by $v$ has an empty intersection with the set of data formats and protocols actually delivered on $a$'s inbound tainted edges.
-\end{quote}
-EternalBlue---the SMB flaw behind WannaCry---makes the exclusion concrete. A scanner flags it on an interior Windows server, and Phase B confirms the server is tainted: internet-derived data really does reach it. But the flow telemetry shows that the only thing arriving on its tainted edges is PostgreSQL database traffic from the application tier. EternalBlue fires only when the machine \emph{parses SMB messages}, and no internet-derived data ever arrives as SMB. The vulnerable code never hears from the internet in the only language it listens to, so the finding is excludable---and the flow records that show it are the audit evidence. The exclusion polices itself in both directions. It rests on continuously observed flows: if someone later mounts a file share on that server and an SMB edge appears, the exclusion collapses on the next derivation. And it is narrow by construction: the same server's flaws in \emph{PostgreSQL} parsing stay IRV, and an upload service that accepts arbitrary files excludes nothing, because ``arbitrary files'' matches every parser's trigger surface.
-
-The CVE-to-surface mapping comes from enrichment data (affected component, CPE, vendor advisory). Where the required surface cannot be determined, \textbf{the filter assumes any surface could trigger the flaw, and the vulnerability stays IRV}. That default is the safety property again: incomplete knowledge widens the IRV set instead of narrowing it.
-
-\subsection{Filter 3: Trigger-Mechanism Class}
-The last filter sorts vulnerability classes by \emph{how the trigger arrives}, keyed on CWE (available from NVD enrichment of CVE records):
+\subsection{Trigger Mechanism: Content-Triggered vs.\ Peer-Bound}
+\label{sec:mechanism}
+The descriptor a vulnerability requires depends on \emph{how its trigger arrives}, and vulnerability classes (keyed on CWE, available from NVD enrichment) split into two families:
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{Content-triggered} flaws are set off by \emph{what the data says}, so they travel wherever the data travels. The canonical example is SQL injection (CWE-89): the attacker types a malicious string into a public search box, the web application passes that string to the internal database, and the database executes it. The attacker never connects to the database---their \emph{text} does the work, and text survives every hop. Log4Shell worked the same way (CWE-917 expression-language injection): a booby-trapped string, logged by some service deep in the stack, triggered code execution on machines the attacker could not even name, let alone connect to. The same logic covers OS command injection (CWE-78), deserialization of untrusted data (CWE-502), memory corruption in file and format parsers (CWE-119 buffer overflow, CWE-787 out-of-bounds write---the malicious PDF or image that exploits whatever eventually opens it), XML external entity injection (CWE-611), server-side request forgery (CWE-918), and path traversal (CWE-22). \textbf{Content-triggered vulnerabilities stay IRV wherever tainted data flows, and can never be excluded by class} (Filters 1 and 2 may still exclude them). This is exactly FedRAMP's SQL-injection and Log4Shell concern.
-\item \textbf{Peer-bound} flaws are set off by \emph{holding the connection}---and a connection, unlike data, cannot be forwarded. Heartbleed is the canonical example: to exploit it, the attacker's own machine had to open a TLS session with the vulnerable server and send malformed heartbeat messages over that session. regreSSHion (CVE-2024-6387) is another: the attacker must connect directly to the SSH port and race its login timer. The class covers flaws in the mechanics of the connection itself: the TLS or protocol handshake that opens it, the service's login check (CWE-287 improper authentication and CWE-306 missing authentication for a critical function, on the listening service itself), and connection-flood denial of service. The exclusion is justifiable for a physical reason, not a judgment call: when the web tier needs something from an interior server, it does not hand the attacker its connection. It opens a \emph{new} connection of its own---its own handshake, its own credentials---and the attacker's data rides inside only as cargo. The attacker never holds a connection to the interior machine, so a flaw that lives in the connection mechanics has nothing to fire through. \textbf{Peer-bound vulnerabilities are therefore excludable on assets that are not directly exposed} ($\lnot E(a)$): the only machines that can connect to an interior listener are the interior systems Phase B identified, and none of them is an internet source. The exclusion never applies to machines the internet \emph{can} connect to---Heartbleed on the public load balancer is directly exposed and stays IRV.
+\item \textbf{Content-triggered} flaws are set off by \emph{what the data says}, so their required descriptor rides the data---and data survives every hop. The canonical example is SQL injection (CWE-89): the attacker types a malicious string into a public search box, the web application passes that string to the internal database, and the database executes it. The attacker never connects to the database---their \emph{text} does the work, and text survives every hop. Log4Shell worked the same way (CWE-917 expression-language injection): a booby-trapped string, logged by some service deep in the stack, triggered code execution on machines the attacker could not even name, let alone connect to. The same logic covers OS command injection (CWE-78), deserialization of untrusted data (CWE-502), memory corruption in file and format parsers (CWE-119 buffer overflow, CWE-787 out-of-bounds write---the malicious PDF or image that exploits whatever eventually opens it), XML external entity injection (CWE-611), server-side request forgery (CWE-918), and path traversal (CWE-22). \textbf{Content-triggered descriptors propagate to every downstream surface that receives the data un-neutralized}---which is exactly why the Sanitize operation of Section~\ref{sec:propagation} is the one transfer function that stops them, and exactly FedRAMP's SQL-injection and Log4Shell concern.
+\item \textbf{Peer-bound} flaws are set off by \emph{holding the connection}---and a connection, unlike data, cannot be forwarded. Heartbleed is the canonical example: to exploit it, the attacker's own machine had to open a TLS session with the vulnerable server and send malformed heartbeat messages over that session. regreSSHion (CVE-2024-6387) is another: the attacker must connect directly to the SSH port and race its login timer. The class covers flaws in the mechanics of the connection itself: the TLS or protocol handshake that opens it, the service's login check (CWE-287 improper authentication and CWE-306 missing authentication for a critical function, on the listening service itself), and connection-flood denial of service. In descriptor terms, the required surface of a peer-bound flaw includes ``the attacker is the connection peer''---a descriptor no internal leg ever delivers, for a physical reason: when the web tier needs something from an interior server, it does not hand the attacker its connection. It opens a \emph{new} connection of its own---its own handshake, its own credentials---and the attacker's data rides inside only as cargo. \textbf{Peer-bound vulnerabilities are therefore excludable on assets with no reachable direct path ($R(a)=0$)}: the only machines that can connect to an interior listener are interior systems, and none of them is an internet source. The exclusion never applies to machines the internet \emph{can} connect to---Heartbleed on the public load balancer stays IRV.
 \end{itemize}
-Two cautions keep this filter honest. First, stored XSS is content-triggered: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by the content of the data and follow it wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. The sound unit of exclusion is the combination in Equation~\ref{eq:decision}---class, position, and taint together---and any vulnerability whose CWE is missing or fits neither group defaults to content-triggered and stays IRV.
+Two cautions keep this split honest. First, stored XSS is content-triggered: the script arrives from the internet and is faithfully forwarded through the stack, even though it finally fires in a browser. ``XSS is client-side, therefore excluded'' is wrong. Second, not all denial of service is peer-bound: ReDoS and decompression bombs are triggered by the content of the data and follow it wherever it flows. A blanket exclusion of ``XSS and DoS'' is exactly the reckless evaluation \code{VER-EVA-ELX} warns against. Any vulnerability whose CWE is missing or fits neither family defaults to content-triggered and stays IRV.
+
+\begin{plain}
+Flaws split into two kinds by how the attack arrives. Some are set off by the
+\emph{content} of the data --- a poisoned string, a booby-trapped file. Those travel:
+whatever your systems pass along, the poison rides inside, so the flaw is in play
+wherever the data goes (unless something along the way provably cleans it --- next
+section). Others require the attacker to be the one \emph{holding the connection} ---
+like Heartbleed. Those don't travel: your app tier calling your database opens its own
+fresh connection, and the attacker isn't on it. So connection-type flaws on interior
+machines can come off the list; content-type flaws can't be excluded by their class
+alone --- and when in doubt, a flaw is treated as the traveling kind.
+\end{plain}
+
+\section{Where $E(a)$ Comes From: Surface Propagation}
+\label{sec:propagation}
+The exposed surface is the internet's full descriptor universe $D_\top$ pushed through
+every hop on the path to $a$. Each hop $h_i$ is a \textbf{transfer function}
+$T_i:2^D\to 2^D$:
+\begin{keybox}
+\[
+E(a)\;=\;\big(T_k\circ T_{k-1}\circ\cdots\circ T_1\big)(D_\top)
+\]
+\end{keybox}
+\begin{plain}
+Start by assuming the internet can send this component \emph{anything} ($D_\top$ ---
+every port, protocol, and version). Then follow the traffic through each device on the
+path --- load balancer, firewall, proxy --- and at each one, cross off whatever it
+blocks and rewrite whatever it changes (e.g.\ an HTTP/2 request the load balancer
+forwards as HTTP/1.1). Whatever is \emph{still standing} when it reaches the component is
+its real exposed surface $E(a)$. It's like water pressure at the tap: what comes out
+depends on every valve between the reservoir and your faucet, not just whether the
+reservoir is full.
+\end{plain}
+Four hop operations cover everything:
+\begin{enumerate}[leftmargin=1.8em]
+\item \textbf{Filter} --- drop descriptors whose $\tau/\pi$ the hop does not forward.
+  \emph{(Gates 1, 2, 4: routing, SG CIDR scope, ingress binding.)}
+\item \textbf{Translate} --- rewrite a field: TLS termination
+  $\pi:\code{https}\!\mapsto\!\code{http}$; NAT on $\tau$; \textbf{ALPN downgrade}
+  $\nu:\code{h2}\!\mapsto\!\code{http/1.1}$.
+\item \textbf{Authenticate} --- an edge proxy (IAP, AWS Verified Access) that logs the
+  visitor in \emph{before} traffic reaches the component rewrites the attack-vector
+  field $\kappa:N\!\mapsto\!A$---i.e.\ CVSS \code{MAV:A} (adjacent, not network). The
+  $\kappa$ intersection then excludes the finding automatically, with no separate auth
+  rule needed---provided the boundary qualifies under Gate~3's role test. Only auth enforced \emph{ahead of} the component counts; the proxy's own
+  pre-auth surface keeps $\kappa{=}N$ and stays IRV.
+\item \textbf{Sanitize} --- a component that validates or sanitizes internet-sourced
+  input before handing data onward strips the \emph{content-triggered} descriptors it
+  neutralizes from the surface it propagates downstream: parameterized queries remove
+  SQL-injection delivery (CWE-89), schema validation removes deserialization payloads
+  (CWE-502), output encoding removes stored-XSS delivery. Unlike the first three
+  operations, which act on network hops, this one acts at a component boundary on the
+  \emph{internal} legs of the path---and it is earned only by evidence
+  (Section~\ref{sec:sanitization}).
+\end{enumerate}
+So the five gates are not a separate method---they are \emph{how you compute} the
+first hops of $E(a)$---and the internal legs, the tier-to-tier plumbing that relays
+content onward, are where Sanitize applies.
+
+\paragraph{Enumerating the internal legs.} Which internal edges exist---which
+components hand data to which---is itself an evidence question, and the discipline is
+the same one the gates use:
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Kubernetes estates:} the union of the flows the NetworkPolicies allow (the declared graph) and the flows actually seen by CNI or mesh telemetry, such as Cilium Hubble or Istio flow logs (the observed graph). The two kinds of evidence do different jobs. Observed flows only ever \emph{add} edges the declared picture missed: seeing traffic proves a path exists, but not seeing traffic never proves one does not, because nothing stops a new flow from starting tomorrow. Only enforcement can rule paths out---policies that cover every workload, with default-deny behind them. Where NetworkPolicies are missing or default-allow, every edge \rfckw{must} be assumed present, and the permissive posture is itself a finding.
+\item \textbf{Non-Kubernetes estates:} the union of the flows that firewall and security-group rules allow (the declared graph) and the flows actually seen in VPC flow logs joined with host-level socket telemetry---which process held the socket, which peers it exchanged data with (the observed graph)---giving per-process flow edges rather than bare IP adjacency. The same division of labor applies: observed flows add edges the rules missed, and only deny-by-default firewall and security-group rules can rule paths out.
+\end{itemize}
+Because the flow evidence is collected continuously, the edge inventory---and with it
+every downstream surface---rebuilds itself as the architecture changes, consistent
+with the automation posture of \code{VDR-CSO-ADT}. Three properties keep the
+propagation honest:
+\begin{itemize}[leftmargin=1.5em, nosep]
+\item \textbf{No edge at all means the surface is empty, wholesale.} If no permitted path---direct or relayed---leads to asset $a$ from any entry point (an isolated batch cluster behind default-deny policy, an air-gapped management enclave, a database whose only permitted client never receives internet data), then $E(a)=\varnothing$ and \emph{every} vulnerability on $a$ is NIRV. The claim \rfckw{must} rest on one of two things: enforcement that denies the paths (default-deny rules covering the asset, with the policy snapshots as evidence), or an explicit operator attestation that the flow map is complete and no path in it leads to the asset. Quiet telemetry alone is never sufficient: watching the flow logs for a month and seeing nothing arrive proves only that nothing arrived that month. A monthly batch job, a failover path, or a disaster-recovery runbook can produce its first-ever flow the day after the window closes.
+\item \textbf{An edge is not a conviction.} A live internal edge delivers descriptors, not verdicts: whether a particular flaw can fire still depends on the intersection with $X(v)$---the format arriving on the edge, the mechanism class, and any verified sanitization along the way.
+\item \textbf{Direction and age matter.} Edges point one way: an asset that only \emph{pulls} data from an internet-touched source still receives that data, so its surface grows; an asset that only \emph{pushes} data to one does not. And observed flows \rfckw{must} carry a bounded observation window, so edges that no longer exist age out of the inventory.
+\end{itemize}
+
+\begin{plain}
+To know what the internet can deliver to an interior machine, follow the data, not the
+network diagram: every hand-off between your own systems --- requests, queued
+messages, uploaded files, replication --- carries the internet's content one hop
+further, minus whatever each hop provably blocks, rewrites, or cleans. A machine drops
+out entirely, flaws and all, only when something actually rules every path out:
+deny-by-default rules that cover it, or the operator's signed statement that the flow
+map is complete and no path leads there. ``We watched for a month and saw nothing'' is
+not enough on its own --- quiet logs prove the past, not the future.
+\end{plain}
+
+\section{Sanitization as Surface Termination}
+\label{sec:sanitization}
+Production applications do not pass raw internet input to their datastores and
+workers. They bind query parameters instead of concatenating strings. They validate
+uploads against schemas, check types and bounds, encode output, reject what does not
+parse. This is not a security exotic---it is what competent software does, taught in
+every secure-coding curriculum and enforced by every mature code-review culture. The
+maximalist reading of \code{FRD-IRV} treats all of that engineering as if it did not
+exist: data flowed downstream, therefore every downstream flaw is reachable. This
+section makes the engineering count---as \emph{evidence}, not as assumption.
+
+The mechanics come straight from Section~\ref{sec:propagation}. A component that
+sanitizes internet-sourced input before handing data onward applies a Sanitize
+transfer function on the internal leg: the content-triggered descriptors it
+neutralizes are removed from every downstream component's exposed surface $E$. The
+granularity is per vulnerability class, and that precision matters in both
+directions. Parameterized queries strip CWE-89 delivery from the edge to the
+database---and say nothing about CWE-502 deserialization on the same edge. Each
+class's exclusion is earned separately, which is what keeps the claim honest: the
+evidence establishes the specific neutralization, not a general aura of carefulness.
+
+\begin{quote}
+\textbf{Exclusion criterion.} A content-triggered vulnerability $v$ (class
+$c$) on downstream asset $a$ may be excluded from transitive reachability if
+and only if every internal edge that carries internet-derived data toward $a$
+passes through a component whose handling of that data neutralizes class $c$,
+as verified by evidence: code-review records covering the input-handling
+paths, SAST results showing the class is guarded on those paths, DAST results
+or unit/integration tests exercising the sanitization against class-$c$
+payloads. Collecting and validating that evidence is assessment work: the
+3PAO gathers it during assessment from the provider's development and
+continuous-monitoring artifacts, and the authorizing agency or FedRAMP may
+request the same evidence at any time.
+\end{quote}
+
+This is not an invented discount. The \code{VER-EVA-EIR} interception note quoted in
+Section~\ref{sec:position} names the preventions that end reachability---``intercept,
+inspect, filter, \emph{sanitize}, reject, or otherwise deflect''---and concludes that
+``once this prevention is in place the vulnerability should no longer be considered an
+internet-reachable vulnerability.'' Sanitization is on FedRAMP's own list, and the
+note's conclusion is FedRAMP granting exactly this exclusion. What the rules leave
+open is the evidence bar, and that is this paper's contribution: the claim is
+auditable, not asserted. ``We sanitize our inputs'' earns nothing; a code-review
+record over the data-access layer, a SAST run scoped to the input-handling paths, a
+test suite that fires class-$c$ payloads at the boundary and shows them neutralized
+---each is an artifact an assessor can examine and re-run.
+
+Nor does the evidence require new machinery, because most of the stream already
+flows. FedRAMP continuous monitoring requires regular web-application scanning---DAST
+by another name---and those scans do precisely this work: they fire injection,
+traversal, and malformed-content payloads at the running application and report what
+got through. A clean recurring web-application scan over the endpoints that feed a
+downstream tier \emph{is} sanitization evidence for the classes it exercises,
+refreshed on the cadence FedRAMP already mandates. SAST and unit tests ride the
+provider's existing development lifecycle the same way. The assessor's job is
+collection and judgment---scoping which scans and tests cover which internal edges
+---not the invention of a parallel documentation regime. And the same economy says
+where the scrutiny should concentrate: on the components that process data from
+\emph{unauthenticated} users. The login page, the public API, the upload endpoint,
+and the parsers their raw input feeds see the internet's content before any
+sanitization has had its chance; the tiers behind them see only what survives. An
+assessment that verifies the sanitization at that first rank of components has
+verified the estate where it matters most.
+
+The fail-safe holds with no exceptions. No evidence, no exclusion: an undemonstrated
+sanitization claim leaves the descriptors propagating intact, and the finding stays
+IRV. Evidence gaps widen the IRV set, never shrink it. The claim also carries a
+revocation discipline: sanitization evidence attaches to the code paths it examined,
+so a major refactor of the input-handling tier re-opens the question, the same way a
+perimeter change re-opens a WAF claim. Continuous integration makes this cheap---the
+unit and integration tests that demonstrate the sanitization run on every build, so
+the evidence re-validates itself at exactly the cadence the code changes.
+
+One line must be drawn carefully: this section is about sanitization \emph{in the
+application's own code}, not at the perimeter. A WAF also sanitizes---at a bolt-on
+device in front of the stack, with failure modes (signature bypass, rule toggles,
+detection-only mode) that Section~\ref{sec:waf} examines in detail, which is why that
+section recommends attesting WAF mitigations rather than reclassifying on them.
+In-code sanitization is different in kind: it is the component's own behavior, shipped
+with the application, versioned with it, and exercised by its test suite. When
+verified, it earns the NIRV call directly.
+
+\begin{plain}
+Your application almost certainly cleans what the internet sends before passing it
+along --- that is what parameterized queries and input validation are. FedRAMP's own
+rules say a dangerous payload stopped before the vulnerable code sees it makes the
+flaw not internet-reachable, and ``sanitize'' is on FedRAMP's list of ways to stop it.
+So the auditor's job is not to presume every downstream flaw reachable --- it is to
+collect the proof of cleaning: the web-application scans FedRAMP already requires,
+the code reviews, the tests. Where the proof holds, the downstream flaw comes off the
+urgent clock, and the audit's attention goes where it should --- the components that
+handle input from strangers who never logged in. Where the proof isn't there, the
+flaw stays on the clock: the cautious default always wins a tie.
+\end{plain}
+
+\section{The Steady State: Reachability Converges to Accessibility}
+\label{sec:steady-state}
+Put the pieces together and the operational picture simplifies. The fail-safe says a
+finding stays IRV absent sanitization evidence---but the evidence collection is not
+an optional extra a provider might skip. The 3PAO collects it during assessment, and
+the recurring web-application (DAST) scanning that continuous monitoring requires
+regenerates it on a standing cadence, exercising the live application's input
+handling against exactly the payload classes the exclusions depend on. A conforming
+provider therefore operates with \emph{standing} verification that its
+input-handling tiers neutralize the common content-triggered classes. In that steady
+state, the IRV set converges to the internet-accessible set: the entry points
+themselves, and the components that process unauthenticated internet input before
+sanitization has had its chance. For most reporting scenarios, the two lists
+coincide---not because reachability and accessibility mean the same thing (they do
+not, and Section~\ref{sec:position} keeps the vocabulary apart), but because the
+standing evidence keeps closing the gap that the transitive definition opens.
+
+The convergence is conditional, and the condition is exactly what threat
+intelligence monitors. Every sanitization exclusion is a claim about \emph{known}
+trigger techniques: parameterized queries defeat the known forms of SQL injection,
+schema validation defeats the known deserialization gadgets, the DAST scan fires the
+payloads the industry knows to fire. A zero-day that defeats the known
+techniques---one that passes most sanitization approaches, WAF configurations, and
+other protections at once---dissolves those claims wholesale. Log4Shell is the
+canonical case. Before its disclosure in December 2021, no mainstream sanitization
+guidance treated \code{\$\{jndi:...\}} inside a loggable string as dangerous, so no
+sanitization evidence collected before that day said anything about it; the moment
+the technique published, every downstream component whose logs could carry
+attacker-controlled strings became reachable in exactly the way FedRAMP's definition
+contemplates. That is what the broad wording of \code{FRD-IRV} is for: it describes
+the posture a provider must be able to \emph{snap to}, not the posture it lives in.
+
+The obligation that follows is substantive, not clerical. Sanitization-based NIRV
+calls are revocable, and the revocation trigger \rfckw{must} be wired to the
+provider's threat-intelligence inputs---CISA KEV additions, vendor advisories, EPSS
+spikes, exploit publications. Whether the provider then re-labels the affected
+findings IRV in its internal tracking is its own documentation choice; the model
+does not quibble over ledger mechanics. What the event demands is due diligence:
+sweep for indicators of compromise (IoC) across every component the suspect data
+touches, implement the known mitigation techniques, and monitor continuously to see
+whether \emph{additional} mitigations are required until a patch exists and is
+applied---because under a live technique, the mitigations themselves evolve.
+Log4Shell made that concrete: the first WAF rules blocking
+\code{\$\{jndi:ldap://...\}} were bypassed within days by obfuscated variants, and
+every vendor spent December 2021 rewriting patterns in a game of whack-a-mole
+(Section~\ref{sec:waf} tells the story)---when no patch is in place, yesterday's
+mitigation is only a hypothesis about tomorrow's traffic. Each suspended exclusion
+is re-earned only with new evidence that the sanitization holds against the new
+technique---an updated guard, a test that fires the new payload and shows it inert,
+a fresh scan---and the re-evaluations and mitigations are reported under
+\code{VER-RPT-VDT} like any other. This is the same revocation discipline the model
+already applies when a refactor touches the input-handling tier or a perimeter
+change touches a WAF claim; the only difference is that the trigger arrives from
+outside the provider's walls.
+
+\begin{plain}
+Day to day, the internet-reachable list ends up looking like the internet-facing
+list --- because the auditors and the required scans keep standing proof that the
+cleaning between your front door and your back tiers actually works. But that calm
+depends on attackers using known tricks. When a new trick drops that beats
+everyone's cleaning --- Log4Shell was exactly this --- assume it travels: treat the
+affected flaws as urgent everywhere the data flows, hunt for signs of compromise,
+put mitigations in, and keep adjusting them --- Log4Shell's first WAF rules were
+dodged within days, and defenders had to keep rewriting them until patches landed.
+How you label all this in your own tracker is your call; doing the work isn't.
+FedRAMP's sweeping definition is written for that day, not for every day.
+\end{plain}
+
+\section{The Model, Worked}
+\label{sec:examples}
+\begin{enumerate}[leftmargin=1.8em]
+\item \textbf{\code{AV:L} on an internet-facing web host.}\\
+  $X(v)=\{\kappa{=}L\}$, \quad $E(a)\subseteq\{\kappa{=}N\}$
+  \quad$\Rightarrow\quad \varnothing \Rightarrow$ \textbf{NIRV}.
+\item \textbf{\code{sshd} CVE; public host; SSH open only to the corporate
+  network.}\\
+  The host has a public IP and serves HTTPS to the world on \code{tcp/443}, but its
+  security group allows \code{tcp/22} \emph{only} from the corporate range
+  \code{w.x.y.z/24}. Building $E(a)$: start from $D_\top$ (all traffic); the firewall
+  hop drops \code{tcp/22} for every source outside \code{w.x.y.z/24}---which is the
+  entire internet---while \code{tcp/443} survives. So the SSH descriptor is not on the
+  exposed surface: $\pi{=}\code{ssh}\notin E(a)$.\\
+  The exploit needs SSH: $X(v)=\{\pi{=}\code{ssh}\}$. Since $E(a)$ has no \code{ssh}
+  entry, $E(a)\cap X(v)=\varnothing \Rightarrow$ \textbf{NIRV}---even though the box
+  itself is plainly ``internet-facing'' (its web port is wide open). The reachable
+  \emph{surface} and the reachable \emph{box} are different things, which is the whole
+  point of scoring per finding.
+\item \textbf{HTTP/2 ``rapid-reset''-style CVE; backend behind a load balancer that
+  speaks \code{h2} to clients but \code{http/1.1} to the backend.}\\
+  The load balancer terminates the client's HTTP/2 connection and opens a fresh
+  \code{http/1.1} connection to the backend behind it. Building $E(\text{backend})$: the
+  load-balancer hop rewrites the version field, $\nu:\code{h2}\!\mapsto\!\code{http/1.1}$,
+  so \code{h2} never reaches the backend---$\nu{=}\code{h2}\notin E(\text{backend})$.\\
+  The exploit needs HTTP/2: $X(v)=\{\nu{=}\code{h2}\}$. No overlap $\Rightarrow$
+  \textbf{NIRV for the backend}, because the flaw can only be triggered with a protocol
+  version the backend never actually receives.\\[3pt]
+  \emph{What about the load balancer itself?} It \emph{does} terminate \code{h2}, so for
+  that component $\code{h2}\in E(\text{lb})$ and the same CVE is \textbf{IRV}. But that is
+  only \emph{your} finding to remediate if you run the load balancer's software (e.g.\ a
+  self-managed nginx/Envoy). On a \textbf{cloud-managed} load balancer (AWS ALB, GCP
+  external LB, Azure Front Door) the data-plane software is the provider's
+  responsibility, not yours---so it never appears in your scan in the first place.
+  Either way the per-component split is correct: the flaw lives where \code{h2} is
+  actually spoken.\\[3pt]
+  \emph{Precondition:} the backend NIRV conclusion holds only if the load balancer is the
+  \textbf{sole path} to that backend port---exactly what a backend security group
+  locked to the load balancer's source guarantees. If the backend also accepts a
+  \emph{direct} path on that port, an attacker can send \code{h2} straight to it, so
+  $\code{h2}\in E(\text{backend})$ (the surface is the \emph{union} over all paths) and
+  the finding is IRV again.
+\item \textbf{SQL injection on a private-subnet database behind the application
+  tier.}\\
+  FedRAMP's canonical case. The database has no public IP, no internet-gateway route,
+  and no fronting load balancer: $R(\text{db})=0$, so no connection channel exists.
+  But the application tier receives internet requests and queries the database with
+  data derived from them, so under the maximalist reading every CWE-89 finding on the
+  database is IRV.\\
+  Now apply the Sanitize hop. The assessment verifies that every code path from
+  request data to SQL goes through parameterized queries: code review of the
+  data-access layer on record, SAST clean for CWE-89 on those paths, and the
+  recurring continuous-monitoring web-application scans firing injection payloads at
+  the API and showing them handled inert. The internal edge
+  app\,$\rightarrow$\,db therefore strips the CWE-89 descriptors:
+  $X(v)\cap E(\text{db})=\varnothing \Rightarrow$ \textbf{NIRV}, with the collected
+  evidence bundle as the audit artifact.\\[3pt]
+  The precision cuts both ways. The same database's CWE-502 finding in a replication
+  listener is untouched by the CWE-89 evidence and stays IRV unless separately
+  excluded. And where the evidence cannot be collected, the maximalist answer stands:
+  IRV, full stop---not as a penalty, but as the fail-safe doing its job.
+\end{enumerate}
+
+\section{Plugging into PAIN}
+\label{sec:pain-plug}
+The finding-level predicate drops straight into the timeframe machinery of the
+companion memo (\emph{A Deterministic, CVSS-Environmental Method for FedRAMP Rev5
+VDR/VER Vulnerability Prioritization}). Replace any scalar asset tag (``IRV = asset is
+internet-reachable'') with $\mathrm{IRV}(v,a)$; nothing else in the PAIN math changes:
+\[
+\text{column}=
+\begin{cases}
+\text{LEV+IRV} & \text{LEV}\ \wedge\ \mathrm{IRV}(v,a)\\[2pt]
+\text{LEV+NIRV} & \text{LEV}\ \wedge\ \neg\,\mathrm{IRV}(v,a)\\[2pt]
+\text{NLEV} & \neg\,\text{LEV}
+\end{cases}
+\]
+\begin{plain}
+This just picks which column of the remediation-deadline table you land in. If the flaw
+isn't likely to be exploited (NLEV), you get the relaxed deadline. If it is likely
+exploited, the question becomes \emph{is this specific finding internet-reachable?} ---
+yes gives you the fastest clock (LEV+IRV), no gives you the middle one (LEV+NIRV). The
+only change from an asset-tag world is that ``internet-reachable'' now means the
+\emph{finding}, not just the box it sits on.
+\end{plain}
+
+\section{Determinism and the Fail-Safe}
+\label{sec:failsafe}
+The model is evaluated coarse $\to$ fine; each field is a further exclusion
+opportunity with a different evidence maturity:
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{l l}
+\toprule
+\textbf{field} & \textbf{deterministic today?} \\
+\midrule
+$\kappa$ (AV) & \textbf{Yes} --- in the CVSS base vector, machine-readable \\
+$\tau,\pi$ (port/proto exposed) & \textbf{Mostly} --- SG rules, LB listeners, sockets, CPE \\
+$\pi,\nu$ that the \emph{vuln} needs & \textbf{Often not} --- buried in prose; needs enrichment/LLM \\
+sanitization (internal edges) & \textbf{Earned} --- code review, SAST, DAST, tests; assessor-collected \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keybox}
+\textbf{Fail-safe rule.}\quad
+Unknown field $=\star \;\Rightarrow\;$ contributes a match $\;\Rightarrow\;$ defaults to
+\textbf{IRV}.\\[4pt]
+You earn \textbf{NIRV} only with \emph{positive evidence} that the required surface is
+not exposed.
+\end{keybox}
+\begin{plain}
+When in doubt, assume the worst. If you don't know a detail (say, whether the load
+balancer downgrades the protocol, or whether the app really parameterizes its
+queries), treat it as ``could be reachable'' and keep the tight clock. You're only
+allowed to relax to the slower internal clock when you can \emph{prove} the attacker's
+required path isn't actually open. That way a gap in your data never accidentally
+makes a vulnerability look safer than it is.
+\end{plain}
+
+\noindent So \code{AV:L} $\to$ NIRV today (free). SSH-not-exposed $\to$ NIRV today
+(SG + sockets). The ALPN-downgrade and sanitization exclusions $\to$ NIRV \emph{when}
+you can evidence the upstream protocol or the neutralizing code path, and until then
+they safely stay IRV. Finer layers tighten the result as enrichment and evidence
+mature, and never silently under-classify---consistent with the companion memo's
+existing rule that \emph{missing metadata must not lower PAIN}.
 
 \section{Perimeter Mitigation: Permitted Downgrade, Recommended Attestation}
 \label{sec:waf}
@@ -299,37 +839,38 @@ One design question remains: what should happen to a vulnerability's IRV status 
 FedRAMP does allow you to stop counting a flaw as internet-reachable once a WAF rule verifiably blocks the payloads that trigger it. We recommend not taking the discount: WAF rules are bypassed, tuned, and toggled off far more easily than networks are re-plumbed. Keep the finding classified reachable and attach a signed, machine-readable note that it is mitigated at the perimeter --- your dashboards keep showing the true residual risk, and the auditor gets a stronger artifact. One thing no WAF and no reclassification can move: known-exploited (KEV) flaws must still be \emph{fixed} by CISA's due dates.
 \end{plain}
 
-\paragraph{FedRAMP permits the downgrade.} It is tempting to assume that reclassifying a WAF-shielded vulnerability as NIRV would itself draw audit findings. The launched rules say otherwise. The \code{VER-EVA-EIR} interception note quoted in Section~\ref{sec:gate3} states that once payload interception ``is in place the vulnerability should no longer be considered an internet-reachable vulnerability,'' and a WAF rule that verifiably intercepts the triggering payloads before the vulnerable resource processes them \emph{is} such a prevention. \textbf{FedRAMP explicitly permits the downgrade.} Note that the note's verb list---``intercept, inspect, filter, sanitize, reject, or otherwise deflect''---is deliberately generic: the WAF is the canonical member of the class, not its boundary. Any control that verifiably stops the triggering payload \emph{before the vulnerable resource processes it} qualifies on the same terms---an API gateway enforcing a request schema, upstream input sanitization, content disarm and reconstruction on uploaded files, a mail filter stripping the attachment type. Everything in this section applies to that whole class. The rules also lower the stakes: FedRAMP formally separates mitigation from remediation (\code{VDR-CSO-RES}: ``a fully mitigated vulnerability will still exist (with negligible risk) until it has been remediated''; see \code{FRD-PMV}, \code{FRD-FMV}), and the \code{VDR-TFR-PVR} timeframes are satisfied by mitigation to a lower PAIN rating. A WAF virtual patch is a legitimate partial or full mitigation on its own, with or without any reclassification.
+\paragraph{FedRAMP permits the downgrade.} It is tempting to assume that reclassifying a WAF-shielded vulnerability as NIRV would itself draw audit findings. The launched rules say otherwise. The \code{VER-EVA-EIR} interception note quoted in Section~\ref{sec:position} states that once payload interception ``is in place the vulnerability should no longer be considered an internet-reachable vulnerability,'' and a WAF rule that verifiably intercepts the triggering payloads before the vulnerable resource processes them \emph{is} such a prevention. \textbf{FedRAMP explicitly permits the downgrade.} Note that the note's verb list---``intercept, inspect, filter, sanitize, reject, or otherwise deflect''---is deliberately generic: the WAF is the canonical member of the class, not its boundary. Any control that verifiably stops the triggering payload \emph{before the vulnerable resource processes it} qualifies on the same terms---an API gateway enforcing a request schema, content disarm and reconstruction on uploaded files, a mail filter stripping the attachment type. Everything in this section applies to that whole perimeter class. Sanitization \emph{in the application's own code} is strong enough to carry its own section (\ref{sec:sanitization}) and, when verified in assessment, earns the exclusion directly rather than through this section's attestation posture. The rules also lower the stakes: FedRAMP formally separates mitigation from remediation (\code{VDR-CSO-RES}: ``a fully mitigated vulnerability will still exist (with negligible risk) until it has been remediated''; see \code{FRD-PMV}, \code{FRD-FMV}), and the \code{VDR-TFR-PVR} timeframes are satisfied by mitigation to a lower PAIN rating. A WAF virtual patch is a legitimate partial or full mitigation on its own, with or without any reclassification.
 
 \paragraph{How an interception satisfies the clock.} There is a drafting gap here worth closing, because it will be argued in assessments. \code{VDR-TFR-PVR}'s satisfaction language speaks of mitigating ``to a lower Potential Agency Impact N-rating''---a \emph{row} move---while a reachability downgrade moves the \emph{column} and touches no PAIN rating at all. Read hyper-literally, the WAF that FedRAMP itself calls a mitigation could never satisfy the timeframe. The definitions close the gap: \code{FRD-PMV} defines a partially mitigated vulnerability as one whose ``likelihood or Potential Agency Impact N-rating has been reduced,'' and \code{FRD-FMV} extends the same pair ``until either are negligible.'' Interception is a \emph{likelihood} reduction. A rule that verifiably blocks every variant of the triggering payload drives the likelihood of internet exploitation to negligible, making the finding \emph{fully mitigated} under \code{FRD-FMV}---and a fully mitigated vulnerability leaves the timeframe treadmill for routine operations under \code{VDR-TFR-RMN} (KEVs excepted, below). Anything short of that is a partial mitigation on the likelihood axis: the finding is re-evaluated, lands in the NIRV (or NLEV) column, and continues on that longer clock, with the change reported under \code{VER-RPT-VDT}. The same logic is what lets \emph{any} attested control in this section count as mitigation at all: the lever is the likelihood half of FedRAMP's own mitigation definition, not a PAIN reduction.
 
 \paragraph{We recommend the attestation anyway.} The reasons are practical, not regulatory:
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{WAF exclusions are fragile; topology exclusions are not.} Log4Shell showed why in real time. Within days of the first WAF rules blocking \code{\$\{jndi:ldap://...\}}, attackers published obfuscated variants---nested lookups like \code{\$\{\$\{lower:j\}ndi:...\}}---that sailed straight past the patterns, and every WAF vendor spent December 2021 chasing them. That is the difference between the two exclusions in one incident: a WAF exclusion is a bet that a signature matches every variant of the exploit an adversary can invent; a Phase~B exclusion---the topology kind, granted only when deny-by-default rules or an attested-complete flow map show no path from any internet entry point to the asset (Section~\ref{sec:phaseb})---is a bet that an attacker cannot send data over a connection that does not exist. Nobody obfuscates their way through a missing path. The WAF bet also loses quietly to your own operations---a rule dropped to ``detection-only'' during an incident, a CDN migration, an emergency toggle each silently voids the downgrade---so reclassifying on WAF evidence means re-validating the call on every perimeter change. Easy to promise, hard to actually do.
+\item \textbf{WAF exclusions are fragile; topology exclusions are not.} Log4Shell showed why in real time. Within days of the first WAF rules blocking \code{\$\{jndi:ldap://...\}}, attackers published obfuscated variants---nested lookups like \code{\$\{\$\{lower:j\}ndi:...\}}---that sailed straight past the patterns, and every WAF vendor spent December 2021 chasing them. That is the difference between the two exclusions in one incident: a WAF exclusion is a bet that a signature matches every variant of the exploit an adversary can invent; a topology exclusion---granted only when deny-by-default rules or an attested-complete flow map show no path from any internet entry point to the asset (Section~\ref{sec:propagation})---is a bet that an attacker cannot send data over a connection that does not exist. Nobody obfuscates their way through a missing path. The WAF bet also loses quietly to your own operations---a rule dropped to ``detection-only'' during an incident, a CDN migration, an emergency toggle each silently voids the downgrade---so reclassifying on WAF evidence means re-validating the call on every perimeter change. Easy to promise, hard to actually do.
 \item \textbf{When the WAF fails, the attested record is still true; the reclassified record is not.} Suppose the WAF is bypassed, misrouted, or toggled off. In reality both postures are now equally exposed---the difference is what the books say. The reclassified finding still reads NIRV on a slow clock, and that statement became false the moment the control failed, with nothing in the vulnerability record to say so and nothing prompting a re-evaluation. The attested finding still reads IRV---which is still true---and its VEX statement names the exact control that just failed, so the record degrades to what it should: internet-reachable, mitigation in doubt, tight clock. That is the case for attestation in one sentence: the reachability classification never depends on the minute-to-minute health of a perimeter device; only the mitigation claim does, and that claim names precisely what to watch.
-\item \textbf{Attestation is better audit evidence and keeps the risk visible.} Keeping the vulnerability IRV with a signed VEX record---\code{state: not\_affected}, \code{justification: protected\_at\_perimeter}, per the companion CycloneDX profile---hands the 3PAO a signed, machine-readable assertion naming the exact protecting control, while the provider's own dashboards keep showing the true residual risk. (A VEX document is a signed statement by the security team, not a legal instrument; its value is attribution and machine-readability, not liability transfer.)
+\item \textbf{Attestation is better audit evidence and keeps the risk visible.} Keeping the vulnerability IRV with a signed VEX record---\code{state: not\_affected}, \code{justification: protected\_at\_perimeter}, per the companion CycloneDX profile---hands the 3PAO a signed, machine-readable assertion naming the exact protecting control, while the provider's own dashboards keep showing the true residual risk. (A VEX document is a signed statement by the security team, not a legal instrument; its value is attribution and machine-readability, not liability transfer.) It also pre-indexes the re-triage drill of Section~\ref{sec:steady-state}: when threat intelligence surfaces a technique that defeats a class of controls, the suspect findings are exactly the VEX statements naming that class---a query, not an archaeology project---whereas downgraded findings must first be rediscovered before they can be re-evaluated.
 \item \textbf{Distribution automates cleanly.} VEX attestations publish to container registries as OCI artifacts next to the images they cover, or to object storage; scanning tools fetch them at scan time and apply the mitigation status without touching the reachability computation itself.
 \end{itemize}
 
 \paragraph{Known Exploited Vulnerabilities bend for neither approach.} \code{VDR-TFR-KEV} says Known Exploited Vulnerabilities \rfckw{should} be \emph{remediated} by the due dates in the CISA KEV catalog, ``even if the vulnerability has been fully mitigated,'' per CISA BOD 26-04. Log4Shell---this paper's running example---is a KEV. No WAF virtual patch extends a BOD 26-04 date, and neither does an NIRV reclassification. Providers \rfckw{must} track the KEV clock separately from both the reachability call and the mitigation status.
 
-\paragraph{No other control changes the reachability answer.} The same question will be asked about the rest of the security toolbox: does a secure-configuration baseline, an EDR agent, or runtime protection make a finding NIRV the way a WAF rule can? No. Reachability changes only when internet-derived data can no longer arrive at the vulnerable resource---by removing the data path (Phase~B, Gate~3) or by intercepting the triggering payload before the vulnerable resource processes it (this section's class of controls). The other controls are valuable, but they move different levers, and claiming NIRV on their evidence is a category error an assessor will catch:
+\paragraph{No other control changes the reachability answer.} The same question will be asked about the rest of the security toolbox: does a secure-configuration baseline, an EDR agent, or runtime protection make a finding NIRV the way a WAF rule can? No. Reachability changes only when internet-derived data can no longer arrive at the vulnerable resource---by removing the data path (Sections~\ref{sec:propagation} and~\ref{sec:gate3}), by neutralizing the triggering content in the application's own verified handling (Section~\ref{sec:sanitization}), or by intercepting the triggering payload before the vulnerable resource processes it (this section's class of controls). The other controls are valuable, but they move different levers, and claiming NIRV on their evidence is a category error an assessor will catch:
 \begin{itemize}[leftmargin=1.5em, nosep]
-\item \textbf{Configuration that disables the vulnerable feature} (Log4Shell's \code{formatMsgNoLookups} flag), a removed package, code that never executes (Filter~1): the flaw cannot fire at all. That is a \emph{disposition}---\code{not\_affected} with \code{requires\_configuration}, \code{code\_not\_present}, or \code{code\_not\_reachable}---and the finding leaves the active queue with its PAIN retained, per the companion method memo. The payload still arrives; it just has nothing to set off.
+\item \textbf{Configuration that disables the vulnerable feature} (Log4Shell's \code{formatMsgNoLookups} flag), a removed package, code that never executes (Section~\ref{sec:exec-evidence}): the flaw cannot fire at all. That is a \emph{disposition}---\code{not\_affected} with \code{requires\_configuration}, \code{code\_not\_present}, or \code{code\_not\_reachable}---and the finding leaves the active queue with its PAIN retained, per the companion method memo. The payload still arrives; it just has nothing to set off.
 \item \textbf{Enforcing runtime protection} (RASP, a seccomp or AppArmor profile that denies the system calls the exploit needs, or an EDR in \emph{blocking} mode): the WAF's sibling, and treated almost identically. Keep the finding IRV, attest \code{protected\_at\_runtime}, and take the mitigation credit through the likelihood clause above; where the block verifiably contains what exploitation can accomplish---killing the process before persistence, denying the second-stage download---it is also cited evidence for lowering the Modified C/I/A metrics, and with them the PAIN rating, on the companion memo's ladder. The one thing it does not earn is the reachability downgrade, because it acts on the wrong side of the line: an interception stops the payload before the vulnerable code processes it, while a runtime control fires when exploitation is already underway---and for flaws whose damage completes during processing itself (Heartbleed's leak is already in the response, a ReDoS lockup has already happened), there is no second act left to block. Two cautions. The claim must be per-vulnerability: evidence that the blocking capability covers \emph{this} CVE's exploitation technique, not the fleet-wide fact that an agent is installed. And an EDR in detect-and-alert mode earns none of this: noticing exploitation is response evidence, not prevention, and it changes no classification, no clock, and no disposition.
 \item \textbf{Hardening that shrinks the blast radius} (non-root users, read-only filesystems, egress denial, scoped credentials, compiler and OS protections): the flaw still fires, but it does less. That is the \emph{impact} lever---the companion method memo's mitigation ladder lowers the Modified C/I/A metrics on cited evidence (\code{protected\_by\_mitigating\_control}, \code{protected\_by\_compiler})---and the finding descends to a lower PAIN rating on a longer clock.
 \end{itemize}
 The discipline is uniform: every control-based claim is attested in signed VEX, cites its evidence, and is re-evaluated the moment the control changes.
 
 \section{Summary and Conclusion}
-The FedRAMP VDR/VER rules ask a sharper question than the industry is used to answering: not ``which resources are internet-accessible?'' but ``which \emph{vulnerabilities} can a payload from the public internet trigger?'' (\code{FRD-IRV}, \code{VER-EVA-EIR}). The Exclusion-Gated Reachability Method answers it in three deterministic phases. Phase A's gates---routing, attributed firewall sources, remote-access boundaries, container routing, and the process-level refinement---find where internet data enters. Phase B follows that data across the observed flow graph and prunes, wholesale and with flow logs as evidence, the assets it can never reach. Phase C excludes individual vulnerabilities on the remaining assets through execution evidence, trigger-surface matching, and the content-triggered/peer-bound split. Every filter defaults toward IRV, so evidence gaps show up as conservatism, never as silent false negatives---and every exclusion carries machine-verifiable evidence and a VEX justification a 3PAO or agency can check.
+The FedRAMP VDR/VER rules ask a per-vulnerability question, and the answer has to discriminate: a determination that tags everything internet-reachable is as useless as one that tags nothing, and it sets documentation and remediation obligations no provider can carry. The finding-level model makes the determination a computation. The factored equation evaluates each factor from evidence: the asset tag $R(a)$ from the five gates---routing, attributed firewall sources, remote-access boundaries, container routing, and the process-to-port refinement---the exposed surface $E(a)$ from transfer functions composed along every hop, and the vulnerability's own requirements $X(v)$ from its class, protocol, and version. A finding is IRV exactly when the surfaces overlap, and every factor defaults to reachable when its evidence is missing, so gaps show up as conservatism, never as silent false negatives.
 
-The method's purpose is proportionality with defensibility. Most detected vulnerabilities are not likely exploitable (\code{VER-EVA-ELX}), the tight \code{VDR-TFR-PVR} clocks bind only the LEV\,+\,IRV intersection, and partial mitigation legitimately satisfies the timeframes. A provider does not need to shrink its IRV set by declaration; it needs to defend the set it reports. Where a WAF virtual patch intercepts the triggering payloads, FedRAMP permits the reachability downgrade---but the stricter, more durable posture is to keep the vulnerability IRV and attest the mitigation with signed CycloneDX VEX, while still remediating Known Exploited Vulnerabilities on CISA BOD 26-04 due dates per \code{VDR-TFR-KEV}. Run the three phases as continuous automation, and the reachability determination rebuilds itself as the architecture changes---and stands up, line by line, to the scrutiny the new rules invite.
+The model's practical center is the factor the ecosystem already owns. The input sanitization production applications perform every day---parameterized queries, schema validation, output encoding---is a prevention FedRAMP's own interception note names, and verifying it is the auditor's job, done with evidence streams that already flow: the web-application (DAST) scanning continuous monitoring requires, plus the code reviews, static analysis, and tests of the provider's development lifecycle. Verified sanitization terminates the reachability of the neutralized vulnerability classes downstream and concentrates assessment scrutiny where the risk lives---on the components that process data from unauthenticated users. What is not verified stays IRV; what is verified comes with artifacts a 3PAO or agency can examine and re-run. And because that verification is standing, the everyday result is proportionate: for most reporting scenarios the internet-reachable set converges on the internet-accessible set, while the full breadth of FedRAMP's definition is held in reserve for the day threat intelligence surfaces a technique that defeats the known sanitization, WAF configurations, and other protections---when the affected exclusions are suspended and the real work runs, however the provider labels it internally: hunting indicators of compromise wherever the data flows, applying and evolving mitigations, and monitoring until a patch lands and the evidence is re-earned. Where a WAF virtual patch intercepts the triggering payloads at the perimeter, FedRAMP permits the reachability downgrade---but the stricter, more durable posture remains keeping the vulnerability IRV and attesting the mitigation with signed CycloneDX VEX, while still remediating Known Exploited Vulnerabilities on CISA BOD 26-04 due dates per \code{VDR-TFR-KEV}. Run the model as continuous automation and the determination rebuilds itself as the architecture changes---proportionate in what it demands, and defensible line by line under the scrutiny the new rules invite.
 
 \section*{Glossary of Abbreviations}
 \begin{description}[leftmargin=6em, labelwidth=5em, font=\normalfont\ttfamily, nosep, itemsep=1pt]
 \item[3PAO] Third-Party Assessment Organization
 \item[ALB] Application Load Balancer (AWS)
+\item[ALPN] Application-Layer Protocol Negotiation (TLS extension)
 \item[BOD] Binding Operational Directive (CISA)
 \item[CDN] Content Delivery Network
 \item[CISA] Cybersecurity and Infrastructure Security Agency
@@ -337,6 +878,7 @@ The method's purpose is proportionality with defensibility. Most detected vulner
 \item[CPE] Common Platform Enumeration
 \item[CVE] Common Vulnerabilities and Exposures (vulnerability identifier)
 \item[CWE] Common Weakness Enumeration (vulnerability class taxonomy)
+\item[DAST] Dynamic Application Security Testing (web-application scanning)
 \item[DoS] Denial of Service
 \item[eBPF] extended Berkeley Packet Filter (kernel-level runtime telemetry)
 \item[EDR] Endpoint Detection and Response
@@ -346,6 +888,7 @@ The method's purpose is proportionality with defensibility. Most detected vulner
 \item[IAM] Identity and Access Management
 \item[IAP] Identity-Aware Proxy
 \item[IGW] Internet Gateway
+\item[IoC] Indicator of Compromise
 \item[IRV] Internet-Reachable Vulnerability
 \item[JWT] JSON Web Token
 \item[KEV] Known Exploited Vulnerability (CISA catalog)
@@ -362,6 +905,7 @@ The method's purpose is proportionality with defensibility. Most detected vulner
 \item[PAIN] Potential Agency Impact N-rating (N1--N5)
 \item[RASP] Runtime Application Self-Protection
 \item[ReDoS] Regular-expression Denial of Service
+\item[SAST] Static Application Security Testing
 \item[SMB] Server Message Block (Windows file-sharing protocol)
 \item[SQL] Structured Query Language
 \item[SSH] Secure Shell

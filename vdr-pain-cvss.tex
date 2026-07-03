@@ -59,6 +59,9 @@
 \newcommand{\tagn}[1]{{\footnotesize\ttfamily #1}}
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
+% Indicator function: double-struck 1 (amssymb's \mathbb has no digits).
+\usepackage{dsfont}
+\newcommand{\ind}{\mathds{1}}
 \newcommand{\vdrcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/providers/rev5/rules/vulnerability-detection-and-response.md}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\vercite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/providers/rev5/rules/vulnerability-evaluation-and-reporting.md}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\defcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/definitions.md}{FedRAMP/2026-markdown@2a75592}}
@@ -366,25 +369,25 @@ direct internet route} that process payloads received indirectly;
 private network through the application tier. The determination is therefore made
 per finding:
 \[
-\mathrm{IRV}(v,a) \;=\; \big[\,\text{direct exposure} \ \lor\ \text{transitive payload exposure}\,\big]
-\ \land\ \text{per-vulnerability filters},
+\mathrm{IRV}(v,a)\;=\;\ind\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right],
 \]
-where the filters are execution evidence, trigger-surface match, and trigger
-mechanism (content-triggered vs.\ peer-bound), and \emph{every term defaults to
-reachable} absent deterministic evidence. Two corrections to common intuitions:
+where $E(a)$ is the \emph{exposed surface} --- the delivery shapes (attack-vector
+class, protocol, version) an internet actor can actually get to component $a$,
+computed by pushing the internet's traffic through every routing, filtering,
+authentication, and \emph{sanitization} hop on the path --- and $X(v)$ is the
+\emph{required surface} the vulnerability needs in order to fire. Every factor
+defaults to reachable absent deterministic evidence. Sanitization verified in
+assessment (code review, SAST, unit tests, and the recurring DAST scanning
+continuous monitoring already requires) removes the neutralized vulnerability
+classes from downstream surfaces. Two corrections to common intuitions:
 (a) \code{FRD-IRV} imposes no unauthenticated requirement --- ``unauthenticated
 automated exploitation'' belongs to the \code{FRD-LEV} exploitability floor, not
 to reachability; (b) edge authentication (an identity-aware proxy and a client VPN
-alike) excludes a backend from IRV only when it functions as a
-\emph{remote-access boundary}: the boundary rejects unauthenticated traffic before
-the vulnerable code processes it, the authorized principal set is restricted,
-enumerable, and organization-controlled, and the backend validates the boundary's
-signed identity assertion. Edge authentication functioning as customer
-authentication for the service itself (its general internet user base) is an
-exploitability signal, not an IRV exclusion. The full
-discovery method is specified in the companion paper \emph{An Exclusion-Gated
-Method for Determining Internet Reachability of Vulnerabilities under the FedRAMP
-VDR/VER Rules}.
+alike) excludes a backend from IRV only in its \emph{remote-access} role, never as
+customer authentication for the service itself --- the latter is an exploitability
+signal, not an IRV exclusion. The full model, evidence requirements, and worked
+cases are specified in the companion paper \emph{A Finding-Level Model for
+Internet Reachability under the FedRAMP VDR/VER Rules}.
 \end{definitionbox}
 
 Restricting the threat inputs to EPSS and the KEV catalog --- and to nothing else ---
@@ -434,7 +437,7 @@ score (CR/IR/AR) is doing the work.
 A CVE with $C\!=\!0,\ I\!=\!0,\ A\!=\!0.56$ (e.g.\ a parser DoS), on an asset with
 CR=IR=AR=$1.5$, $m=0$. EPSS $=0.76$. The vulnerable parser sits on the
 inter-broker replication surface, which receives no internet-derived data, so the
-finding is not internet-reachable (taint-excluded under the companion method ---
+finding is not internet-reachable (surface-excluded under the companion model ---
 had the flaw been in \emph{message-payload} parsing it would be transitively IRV).
 \begin{align*}
 \mathrm{ISC} &= 1-(1-0)(1-0)(1-0.84) = 1-0.16 = 0.84, \\
@@ -610,8 +613,8 @@ hypothetical --- each has already played out in public:
 \paragraph{Column moves: the other axis.} Reachability and exploitability
 mitigations do not touch the impact metrics at all --- they move the finding's
 \emph{column}. Network segmentation that verifiably cuts the payload path (per the
-companion Exclusion-Gated method's data-flow evidence) flips IRV to NIRV; a
-qualifying remote-access boundary (the companion method's Gate~3) defeats the
+companion model's data-flow evidence) flips IRV to NIRV; a
+qualifying remote-access boundary (the companion model's Gate~3) defeats the
 \code{FRD-LEV} unauthenticated-automation floor. \code{VDR-TFR-PVR} is satisfied by landing on
 \emph{any} longer clock, whether the step down was a row or a column. The textual
 hook for the column half is \code{FRD-PMV}/\code{FRD-FMV}: FedRAMP defines
@@ -647,7 +650,7 @@ shipped were configuration flags, code removal, privilege and egress confinement
 and binding restrictions --- surgical, testable, and zero risk to customer traffic
 --- while the WAF rule was the fallback for the workloads that could not be touched
 (appliances, vendor binaries). That is precisely its position in this method. The
-companion Exclusion-Gated paper develops the corresponding posture recommendation:
+companion reachability paper develops the corresponding posture recommendation:
 keep the finding IRV and attest the perimeter mitigation via signed VEX rather than
 reclassifying reachability on WAF evidence.
 
@@ -726,7 +729,7 @@ CVE-2026-xxx6 & coredns \tagn{(platform-foundation)}& \cellcolor{med!35}MEDIUM  
 \caption{Sample VDR scan output (fictional data, placeholder CVE IDs; Class~C, single-agency). PAIN is
 computed from the archetype's CR/IR/AR and the CVE impact vector; the deadline is
 $M[\text{C}][\text{PAIN}][\text{column}]$. The IRV column is evaluated \emph{per
-finding} via the companion Exclusion-Gated method; (t) marks transitive payload
+finding} via the companion finding-level model; (t) marks transitive payload
 exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
 (SQL-injection-class) finding on a datastore that is not internet-accessible is
 still IRV, tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
@@ -1253,8 +1256,8 @@ various other team members at stackArmor who helped make it possible.
 \item[{[DEF]}] FedRAMP, \emph{FedRAMP Definitions}. Definitions cited:
   \texttt{FRD-IRV}, \texttt{FRD-LEV}. Pinned permalink: \defcite{} (commit of
   2026-06-24). Accessed 2026-07-01.
-\item[{[EGR]}] M.~Venne, \emph{An Exclusion-Gated Method for Determining Internet
-  Reachability of Vulnerabilities under the FedRAMP VDR/VER Rules}, stackArmor,
+\item[{[EGR]}] M.~Venne, \emph{A Finding-Level Model for Internet Reachability
+  under the FedRAMP VDR/VER Rules}, stackArmor,
   July 2026. Companion paper specifying the reachability determination used here.
 \item[{[BOD]}] CISA, \emph{Binding Operational Directive 26-04}, 2026-06-10.
 \item[{[KEV]}] CISA, \emph{Known Exploited Vulnerabilities (KEV) Catalog}. LEV
