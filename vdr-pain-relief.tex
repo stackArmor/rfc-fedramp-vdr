@@ -312,17 +312,26 @@ VEX disposition, separately governed.
 \section{Worked Examples}
 \label{sec:examples}
 
-\paragraph{Impact --- a schema-scoped credential on SQL injection.} A
-\code{CWE-89} finding scores $C=I=$ High on a datastore, placing it at, say, N4.
-The application connects with a credential confined to a single schema --- no
-superuser, no cross-database reach, no file or extension privileges --- verified
-from a grants dump. A successful injection still executes with that credential's
-authority, but that authority reaches only the one schema: \emph{even on full
-exploitation the blast is bounded}. That is what makes this an impact control and
-not a likelihood one --- there is no broader privilege for a bypass to restore.
-The row lowers Modified Confidentiality and Integrity High$\to$Low; recomputed
-through the memo's arithmetic the finding lands at N3. The reachability answer is
-unchanged; what changed is how much a successful exploit reaches.
+\paragraph{Impact --- a least-privilege credential bounding SQL-injection
+escalation.} A \code{CWE-89} finding scores $C=I=$ High on a datastore. Read what
+that High assumes: a SQL injection running with a \emph{broad} credential can
+reach every schema and tenant, dump the credential tables (theft, then lateral
+movement), use file/COPY functions to touch the host, or load an extension for
+code execution. The application instead connects with a credential confined to its
+own schema --- no superuser, no cross-database or system-catalog reach, no file or
+extension privileges --- verified from a grants dump. A successful injection is
+now bounded: it cannot escalate to the database instance, other tenants, stored
+credentials, or the OS. \emph{This is the important limit, and it is exactly where
+the objection lands:} least-privilege bounds where the injection can \emph{go}, not
+the data the application is entitled to \emph{hold}. So the row lowers Modified
+Confidentiality and Integrity High$\to$Low only to the extent the app's own schema
+is less sensitive than that broader reach --- and the row's disqualifier fires
+precisely when it is not: if the reachable schema is itself the crown-jewel data
+the finding is about, scope and blast radius coincide and the row grants nothing.
+In practice this ties to the asset's own criticality: a top-sensitivity datastore
+(its own data \emph{is} the target) earns no confidentiality relief here; a
+service whose High reflects escalation potential does. When the credit does apply,
+the finding lands at N3; the reachability answer is unchanged.
 
 \paragraph{Exploitability --- egress control, and why Log4Shell is the exception.}
 A \code{CWE-917} Log4Shell-class lookup needs an outbound fetch to pull its second
