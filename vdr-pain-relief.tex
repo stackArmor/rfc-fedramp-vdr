@@ -305,20 +305,6 @@ tool could \emph{see} the controls that make those flaws less dangerous here. On
 the unhardened estate, nothing moves. That difference is the entire point.
 \end{plain}
 
-\section{Architecture: Capture and Evaluation Are Separate}
-The determination splits across a clean boundary. A collector with cluster
-access --- the Kubernetes plugin --- \emph{captures} only: the finding's CWEs and
-a neutral block of raw Kubernetes-observed facts per workload
-(\code{securityContext} settings, NetworkPolicy rules, replica and disruption
-posture, service-account and volume facts). It makes no interpretation: it emits
-that a NetworkPolicy denies egress to a link-local address, not that ``IMDS is
-protected.'' A downstream evaluator, which need not touch the cluster, loads the
-governed catalog, maps the captured facts onto the control predicates, and
-applies Equations~\eqref{eq:rung} and~\eqref{eq:adjepss}. The split keeps the
-privileged collector simple and auditable and lets the catalog --- the part that
-embodies judgment --- evolve under governed review without redeploying the
-collector.
-
 \section{Conclusion}
 PAIN Relief closes the loop the PAIN memo opened. The memo re-weights a
 vulnerability by what is at stake on the asset; this paper re-weights it by the

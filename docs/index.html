@@ -97,7 +97,30 @@
     </div>
   </div>
 
-  <h2>Companion proposals</h2>
+  <h2>Companion methods</h2>
+  <div class="cards two">
+    <div class="card featured">
+      <span class="badge">Companion method</span>
+      <h3>Internet Reachability — Finding-Level Model</h3>
+      <p class="sub">A Finding-Level Model for Internet Reachability under the FedRAMP VDR/VER Rules — argues that blanket internet-reachable labeling is impractical, and computes IRV per finding from an explicit equation: the exposed surface the internet can deliver to a component (five evaluation gates, protocol-aware propagation) intersected with the surface the vulnerability requires, with assessment-verified input sanitization (code review, SAST, DAST, tests) terminating downstream reachability and default-to-reachable semantics throughout. Retains the signed-VEX attestation recommendation for WAF-mitigated findings.</p>
+      <div class="actions">
+        <a class="btn primary" href="internet-reachability.pdf">View PDF</a>
+        <a class="btn ghost" href="internet-reachability.pdf" download>Download</a>
+      </div>
+      <p class="secondary-link">Prefer a lighter read? <a href="internet-reachability-companion-blog.pdf">Companion Blog</a></p>
+    </div>
+    <div class="card featured">
+      <span class="badge">Companion method</span>
+      <h3>PAIN Relief — Verified-Control Reduction</h3>
+      <p class="sub">PAIN Relief: A Verified-Control Method for Reducing FedRAMP Rev5 VDR/VER PAIN and Exploitability — a governed, versioned catalog pairing a machine-verified security control with the CWE weakness class it provably counters and the deterministic scoring reduction it earns. Two levers: verified controls that bound impact step the PAIN level down (Modified C/I/A, one rung, never None); verified controls that reduce exploitation likelihood lower a local adjustedEPSS (multiplicative, floored) and can cross a finding to NLEV. Never mutates published EPSS or the CVSS base, never softens a KEV clock; sanitization and WAF stay in the VEX lane.</p>
+      <div class="actions">
+        <a class="btn primary" href="vdr-pain-relief.pdf">View PDF</a>
+        <a class="btn ghost" href="vdr-pain-relief.pdf" download>Download</a>
+      </div>
+    </div>
+  </div>
+
+  <h2>Further proposals</h2>
   <div class="cards two">
     <div class="card">
       <h3>VLEV — Exploitability Gradation</h3>
@@ -113,23 +136,6 @@
       <div class="actions">
         <a class="btn primary" href="vex-cyclonedx.pdf">View PDF</a>
         <a class="btn ghost" href="vex-cyclonedx.pdf" download>Download</a>
-      </div>
-    </div>
-    <div class="card">
-      <h3>Internet Reachability — Finding-Level Model</h3>
-      <p class="sub">A Finding-Level Model for Internet Reachability under the FedRAMP VDR/VER Rules — argues that blanket internet-reachable labeling is impractical, and computes IRV per finding from an explicit equation: the exposed surface the internet can deliver to a component (five evaluation gates, protocol-aware propagation) intersected with the surface the vulnerability requires, with assessment-verified input sanitization (code review, SAST, DAST, tests) terminating downstream reachability and default-to-reachable semantics throughout. Retains the signed-VEX attestation recommendation for WAF-mitigated findings.</p>
-      <div class="actions">
-        <a class="btn primary" href="internet-reachability.pdf">View PDF</a>
-        <a class="btn ghost" href="internet-reachability.pdf" download>Download</a>
-      </div>
-      <p class="secondary-link">Prefer a lighter read? <a href="internet-reachability-companion-blog.pdf">Companion Blog</a></p>
-    </div>
-    <div class="card">
-      <h3>PAIN Relief — Verified-Control Reduction</h3>
-      <p class="sub">PAIN Relief: A Verified-Control Method for Reducing FedRAMP Rev5 VDR/VER PAIN and Exploitability — a governed, versioned catalog pairing a machine-verified security control with the CWE weakness class it provably counters and the deterministic scoring reduction it earns. Two levers: verified controls that bound impact step the PAIN level down (Modified C/I/A, one rung, never None); verified controls that reduce exploitation likelihood lower a local adjustedEPSS (multiplicative, floored) and can cross a finding to NLEV. Never mutates published EPSS or the CVSS base, never softens a KEV clock; sanitization and WAF stay in the VEX lane.</p>
-      <div class="actions">
-        <a class="btn primary" href="vdr-pain-relief.pdf">View PDF</a>
-        <a class="btn ghost" href="vdr-pain-relief.pdf" download>Download</a>
       </div>
     </div>
   </div>
