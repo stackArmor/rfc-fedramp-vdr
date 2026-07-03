@@ -324,10 +324,13 @@ stage. The workload sits behind a verified egress firewall. Egress control is a
 \emph{likelihood} lever, not impact: it does not shrink the RCE, it lowers the
 odds the chain completes --- and an attacker who tunnels out via DNS, an allowed
 domain, or domain fronting still achieves full RCE. So its strength is the
-firewall's, expressed as tiers: an IP/port allow-list earns $\rho\approx0.90$;
-SNI filtering without DNS validation, $0.80$; SNI with DNS validation, $0.70$; and
-outbound break-and-inspect --- which decrypts and checks the Host header, catching
-domain fronting --- $0.50$. \emph{But Log4Shell is a KEV}, so by default it is
+firewall's, expressed as tiers: port-restricted egress (web ports open to any
+destination, non-web ports denied --- IP-allow-listing tcp/80 and 443 is
+impractical, so $0.0.0.0/0$ on the web ports is standard and domain filtering is
+the real control) earns $\rho\approx0.90$, since it stops non-web second-stage
+ports but not an HTTP(S) fetch; domain/SNI filtering without DNS validation,
+$0.80$; SNI with DNS validation, $0.70$; and outbound break-and-inspect --- which
+decrypts and checks the Host header, catching domain fronting --- $0.50$. \emph{But Log4Shell is a KEV}, so by default it is
 frozen: the residual applies to nothing, the finding stays LEV, and the CISA clock
 governs. That is the honest outcome --- egress hardening buys no time on an
 actively-exploited flaw. Take instead a non-KEV fetch-dependent RCE at EPSS
