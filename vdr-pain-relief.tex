@@ -181,11 +181,27 @@ rewarded --- this is the one place defense-in-depth earns more than any single
 control. Second, \textbf{the threshold self-calibrates}: a modest control drops a
 marginal finding ($0.72\times0.85=0.61$, now NLEV) but not a near-certain one
 ($0.99\times0.85=0.84$, still LEV), which is exactly right --- one control should
-not defuse a vulnerability being exploited everywhere. Third, and absolutely,
-\textbf{KEV is frozen}: a Known Exploited Vulnerability stays LEV regardless of
-$\rho$, and its BOD~26-04 clock is untouched. The \code{FRD-LEV} floor is a
+not defuse a vulnerability being exploited everywhere. Third,
+\textbf{KEV is frozen by default}, with one governed, off-by-default exception
+(below): a Known Exploited Vulnerability stays LEV regardless of $\rho$ unless an
+adopter deliberately enables the exception, and its BOD~26-04 clock is always the
+deadline floor. The \code{FRD-LEV} floor is a
 reachability premise, not a probability, so it is defeated only in the binary ---
 by a qualifying edge-authentication boundary --- never by a residual factor.
+
+\paragraph{The KEV exception (governed, off by default).} A KEV is
+\emph{observed} exploitation, not a prediction, so by default no control moves it.
+An adopter \rfckw{may} enable a narrow exception: a KEV is classified NLEV only if
+the effective residual is $\le 0.7$ \emph{and} the resulting $\mathrm{adjustedEPSS}
+< 0.5$ --- a high bar that a near-certain KEV clears only with strong, stacked,
+verified controls. Even then the exception relaxes \emph{only} the PAIN-matrix
+column: the CISA KEV / BOD~26-04 due date remains in force (\code{VDR-TFR-KEV}:
+remediate by the CISA date ``even if the vulnerability has been fully
+mitigated''). The finding's deadline is therefore
+$\min(\text{PAIN-matrix cell},\ \text{CISA KEV date})$ --- NLEV can loosen the
+clock \emph{up to} the CISA date, never past it. It is off by default because a
+3PAO may reasonably challenge an NLEV label on an actively-exploited CVE; an
+adopter who enables it does so knowingly and documents the controls.
 
 \begin{plain}
 EPSS is a worldwide guess at how likely a flaw is to be attacked. We never change
@@ -219,11 +235,12 @@ score.
 \toprule
 \textbf{Verified control} & \textbf{Counters (CWE)} & \textbf{Lever} & \textbf{Move} \\
 \midrule
-Egress default-deny        & 917, 94, 98, 829 & impact & MC/MI High$\to$Low \\
-Read-only root filesystem  & 22, 434, 73       & impact & MI High$\to$Low \\
-No shell in image          & 78, 77            & impact & MC/MI High$\to$Low \\
 Least-privilege DB grant   & 89                & impact & MC/MI High$\to$Low \\
-Verified HA + rate limit   & crash-class DoS   & impact & MA High$\to$Low \\
+No shell in image          & 78, 77            & impact & MC/MI High$\to$Low \\
+SELinux domain confinement & ACE class         & impact & MC/MI High$\to$Low \\
+Read-only root filesystem  & 22, 434, 73       & impact & MI High$\to$Low \\
+Route rate limiting        & 400, 1333         & impact & MA High$\to$Low \\
+Egress control (tiered)    & 917, 94, 98       & likelihood & $\rho$ 0.90--0.50 by firewall tier \\
 Blocking-mode EDR/RASP     & (any)             & likelihood & $\rho=0.85$ \\
 Edge auth (remote-access)  & (any)             & likelihood & defeats \code{FRD-LEV} floor \\
 \bottomrule
@@ -235,6 +252,16 @@ ships its row identifier, rationale, and the catalog version in the finding's
 evidence.}
 \label{tab:catalog}
 \end{table}
+
+Verification is not limited to Kubernetes configuration. Host-level controls
+prove out from STIG/SCAP scan results just as well: SELinux domain confinement,
+for instance, is credited from the DISA RHEL~8 STIG (\code{RHEL-08-010450}
+enforcing) plus a per-process confined-domain check, and bounds what an RCE can
+reach regardless of how the code executed. A public, illustrative subset of the
+catalog --- six rows in this exact format, including the SELinux/STIG example ---
+is published as the auditable format reference at
+\href{https://github.com/stackArmor/vdr-pain-relief-examples}{stackArmor/vdr-pain-relief-examples};
+the maintained catalog remains proprietary.
 
 \section{Governance}
 \label{sec:governance}
@@ -270,33 +297,58 @@ original and the adjusted values appear in output. No entry alters the
 internet-reachability determination --- that is the companion exclusion-gated
 method's job, and PAIN Relief merely consumes its result. No entry extends or
 softens a CISA KEV / BOD~26-04 remediation date; a Known Exploited Vulnerability
-carries its clock untouched no matter how thoroughly it is mitigated. And no
+carries its CISA clock untouched no matter how thoroughly it is mitigated --- the
+governed NLEV exception can only relax the PAIN-matrix column \emph{beneath} that
+clock, never the clock itself. And no
 entry lowers a Modified impact dimension to None; that stronger claim is a signed
 VEX disposition, separately governed.
 
 \section{Worked Examples}
 \label{sec:examples}
 
-\paragraph{Impact --- egress-deny on a Log4Shell-class finding.} A
-\code{CWE-917} finding scores $I=$ High on an application asset, placing it at,
-say, N4. The workload runs under a verified default-deny egress NetworkPolicy
-with no wildcard allow. Log4Shell's remote-code-execution requires an outbound
-fetch of a second-stage payload; the egress policy removes the outbound leg, so
-the injection still fires but cannot complete. The egress-deny row lowers Modified
-Integrity High$\to$Low; recomputed through the memo's arithmetic the finding lands
-at N3 --- a longer deadline, earned by a control the plugin read directly from the
-cluster. The reachability answer is unchanged: the finding is still
-internet-reachable; what changed is what it can accomplish.
+\paragraph{Impact --- a schema-scoped credential on SQL injection.} A
+\code{CWE-89} finding scores $C=I=$ High on a datastore, placing it at, say, N4.
+The application connects with a credential confined to a single schema --- no
+superuser, no cross-database reach, no file or extension privileges --- verified
+from a grants dump. A successful injection still executes with that credential's
+authority, but that authority reaches only the one schema: \emph{even on full
+exploitation the blast is bounded}. That is what makes this an impact control and
+not a likelihood one --- there is no broader privilege for a bypass to restore.
+The row lowers Modified Confidentiality and Integrity High$\to$Low; recomputed
+through the memo's arithmetic the finding lands at N3. The reachability answer is
+unchanged; what changed is how much a successful exploit reaches.
 
-\paragraph{Exploitability --- blocking EDR crossing the threshold.} A finding
-carries EPSS $0.74$ (LEV, since $0.74 \ge 0.70$), is not KEV, and the floor does
-not apply. The workload runs blocking-mode EDR in enforcing mode, verified from
-its policy export, carrying $\rho = 0.85$. Then
-$\mathrm{adjustedEPSS} = 0.74 \times 0.85 = 0.63 < 0.70$, and the finding moves to
-NLEV --- the slower remediation column. Had EPSS been $0.99$, the same control
-would leave it at $0.84$, still LEV: the threshold ensures a single control
-relieves the marginal case, not the near-certain one. Published EPSS remains
-$0.74$ in the record beside the adjusted value.
+\paragraph{Exploitability --- egress control, and why Log4Shell is the exception.}
+A \code{CWE-917} Log4Shell-class lookup needs an outbound fetch to pull its second
+stage. The workload sits behind a verified egress firewall. Egress control is a
+\emph{likelihood} lever, not impact: it does not shrink the RCE, it lowers the
+odds the chain completes --- and an attacker who tunnels out via DNS, an allowed
+domain, or domain fronting still achieves full RCE. So its strength is the
+firewall's, expressed as tiers: port-restricted egress (web ports open to any
+destination, non-web ports denied --- IP-allow-listing tcp/80 and 443 is
+impractical, so $0.0.0.0/0$ on the web ports is standard and domain filtering is
+the real control) earns $\rho\approx0.90$, since it stops non-web second-stage
+ports but not an HTTP(S) fetch; domain/SNI filtering without DNS validation,
+$0.80$; SNI with DNS validation, $0.70$; and outbound break-and-inspect --- which
+decrypts and checks the Host header, catching domain fronting --- $0.50$. \emph{But Log4Shell is a KEV}, so by default it is
+frozen: the residual applies to nothing, the finding stays LEV, and the CISA clock
+governs. That is the honest outcome --- egress hardening buys no time on an
+actively-exploited flaw. Take instead a non-KEV fetch-dependent RCE at EPSS
+$0.74$ behind break-and-inspect ($\rho=0.5$):
+$\mathrm{adjustedEPSS}=0.74\times0.5=0.37<0.5$, and it moves to NLEV, published
+EPSS untouched beside it.
+
+\begin{plain}
+Two practitioner notes on this one. First, if the egress firewall is
+\emph{shared} --- every workload routes through one gateway --- discovering that
+path automatically grants the relief to all workloads behind it, not pod by pod:
+verify the gateway once, the estate inherits the tier. Second, the tier is the
+vendor's and the config's. A firewall that allow-lists a domain but never checks
+that the connection's SNI matches the real destination is weaker than one that
+validates it against DNS, which is weaker than one that decrypts and inspects the
+Host header. The deeper the inspection, the more relief --- because the more
+exfiltration and domain-fronting tricks it forecloses.
+\end{plain}
 
 \begin{plain}
 Same two flaws, two providers. On the hardened estate the first drops a PAIN
