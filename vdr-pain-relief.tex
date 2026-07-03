@@ -191,7 +191,13 @@ by a qualifying edge-authentication boundary --- never by a residual factor.
 
 \paragraph{The KEV exception (governed, off by default).} A KEV is
 \emph{observed} exploitation, not a prediction, so by default no control moves it.
-An adopter \rfckw{may} enable a narrow exception: a KEV is classified NLEV only if
+FedRAMP does not force this: \code{FRD-LEV} defines a likely-exploitable
+vulnerability as one ``not fully mitigated \emph{and} reachable by a likely threat
+actor,'' and does \emph{not} make KEV-catalog membership a likely-exploitable
+condition (that ``\code{KEV}$\Rightarrow$LEV'' default is ours, deliberately
+conservative). Strong verified controls that lower threat-actor reachability are
+therefore, in principle, consistent with an NLEV call. An adopter \rfckw{may}
+enable a narrow exception: a KEV is classified NLEV only if
 the effective residual is $\le 0.7$ \emph{and} the resulting $\mathrm{adjustedEPSS}
 < 0.5$ --- a high bar that a near-certain KEV clears only with strong, stacked,
 verified controls. Even then the exception relaxes \emph{only} the PAIN-matrix
@@ -330,13 +336,19 @@ impractical, so $0.0.0.0/0$ on the web ports is standard and domain filtering is
 the real control) earns $\rho\approx0.90$, since it stops non-web second-stage
 ports but not an HTTP(S) fetch; domain/SNI filtering without DNS validation,
 $0.80$; SNI with DNS validation, $0.70$; and outbound break-and-inspect --- which
-decrypts and checks the Host header, catching domain fronting --- $0.50$. \emph{But Log4Shell is a KEV}, so by default it is
-frozen: the residual applies to nothing, the finding stays LEV, and the CISA clock
-governs. That is the honest outcome --- egress hardening buys no time on an
-actively-exploited flaw. Take instead a non-KEV fetch-dependent RCE at EPSS
-$0.74$ behind break-and-inspect ($\rho=0.5$):
-$\mathrm{adjustedEPSS}=0.74\times0.5=0.37<0.5$, and it moves to NLEV, published
-EPSS untouched beside it.
+decrypts and checks the Host header, catching domain fronting --- $0.50$.
+Log4Shell is a KEV, so \emph{by default} it is frozen at LEV: the residual applies
+to nothing and the CISA clock governs. \emph{With the KEV exception enabled},
+though, break-and-inspect ($\rho=0.5$) drops Log4Shell's adjustedEPSS from
+$\approx0.94$ to $\approx0.47$, clearing both bars ($\rho\le0.7$,
+$\mathrm{adjustedEPSS}<0.5$), so it may be classified NLEV. That relaxes the
+\code{VDR-TFR-PVR} cell from the tight LEV column toward the NLEV column --- but the
+CISA KEV due date remains the binding floor, so the deadline moves down only
+\emph{to} that date, never past it: the extra-tight cell beneath the CISA deadline
+is removed, the deadline itself is not. A non-KEV fetch-dependent RCE at EPSS
+$0.74$ behind the same control lands at $0.74\times0.5=0.37$ and moves to NLEV
+outright --- no KEV floor, its full clock earned --- published EPSS untouched
+beside the adjusted value in both cases.
 
 \begin{plain}
 Two practitioner notes on this one. First, if the egress firewall is
