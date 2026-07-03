@@ -259,13 +259,11 @@ evidence.}
 \label{tab:catalog}
 \end{table}
 
-Verification is not limited to Kubernetes configuration. Host-level controls
-prove out from STIG/SCAP scan results just as well: SELinux domain confinement,
-for instance, is credited from the DISA RHEL~8 STIG (\code{RHEL-08-010450}
-enforcing) plus a per-process confined-domain check, and bounds what an RCE can
-reach regardless of how the code executed. A public, illustrative subset of the
-catalog --- six rows in this exact format, including the SELinux/STIG example ---
-is published as the auditable format reference at
+Verification is not limited to Kubernetes configuration: host-level controls prove
+out from STIG/SCAP scan results too --- the SELinux confinement worked example
+below is credited straight from the DISA RHEL~8 STIG. A public, illustrative
+subset of the catalog --- six rows in this exact format --- is published as the
+auditable format reference at
 \href{https://github.com/stackArmor/vdr-pain-relief-examples}{stackArmor/vdr-pain-relief-examples};
 the maintained catalog remains proprietary.
 
@@ -312,26 +310,21 @@ VEX disposition, separately governed.
 \section{Worked Examples}
 \label{sec:examples}
 
-\paragraph{Impact --- a least-privilege credential bounding SQL-injection
-escalation.} A \code{CWE-89} finding scores $C=I=$ High on a datastore. Read what
-that High assumes: a SQL injection running with a \emph{broad} credential can
-reach every schema and tenant, dump the credential tables (theft, then lateral
-movement), use file/COPY functions to touch the host, or load an extension for
-code execution. The application instead connects with a credential confined to its
-own schema --- no superuser, no cross-database or system-catalog reach, no file or
-extension privileges --- verified from a grants dump. A successful injection is
-now bounded: it cannot escalate to the database instance, other tenants, stored
-credentials, or the OS. \emph{This is the important limit, and it is exactly where
-the objection lands:} least-privilege bounds where the injection can \emph{go}, not
-the data the application is entitled to \emph{hold}. So the row lowers Modified
-Confidentiality and Integrity High$\to$Low only to the extent the app's own schema
-is less sensitive than that broader reach --- and the row's disqualifier fires
-precisely when it is not: if the reachable schema is itself the crown-jewel data
-the finding is about, scope and blast radius coincide and the row grants nothing.
-In practice this ties to the asset's own criticality: a top-sensitivity datastore
-(its own data \emph{is} the target) earns no confidentiality relief here; a
-service whose High reflects escalation potential does. When the credit does apply,
-the finding lands at N3; the reachability answer is unchanged.
+\paragraph{Impact --- SELinux domain confinement bounding an RCE (STIG-verified).}
+A \code{CWE-94} arbitrary-code-execution finding scores $C=I=$ High on a service
+running on a hardened RHEL host. SELinux is enforcing and the service runs in a
+\emph{confined} domain --- \code{httpd\_t}, say --- not \code{unconfined\_t}. Both
+facts are read straight from a DISA RHEL~8 STIG scan (\code{RHEL-08-010450}
+enforcing) plus a per-process domain check; the verification here is STIG/SCAP,
+not Kubernetes config, and feeds the same machinery. Mandatory access control
+means that even a \emph{fully successful} RCE is boxed into what the domain's
+policy permits: it cannot read files, open sockets, or use capabilities outside
+that box, regardless of the Unix user it lands as. That is a genuine impact bound
+--- the reach is capped on success, not merely made less likely --- so the row
+lowers Modified Confidentiality and Integrity High$\to$Low and the finding lands
+at N3. (The disqualifier is a permissive-mode policy or a domain written broadly
+enough to grant the access anyway: then confinement is nominal and the row does
+not fire.)
 
 \paragraph{Exploitability --- egress control, and why Log4Shell is the exception.}
 A \code{CWE-917} Log4Shell-class lookup needs an outbound fetch to pull its second
