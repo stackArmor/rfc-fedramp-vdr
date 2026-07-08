@@ -588,6 +588,24 @@ record over the data-access layer, a SAST run scoped to the input-handling paths
 test suite that fires class-$c$ payloads at the boundary and shows them neutralized
 ---each is an artifact an assessor can examine and re-run.
 
+The engineering is not merely customary; in a FedRAMP system it is required.
+Input validation is a baseline control: \code{SI-10} (Information Input
+Validation) applies to every offering at Moderate and above --- Certification
+Classes C and D under the 2026 rules --- and obligates the provider to check
+the validity of its information inputs, with the implementation described in
+the SSP and examined at every assessment. That moves the exclusion criterion
+above from hopeful to expected: the sanitization evidence this section asks
+for is not a new artifact class invented for reachability, it is the proof a
+provider already owes for a control it already claims, put to sharper,
+per-finding use. The connection runs both ways. Where the \code{SI-10}
+implementation is real, its evidence trail --- the implementation statement
+naming the validation points, the SAST results and test suites behind it,
+often already organized in the provider's GRC platform --- is exactly what
+the exclusion consumes. And where a component processes internet-sourced
+input with no \code{SI-10} story at all, the conservative default is the
+least of the provider's problems: the finding stays IRV, and the missing
+control is an assessment finding in its own right.
+
 Nor does the evidence require new machinery, because most of the stream already
 flows. FedRAMP continuous monitoring requires regular web-application scanning---DAST
 by another name---and those scans do precisely this work: they fire injection,
@@ -628,6 +646,8 @@ Your application almost certainly cleans what the internet sends before passing 
 along --- that is what parameterized queries and input validation are. FedRAMP's own
 rules say a dangerous payload stopped before the vulnerable code sees it makes the
 flaw not internet-reachable, and ``sanitize'' is on FedRAMP's list of ways to stop it.
+Input validation is not optional either way: control SI-10 in the FedRAMP
+baseline already requires it, so the proof of cleaning is proof you already owe.
 So the auditor's job is not to presume every downstream flaw reachable --- it is to
 collect the proof of cleaning: the web-application scans FedRAMP already requires,
 the code reviews, the tests. Where the proof holds, the downstream flaw comes off the
