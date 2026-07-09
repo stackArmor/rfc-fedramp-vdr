@@ -700,9 +700,9 @@ whether \emph{additional} mitigations are required until a patch exists and is
 applied---because under a live technique, the mitigations themselves evolve.
 Log4Shell made that concrete: the first WAF rules blocking
 \code{\$\{jndi:ldap://...\}} were bypassed within days by obfuscated variants, and
-every vendor spent December 2021 rewriting patterns in a game of whack-a-mole
-(Section~\ref{sec:waf} tells the story)---when no patch is in place, yesterday's
-mitigation is only a hypothesis about tomorrow's traffic. Each suspended exclusion
+vendors spent December 2021 repeatedly rewriting patterns (Section~\ref{sec:waf}
+tells the story)---when no patch is in place, yesterday's mitigation is only a
+hypothesis about tomorrow's traffic. Each suspended exclusion
 is re-earned only with new evidence that the sanitization holds against the new
 technique---an updated guard, a test that fires the new payload and shows it inert,
 a fresh scan---and the re-evaluations and mitigations are reported under
@@ -710,6 +710,26 @@ a fresh scan---and the re-evaluations and mitigations are reported under
 already applies when a refactor touches the input-handling tier or a perimeter
 change touches a WAF claim; the only difference is that the trigger arrives from
 outside the provider's walls.
+
+\begin{keybox}
+\textbf{Indirect-trigger promotion rule.}\quad
+When threat intelligence, a vendor advisory, scanner evidence, exploit analysis, or
+approved analyst review determines that a CVE is triggerable by public-internet
+input through indirect application flows, the affected findings \rfckw{should} be
+promoted to \textbf{IRV} until instance-specific evidence shows that the vulnerable
+code path is not present, not active, or fully prevented from processing the
+triggering payload.
+\end{keybox}
+
+Operationally, this rule is the right home for a provider-maintained
+\texttt{indirect\_\allowbreak internet\_\allowbreak trigger} flag. The flag is not a claim that every local or
+interior vulnerability is secretly reachable; it is a controlled enrichment saying
+that the ordinary inputs---CVSS attack vector, exposed ports, known protocols, and
+standing sanitization evidence---are insufficient for this CVE because current
+intelligence has identified an internet-originating trigger path. The default value
+is false. When it is set true by an analyst or approved enrichment process, the
+provider's triage system promotes affected findings to IRV and then lets
+instance-level evidence earn any exception.
 
 \begin{plain}
 Day to day, the internet-reachable list ends up looking like the internet-facing

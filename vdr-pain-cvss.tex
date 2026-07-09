@@ -379,7 +379,10 @@ authentication, and \emph{sanitization} hop on the path --- and $X(v)$ is the
 defaults to reachable absent deterministic evidence. Sanitization verified in
 assessment (code review, SAST, unit tests, and the recurring DAST scanning
 continuous monitoring already requires) removes the neutralized vulnerability
-classes from downstream surfaces. Two corrections to common intuitions:
+classes from downstream surfaces. A separate threat-intelligence promotion rule
+applies when a CVE is later determined to be indirectly triggerable by
+public-internet input; that rule promotes affected findings to IRV without adding a
+new term to this equation. Two corrections to common intuitions:
 (a) \code{FRD-IRV} imposes no unauthenticated requirement --- ``unauthenticated
 automated exploitation'' belongs to the \code{FRD-LEV} exploitability floor, not
 to reachability; (b) edge authentication (an identity-aware proxy and a client VPN
