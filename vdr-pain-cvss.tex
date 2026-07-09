@@ -245,8 +245,8 @@ additions.
 \item $C, I, A$ --- how badly \emph{this flaw} breaks secrecy, correctness, and
   uptime (from the CVE's CVSS vector). None / Low / High become $0$ / $0.22$ / $0.56$.
 \item $\mathrm{CR},\mathrm{IR},\mathrm{AR}$ --- how much \emph{this system} needs
-  secrecy, correctness, and uptime (from its archetype). Low / Medium / High become
-  $0.5$ / $1.0$ / $1.5$.
+  secrecy, correctness, and uptime (from its archetype, asset value, or other governed
+  asset metadata). Low / Medium / High become $0.5$ / $1.0$ / $1.5$.
 \item $\mathrm{ISC}$ --- the three combined into one ``damage to this system'' number.
 \item $S$ --- that damage rescaled to a clean $0$--$1$ range.
 \item $W$ --- the plain English word $S$ maps to.
@@ -885,6 +885,16 @@ a valid option, while recognizing that not every asset will fit cleanly. CSPs
 \rfckw{may} define custom archetypes or adjust the scoring of existing ones at
 their discretion to map their estate accurately. The goal is to identify the most
 critical assets as defined by FedRAMP and deprioritize less critical ones.
+
+A simpler, equally valid implementation is to tag assets directly with an
+\code{asset-value} instead of an \code{asset-archetype}. Under that approach,
+\code{H} or \code{High} maps to static \code{CR:H/IR:H/AR:H}; \code{M},
+\code{Medium}, or \code{Moderate} maps to \code{CR:M/IR:M/AR:M}; and \code{L} or
+\code{Low} maps to \code{CR:L/IR:L/AR:L}. This schema is easy to implement and
+audit, and it may be sufficient for smaller or more homogeneous estates. Its tradeoff
+is that it loses some granularity and the explanatory chain of thought that an
+archetype catalog provides: every security requirement moves together rather than
+separately modeling confidentiality, integrity, and availability needs.
 
 
 \begin{quote}\itshape
