@@ -2,20 +2,16 @@
 
 \usepackage[letterpaper,margin=1in]{geometry}
 \usepackage{microtype}
-\usepackage{booktabs}
-\usepackage{array}
-\usepackage[table,dvipsnames]{xcolor}
+\usepackage[dvipsnames]{xcolor}
 \usepackage{enumitem}
 \usepackage[most]{tcolorbox}
 \usepackage[hidelinks]{hyperref}
 
-\emergencystretch=3em  % absorb the occasional unbreakable prose line
+\emergencystretch=3em
 
-% --- palette (matches the technical papers) ---
 \definecolor{infoblue}{HTML}{2C3E50}
 \definecolor{rule}{HTML}{BDC3C7}
 
-% Plain-language callout, same visual language as the white papers.
 \newtcolorbox{plain}{
   enhanced, breakable,
   colback=Sepia!7, colframe=Sepia!55, boxrule=0.4pt, arc=2pt,
@@ -25,7 +21,9 @@
   title={THE WHOLE MODEL}
 }
 
-\title{\bfseries If Everything Is ``Internet-Reachable,''\\ Nothing Is.}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\title{\bfseries A Practical Internet-Reachability Test\ for FedRAMP}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
 \date{July 2026}
 
@@ -33,238 +31,227 @@
 \maketitle
 
 \begin{center}
-\itshape A plain-language companion to ``A Finding-Level Model for Internet
-Reachability under the FedRAMP VDR/VER Rules.''
+\itshape A plain-language companion to ``A Scalable Trigger-Metadata Model for
+Internet Reachability under the FedRAMP VDR/VER Rules.''
 \end{center}
 
 \bigskip
 
-\section*{The problem in one sentence}
-FedRAMP's new rules make one question --- \emph{is this vulnerability reachable
-from the internet?} --- a major driver of how fast you must fix it, and then define
-``reachable'' so broadly that, read to the letter, almost everything in a connected
-system qualifies.
+\section*{The short version}
+FedRAMP asks providers to decide, for every vulnerability finding, whether a
+payload from the public internet might trigger it. That is broader than asking
+whether the affected server has a public IP. A crafted request can pass through
+an application and reach a private database, parser, queue worker, or logging
+library.
 
-Follow the words literally and follow the data. The request hits the application;
-the application writes the database; the database replicates; events land on the
-message bus; workers consume them; logs collect all of it. Every one of those
-components ``might receive a payload from the internet,'' so every flaw on every
-one of them lands in the internet-reachable bucket. And a label that everything
-carries means nothing: it cannot tell your security team what to fix first, and it
-puts your whole estate on the fastest remediation clocks at once --- at the top of
-the matrix, that is a two-day clock, everywhere, forever, plus per-finding
-documentation to match. No provider of realistic size can run that way, and nothing
-in the rules suggests they were designed to be unsatisfiable.
+The definition is technically sound. The operational problem is that ordinary
+scanner findings usually do not say whether a CVE can be triggered after its
+input crosses a component boundary. At scale, a provider cannot manually
+research that question for every finding on every asset.
 
-The way out is not to argue with the definition. It is to notice what else
-FedRAMP's own text says, and to make the determination a computation instead of a
-label.
-
-\section*{What the words actually say}
-Two details in the rule text are the source of the breadth.
-
-First, \textbf{reachability follows the data, not the network diagram.} The rule
-explicitly includes systems that ``have no direct route to/from the internet but
-receive payloads or otherwise take action triggered by internet activity.''
-Log4Shell made this vivid: the classic victim was a thumbnail generator or log
-indexer on a private subnet, no public IP, often no listening port at all. It just
-parsed strings that internet users had supplied. Under FedRAMP's definition, that
-box was internet-reachable the whole time.
-
-Second, \textbf{reachability is a property of the vulnerability, not the server.}
-The rule says it ``applies only to the specific vulnerable machine-based
-information resources processing the payload.'' The same host can carry one flaw
-that is internet-reachable and another that is not.
-
-But the same rule text carries a third detail most readings skip. FedRAMP's notes
-say the simplest way to prevent exploitation is to ``intercept, inspect, filter,
-\emph{sanitize}, reject, or otherwise deflect'' the triggering payload before the
-vulnerable code processes it --- and that ``once this prevention is in place the
-vulnerability should no longer be considered an internet-reachable vulnerability.''
-\emph{Sanitize} is FedRAMP's own word. And sanitizing internet input is not some
-exotic control: parameterized queries, schema validation, type and bounds checks,
-output encoding --- this is what production applications already do, every day,
-before handing data to the tiers behind them.
-
-\section*{Compute it per finding}
-The paper replaces the label with an equation, and the equation fits in a
-sentence. For each finding, build two lists: \textbf{what the internet can actually
-deliver to this component} (which doors are open, which protocols survive the load
-balancers and firewalls in between, what the tiers in front clean out), and
-\textbf{what this particular flaw needs in order to fire} (a network path, a
-protocol, a payload class). \textbf{If the lists overlap, the finding is
-internet-reachable. If they don't, it isn't.} Every entry in both lists must be
-backed by evidence, and any entry nobody can pin down counts as an overlap --- so
-missing evidence always errs toward ``reachable,'' never away from it.
-
-The asset side of the list is computed by five deterministic gates --- routing,
-firewall source attribution, edge authentication, Kubernetes exposure, and
-process-to-port mapping --- and then pushed through every hop on the way in:
-firewalls drop what they block, load balancers rewrite what they translate, login
-proxies convert public traffic to authenticated traffic, and \textbf{sanitizing
-tiers strip the payload classes they neutralize} from everything downstream. That
-last hop is the one the blanket reading ignores, and it is the one FedRAMP's own
-prevention note endorses.
-
-\section*{The evidence is the auditor's to collect --- and most of it already exists}
-Here is the assertion that changes the day-to-day picture: verifying that your
-application really does sanitize its internet input is \emph{assessment work}. It
-is the auditor's job to collect the evidence --- and the evidence is not exotic
-paperwork, it is the artifacts that already exist. Code review records over the
-input-handling paths. Static analysis (SAST) results. Unit and integration tests
-that fire hostile payloads and show them handled inertly. And --- decisively ---
-the regular web-application (DAST) scanning that FedRAMP continuous monitoring
-\emph{already requires}: those scans exist precisely to throw injection and
-malformed-content payloads at the running application and report what got through.
-A clean recurring web-app scan over the endpoints that feed your database \emph{is}
-sanitization evidence, refreshed on the cadence FedRAMP already mandates.
-
-So no new documentation regime is needed. The 3PAO scopes which scans, tests, and
-reviews cover which internal hand-offs; the agency or FedRAMP can ask for the same
-evidence at any time. And the scrutiny this buys goes where the risk actually
-concentrates: \textbf{on the components that process data from unauthenticated
-users} --- the login page, the public API, the upload endpoint, and the parsers
-their raw input feeds. Those see the internet's content before any cleaning has had
-its chance. The tiers behind them see only what survives.
-
-\section*{The steady state: the reachable list looks like the internet-facing list}
-Put those pieces together and something practical falls out. Because the evidence
-collection is standing --- assessments collect it, the required scans regenerate it
---- a conforming provider ends up, for most reporting scenarios, with an
-internet-reachable list that converges on the internet-\emph{accessible} list: the
-entry points, and the components handling raw unauthenticated input. Not because
-the two words mean the same thing (they don't, and the paper is strict about the
-vocabulary), but because standing proof of sanitization keeps closing the gap that
-the transitive definition opens.
-
-That is what proportionality looks like: the urgent list is short, real, and
-defensible, and every ``not reachable'' behind it traces to evidence an assessor
-collected rather than a judgment call someone typed into a spreadsheet.
-
-\section*{The day the calm breaks}
-The convergence has exactly one condition: attackers using known tricks. Every
-sanitization verdict is a claim about the techniques the world knows --- the scans
-fire the payloads the industry knows to fire, the tests test the tricks the
-developers knew to test. A zero-day that defeats the known techniques dissolves
-those claims wholesale, and this is precisely the day FedRAMP's sweeping definition
-was written for.
-
-Log4Shell, again, is the template. Before December 2021, nobody's sanitization
-guidance treated a JNDI lookup string inside a log line as dangerous --- so no
-evidence collected before that day said anything about it. The moment the technique
-published, every downstream component whose logs could carry attacker-controlled
-strings was in play. And the response was a moving target: within days of the first
-WAF rules blocking the attack string, obfuscated variants sailed straight past
-them, and every vendor spent the month rewriting patterns in a game of
-whack-a-mole. When no patch is in place, yesterday's mitigation is only a
-hypothesis about tomorrow's traffic.
-
-So the obligation on that day is due diligence, not paperwork: sweep for indicators
-of compromise everywhere the suspect data flows, put the known mitigations in,
-and keep watching whether they still hold --- adjusting and adding as the technique
-evolves --- until a patch exists and is applied. Whether you re-label the affected
-findings in your internal tracker is your call; the model doesn't quibble over
-ledger mechanics. Doing the work is not optional, and each suspended ``not
-reachable'' verdict is earned back only when fresh evidence shows your cleaning
-stops the new trick too.
+The paper recommends a current triage rule:
 
 \begin{plain}
-Day to day: five gates find your true entry points; the auditor collects standing
-proof --- required web-app scans, code reviews, tests --- that your tiers clean
-what they pass along; and the internet-reachable list converges to the
-internet-facing list, with the deep scrutiny reserved for whatever handles input
-from strangers who never logged in. The day threat intel drops a technique that
-beats everyone's cleaning: assume it travels, hunt for compromise everywhere the
-data flows, mitigate and keep re-mitigating until the patch lands, and re-earn the
-exclusions with fresh evidence. FedRAMP's sweeping definition is written for that
-second day --- not for every day.
+A finding is internet-reachable when its vulnerable network service can be
+triggered directly, or when a known indirect trigger reaches the component and
+current assessment and continuous-monitoring evidence does not show that the
+relevant trigger class is prevented before vulnerable processing.
 \end{plain}
 
-\section*{The same flaw, two very different verdicts}
-The per-finding grain is the point, so here it is in action:
+That rule is intentionally practical. It uses information providers already
+have, promotes exceptional indirect triggers once per CVE, and keeps a more
+detailed application-wide data-flow model optional.
 
-\begin{itemize}[leftmargin=1.5em]
-\item \textbf{SQL injection flagged on a private database behind the application
-  tier} --- FedRAMP's own canonical case. No public IP, no internet route. Under
-  the blanket reading: reachable, tightest clock. Under the model: the assessment
-  has the data-access code review on record, static analysis is clean for
-  injection on those paths, and the required web-app scans fire injection payloads
-  at the API and show them handled inertly. The cleaning hop strips injection
-  delivery from everything downstream: \textbf{not internet-reachable}, with the
-  evidence bundle as the audit artifact. Same database, no evidence collected?
-  \textbf{Reachable, full stop} --- the default doing its job.
-\item \textbf{An SSH flaw on a public web server:} the most internet-facing box in
-  the estate --- but port 22 is locked to the ops team's attributed addresses, and
-  the flaw only fires over SSH, which internet data never arrives on.
-  \textbf{Not internet-reachable}, on the most public host you own.
-\end{itemize}
+\section*{Why the scanner cannot finish the job}
+A scanner can usually identify the affected package, CVE, version, and CVSS
+vector. It may also report the listening service and a short vulnerability
+description. That is enough to automate much of the direct-exposure question.
 
-Opposite verdicts, and neither is decided by where the server sits --- one is
-decided by evidence of cleaning, the other by evidence of what the doors actually
-deliver.
+The missing fact is the trigger path. A local parser flaw may be completely
+unrelated to internet input, or it may process every uploaded document. A
+logging library may have no listener at all but still receive attacker-controlled
+strings from a public API. CVSS attack vector helps describe the vulnerable
+component; it does not reliably say whether another component can carry the
+trigger to it.
 
-\section*{``But we have a WAF''}
-If in-code sanitization can end reachability, surely a WAF rule that blocks the
-exploit does too? FedRAMP does permit that reclassification. The paper's answer:
-you may, but you shouldn't --- attest instead.
+This is primarily an upstream metadata problem. Vendors, CNAs, vulnerability
+publishers, and scanner feeds should distribute a reusable field such as
+\code{indirect\_internet\_trigger}, with provenance and enough trigger detail to
+support review. Today they generally do not.
 
-Two facts decide it. First, \textbf{the downgrade buys you no schedule}: FedRAMP
-defines mitigation over likelihood, so a WAF rule that verifiably blocks the
-triggering payloads earns the longer clock --- or leaves the remediation treadmill
-entirely --- while the finding stays classified internet-reachable, with a signed
-VEX statement carrying the claim. Both postures land on the same deadlines.
-Second, \textbf{the attestation stays true when the WAF fails} --- and WAFs fail:
-rules get bypassed by obfuscation (Log4Shell's whack-a-mole), flipped to
-detection-only during incidents, routed around by CDN migrations. On that day the
-attested record still says something true and names the control to check; the
-downgraded record says ``not reachable'' and is simply wrong, with nothing
-prompting a second look. Since the attestation costs almost nothing --- you are
-producing VEX anyway --- it is cheap insurance against being wrong in the
-expensive direction. The difference from in-code sanitization is the line that
-makes this principled: your application's input handling is versioned and
-re-tested with every build, so its evidence renews itself; a perimeter device's
-health is a minute-to-minute operational fact, and a claim that depends on it
-belongs in a revocable statement, not baked into the classification.
+\section*{Three checks, in order}
+The operational method asks three questions.
 
-Two boundaries no mitigation moves. Known Exploited Vulnerabilities keep their
-CISA due dates ``even if the vulnerability has been fully mitigated'' --- no
-virtual patch and no reclassification extends a KEV clock. And endpoint protection
-changes nothing about reachability: even a blocking-mode EDR that genuinely stops
-the exploit at runtime is evidence about exploitability and impact --- worth real
-credit on those levers --- not about whether internet data reaches the code.
-
-\section*{The bottom line}
-Five claims carry the whole paper:
 \begin{enumerate}[leftmargin=1.8em]
-\item \textbf{Blanket ``everything is reachable'' is not a security posture.} A
-  label everything carries prioritizes nothing and sets clocks nobody can keep.
-\item \textbf{Reachability is a per-finding computation:} what the internet can
-  deliver to this component, intersected with what this flaw needs to fire ---
-  every factor evidenced, every gap defaulting to ``reachable.''
-\item \textbf{Sanitization is FedRAMP-named prevention, and verifying it is the
-  auditor's job} --- using evidence that already exists: code reviews, SAST,
-  tests, and the DAST scanning continuous monitoring already requires. Extra
-  scrutiny goes to whatever processes unauthenticated input.
-\item \textbf{In the steady state, the reachable list converges on the
-  internet-facing list} --- proportionate, short, and defensible line by line.
-\item \textbf{The broad definition is for the zero-day day.} When a technique
-  defeats known sanitization and WAF protections, hunt for compromise, mitigate
-  and re-mitigate until the patch lands, and re-earn the exclusions with fresh
-  evidence --- however you choose to track it internally.
+\item \textbf{Can the internet directly deliver what this flaw requires?}
+  Match public routing, live listeners, protocol, version, and relevant edge
+  controls to the vulnerability's direct trigger. A public host does not make
+  every installed package reachable.
+
+\item \textbf{Is this a known indirect-trigger vulnerability?}
+  Record a reusable CVE-level status: confirmed, ruled out, or unknown. A vendor
+  advisory, threat-intelligence report, exploit analysis, reviewed agentic
+  proposal, or analyst decision can confirm the status once and reuse it across
+  the fleet.
+
+\item \textbf{Does the component receive internet-derived content, and is the
+  trigger currently prevented?}
+  A coarse component archetype can answer the first half. Current assessment,
+  DAST, remediation, and retest evidence can support the second half for the
+  trigger or input-control classes they actually cover.
 \end{enumerate}
 
-The full paper has the equations with every symbol explained, the five gates, the
-evidence criteria, the worked examples, and the VEX mappings. But the idea you came
-for is simple: \textbf{stop treating FedRAMP's definition as a label that
-everything wears, and start treating it as a computation --- one your auditors
-already have most of the evidence to run.}
+The paper calls that last prevention assertion $P_0$. If $P_0$ is current and
+in scope, a known downstream trigger can be classified NIRV. If the evidence is
+missing, stale, contradicted, or unrelated to the trigger, $P_0$ is zero and the
+finding remains IRV.
 
-\bigskip
+\section*{The evidence already exists, but it has limits}
+For Rev5 services, the
+\href{https://www.fedramp.gov/resources/documents/Continuous_Monitoring_Playbook.pdf}{FedRAMP
+Continuous Monitoring Playbook} requires recurring web-application scanning,
+coverage of web interfaces or an approved sample, individual tracking of
+findings, and assessor-validated scanner configuration. Providers maintain that
+evidence and remediate findings. Assessors review its scope and integrity and
+verify provider-run scan results.
+
+That division of labor matters. The provider produces and refreshes the
+evidence. The 3PAO collects or reviews it during assessment and validates the
+method. The model does not ask the assessor to invent a complete application
+data-flow graph or research every CVE on the provider's behalf.
+
+A current, properly scoped DAST program is meaningful sanitation and validation
+evidence. It is also not universal proof. Automated testing can miss authenticated
+paths, unusual formats, new trigger techniques, and code that the test plan never
+exercises. The
+\href{https://owasp.org/www-project-web-security-testing-guide/v42/2-Introduction/README}{OWASP
+Web Security Testing Guide} makes the same point: automated scanning belongs in a
+balanced testing program.
+
+The practical line is straightforward:
+
+\begin{itemize}[leftmargin=1.5em]
+\item A clean, current scan with validated scope, relevant coverage, remediated
+  findings, and successful retest can support $P_0$ for the tested class.
+\item A generic clean scan with unknown scope cannot.
+\item A new relevant finding, failed retest, material application change,
+  uncovered interface, alternate path, or new trigger technique revokes or
+  narrows $P_0$.
+\end{itemize}
+
+\section*{Why reachability converges toward accessibility}
+The model makes two explicit triage presumptions.
+
+First, a CVE whose indirect-trigger status is unknown is not automatically
+promoted across every component that ever handles internet-derived data. Doing
+that would make nearly every connected system IRV and erase the prioritization
+the field is meant to provide. The unknown status remains visible and is queued
+for risk-ranked enrichment.
+
+Second, a current $P_0$ assertion is trusted within its validated scope until
+contrary evidence or a material change revokes it. This reuses the assessment and
+ConMon work providers already perform.
+
+The resulting operational IRV list therefore converges toward the directly
+internet-accessible surface, plus known indirect triggers that are not covered by
+current prevention evidence. Reachability and accessibility do not mean the same
+thing. They produce similar operational lists because tested prevention closes
+many downstream trigger paths, while the exceptional paths are promoted
+explicitly.
+
+That is a conditional convergence, not a promise that downstream content is
+always safe. Its residual risks are equally explicit: missing upstream trigger
+metadata and incomplete or stale prevention evidence.
+
+\section*{Three examples}
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{SQL construction behind an application tier.}
+  Internet-derived values reach a private database. The validated DAST program
+  covers SQL injection on the relevant interface, relevant findings were
+  remediated and retested, and no bypass or material change is known. The current
+  $P_0$ assertion makes the database finding NIRV. A new SQL-injection finding or
+  uncovered interface resets $P_0$, and the finding returns to IRV.
+
+\item \textbf{A logging-expression trigger.}
+  Threat intelligence confirms that a crafted string can cross process
+  boundaries and trigger the affected logging library. The component receives
+  internet-derived log content. Ordinary SQL-injection and cross-site-scripting
+  DAST does not cover this mechanism, so $P_0$ is zero and the finding is IRV.
+
+\item \textbf{An administrative service behind IAP or VPN.}
+  A separate, bypass-free edge authorizes the connection before traffic reaches
+  the backend and is the backend's only ingress path. That can remove the
+  backend's direct internet path. A login implemented by the backend application
+  does not do the same thing because the request has already reached the
+  component; application authentication instead informs exploitability or an
+  attested mitigation.
+\end{itemize}
+
+\section*{What happens when a new trigger appears}
+Log4Shell is the useful pattern. Before the trigger was understood, ordinary
+scanner output and web testing did not say that a string written to a log could
+activate a private library. Once the mechanism became known, the CVE-level
+indirect-trigger status could be promoted across every affected deployment
+archetype that received attacker-controlled log content.
+
+That promotion is why trigger metadata belongs upstream. Research it once,
+publish it with provenance, and let every scanner and vulnerability-management
+platform reuse it. Agentic analysis can propose missing profiles, but it should
+cite sources, preserve unknowns, and require stronger review before concluding
+that no indirect trigger exists. An agent cannot recover a technical fact that
+no authoritative source disclosed.
+
+When new intelligence shows that an existing prevention assertion does not cover
+the trigger, $P_0$ is revoked and the affected findings are re-evaluated. The
+control is not allowed to remain true merely because last month's scan was clean.
+
+\section*{The optional future state is not today's requirement}
+A richer system could import or derive a deployment graph, record how content
+moves between components, attach transformations such as parameterized queries
+to each path, and bind tests to the deployed artifact. That would improve
+precision and make stronger NIRV claims portable between tools.
+
+The industry does not yet have a broadly adopted way to combine those artifacts
+into an independently verifiable, vulnerability-specific reachability record
+that vulnerability-management platforms can consume. The full paper includes a
+non-normative equation showing how such a system could work. It is an
+interoperability direction, not a prerequisite for the current method and not a
+claim that providers must build a complete application-wide graph now.
+
+\section*{A brief word about WAFs}
+FedRAMP allows a verified perimeter control that blocks the triggering payload
+before vulnerable processing to remove IRV status. The paper recommends a more
+durable operational posture for volatile WAF rules: keep the intrinsic
+reachability visible and attach a signed mitigation or VEX assertion describing
+the rule, its scope, and its evidence. If the rule is bypassed, disabled, or
+routed around, the record fails visibly instead of leaving behind a stale NIRV
+classification. KEV remediation dates continue to apply even when a vulnerability
+is fully mitigated.
+
+\section*{The bottom line}
+\begin{enumerate}[leftmargin=1.8em]
+\item Reachability is evaluated per finding, not assigned once to an asset.
+\item Direct exposure can be automated from network, listener, protocol, and
+  runtime evidence.
+\item Exceptional indirect triggers should be enriched once per CVE and reused
+  across the fleet; today's scanners rarely provide that metadata.
+\item Existing assessment, DAST, remediation, and retest evidence supports a
+  scoped, revocable prevention assertion without requiring a complete data-flow
+  graph.
+\item Under those declared presumptions, the operational IRV list converges
+  toward direct accessibility plus known uncovered indirect triggers.
+\end{enumerate}
+
+The method is not exhaustive exploit-path proof. It is a scalable triage model
+that states exactly what it assumes, preserves the unknowns, and identifies the
+upstream metadata improvement that would make the result more precise.
+
+\smallskip
 \noindent\textcolor{rule}{\rule{\textwidth}{0.4pt}}
-\medskip
+\smallskip
 
-\noindent\emph{Read the full technical paper:
-\href{https://stackarmor.github.io/rfc-fedramp-vdr/internet-reachability.pdf}{A
-Finding-Level Model for Internet Reachability under the FedRAMP VDR/VER Rules}}
+\noindent\small\emph{Read the
+\href{https://stackarmor.github.io/rfc-fedramp-vdr/internet-reachability.pdf}{full
+technical paper}.}
 
 \end{document}

@@ -194,26 +194,31 @@ finding it governs and recover the retained PAIN for audit. The disposition chan
 a finding's \emph{handling}; it never changes its score.
 
 
-\section{Service and workload subjects: reusable surface attestations}
+\section{Service and workload subjects: reusable reachability inputs}
 CycloneDX can describe both software \code{components} and network-facing \code{services}.
 Its vulnerability \code{affects[].ref} field references a subject by \code{bom-ref}, and
 that subject can be a service as well as a package or image component. This matters for
-FedRAMP reachability because there are two different facts in play:
+FedRAMP reachability because the companion reachability model keeps three facts separate:
 \begin{itemize}[leftmargin=1.5em,nosep,topsep=3pt]
-\item a \textbf{surface attestation} says what the internet can reach on a deployed
-  service or workload --- the exposed-surface set $E(a)$;
+\item a \textbf{direct-surface attestation} says which network descriptors the
+  internet can deliver to a deployed service or workload --- the set $N(a)$;
+\item a \textbf{content-receipt assertion} records whether the component receives
+  internet-derived content --- the coarse predicate $C_0(a)$; and
 \item a \textbf{finding disposition} says whether a particular vulnerability's required
-  surface $X(v)$ intersects that exposed surface.
+  direct surface matches $N(a)$ or a confirmed indirect trigger applies to
+  $C_0(a)$ and remains after the current prevention assertion $P_0(v,a)$ is
+  applied.
 \end{itemize}
 
-A service-level surface attestation is therefore reusable across findings. It does not,
+A service-level input attestation is therefore reusable across findings. It does not,
 by itself, declare every CVE on the service reachable or unreachable; instead it caches
 the asset-side evidence so each CVE can be evaluated automatically without rediscovering
 Ingress, Gateway, load-balancer, backend protocol, ALPN, and edge-auth state. If a service
-attestation says the subject is not internet-reachable at all, every finding on that subject
-can be classified NIRV. If it says the subject is internet-reachable, each \code{AV:N}
-finding remains IRV by default unless the per-CVE required surface is known and positively
-mismatches the attested exposed surface.
+attestation shows no direct internet surface, it closes only the direct branch; a
+confirmed indirect content trigger can still make a finding IRV. If a direct surface
+exists, \code{AV:N} remains an enrichment hint rather than the decision: the finding's
+required protocol and other descriptors still need to match, with unresolved required
+surface treated conservatively for that direct branch.
 
 A stable service/workload \code{bom-ref} \rfckw{should} identify the deployment subject,
 not merely the image artifact. A Kubernetes service, for example, can be represented with
@@ -230,7 +235,8 @@ a stable URN-like reference:
         { "name": "k8s:namespace", "value": "default" },
         { "name": "k8s:kind", "value": "Service" },
         { "name": "k8s:name", "value": "payments-api" },
-        { "name": "vdr:assetInternetReachable", "value": "true" },
+        { "name": "vdr:directInternetSurfacePresent", "value": "true" },
+        { "name": "vdr:receivesInternetDerivedContent", "value": "true" },
         { "name": "vdr:exposedBackendProtocol", "value": "http" },
         { "name": "vdr:exposedBackendProtocolVersion", "value": "HTTP2" },
         { "name": "vdr:exposedBackendAlpn", "value": "h2" },
@@ -248,12 +254,12 @@ automated disposition for a specific CVE:
   "id": "CVE-2026-30303",
   "analysis": {
     "state": "exploitable",
-    "detail": "Asset is internet-reachable and CVSS is AV:N. Required protocol is unknown, so the required surface is treated as a wildcard."
+    "detail": "A direct internet surface exists and CVSS is AV:N. Required protocol is unknown, so the direct required surface is treated conservatively."
   },
   "affects": [{ "ref": "urn:k8s:prod:default:service:payments-api" }],
   "properties": [
     { "name": "vdr:findingInternetReachable", "value": "true" },
-    { "name": "vdr:reachabilityDecision", "value": "insufficient_evidence_to_downgrade" },
+    { "name": "vdr:reachabilityDecision", "value": "direct_surface_match" },
     { "name": "vdr:remediationTrack", "value": "LEV+IRV" }
   ]
 }
@@ -261,12 +267,16 @@ automated disposition for a specific CVE:
 
 This split preserves automation without overclaiming. The service attestation is reused
 for all CVEs on that deployed subject, while the per-CVE disposition still accounts for
-\code{AV}, required protocol, ALPN/version, and any vulnerability-specific preconditions.
-The surface attestation \rfckw{should} be re-evaluated when the facts that justify it
+\code{AV}, required protocol, ALPN/version, confirmed indirect-trigger status, $C_0$,
+$P_0$, and other vulnerability-specific preconditions.
+The attestation \rfckw{should} be re-evaluated when the facts that justify it
 change: Service selector, selected port, Ingress or Gateway binding, backend protocol,
 ALPN policy, edge authentication, or the workload template/image digest when that digest
 is part of the evidence. Routine replica churn need not invalidate the attestation when
-those evidence inputs remain unchanged.
+those evidence inputs remain unchanged. Content-receipt assertions should also
+change when application handoffs change; $P_0$ evidence is maintained and
+invalidated under the companion reachability model rather than inferred from the
+direct-surface record.
 
 \section{Worked example}
 A single signed CycloneDX document can carry several statements. Below, one finding is
@@ -330,7 +340,8 @@ Deployment-context reachability attestations have a different subject: the servi
 workload, or runtime component. They \rfckw{may} still be distributed as signed OCI
 artifacts, but the reference is to a stable service/workload \code{bom-ref} and the
 evidence binds the statement to the route and backend protocol configuration that
-justified it. This allows the same surface attestation to be reused across scans and CVEs
+justified it. This allows the same direct-surface and content-receipt inputs to be
+reused across scans and CVEs
 while still forcing re-evaluation when the deployment surface changes. The result is the
 same operational property as image-attached VEX: the \emph{a posteriori} judgment, once
 made and signed, is rediscovered and reused without re-litigation, but without pretending
@@ -348,7 +359,7 @@ crosswalk is \rfckw{optional} and exists solely for interchange.
 \begin{table}[H]
 \centering
 \footnotesize
-\renewcommand{\arraystretch}{1.25}
+\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{>{\raggedright\arraybackslash}p{0.40\textwidth} >{\raggedright\arraybackslash}p{0.52\textwidth}}
 \toprule
 \textbf{CycloneDX justification / state} & \textbf{CISA label (coarsened)} \\

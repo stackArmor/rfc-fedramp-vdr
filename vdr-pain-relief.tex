@@ -79,8 +79,9 @@ governs its own.
 This document is informational. It does not define a FedRAMP requirement; it
 specifies a method for lowering the PAIN and exploitability of a finding within
 the existing VDR/VER rules, building directly on the PAIN memo's mitigation
-ladder. It consumes the internet-reachability determination of \emph{An
-Exclusion-Gated Method for Determining Internet Reachability} and the disposition
+ladder. It consumes the internet-reachability determination of \emph{A
+Scalable Trigger-Metadata Model for Internet Reachability under the FedRAMP
+VDR/VER Rules} and the disposition
 vocabulary of \emph{A CycloneDX VEX Profile for FedRAMP Rev5 VDR/VER}. The key
 words \rfckw{must}, \rfckw{should}, and \rfckw{may} follow RFC~2119.
 
@@ -104,17 +105,21 @@ something on paper, not just in principle.
 \end{plain}
 
 \subsection{The axis that matters: enforced, not claimed}
-The tempting mistake is to reward controls a provider \emph{asserts}. Input
-sanitization, a WAF signature set, ``we validate everything'' --- these are
-claims about behavior, unverifiable at assertion time and silently perishable on
-the next refactor. PAIN Relief admits a control only when it is
+The tempting mistake is to reward controls a provider merely \emph{asserts}.
+PAIN Relief admits a control only when it is
 \textbf{machine-verifiable} --- read from enforced configuration or telemetry a
 collector can inspect (a NetworkPolicy, a \code{securityContext}, an RDS flag) ---
 or carried by a signed, dated, reusable attestation for structure a platform
-cannot expose. A control whose effectiveness is a claim stays in the VEX
-disposition lane of the companion profile, decided per finding by a person. The
+cannot expose. A control that does not meet that automatic bar stays outside the
+catalog and is governed separately through reachability or VEX evidence. The
 line is not \emph{a priori} versus \emph{a posteriori}; it is
 \emph{enforced-and-verifiable} versus \emph{asserted}.
+
+Input sanitization is handled separately by the reachability model's $P_0$
+predicate. Assessment, recurring DAST, remediation, and retest can support a
+scoped, revocable $P_0$ even when the control is not eligible for an automatic
+PAIN Relief catalog row. That evidence changes the reachability determination; it
+does not also earn a second likelihood or impact discount here.
 
 \section{Two Levers}
 \label{sec:levers}
@@ -273,10 +278,10 @@ and is reviewed like one. Each row \rfckw{must} satisfy:
   mechanism by which the control interrupts the weakness class.
 \item \textbf{Machine-verifiable or attested, never claimed.} The control is
   proven from enforced configuration, telemetry, or a signed reusable artifact.
-  This is the clause that keeps input sanitization and WAF signature coverage
-  \emph{out} of the catalog and in the VEX lane: both are bets that a pattern
-  matches every variant an adversary can invent, and Log4Shell's same-week
-  obfuscations are the standing proof they are not verifiable facts.
+  This keeps WAF signature coverage out of the automatic catalog and in the VEX
+  lane. Input-control evidence is evaluated under the reachability model's
+  scoped, revocable $P_0$ predicate instead of being double-counted as PAIN
+  Relief.
 \item \textbf{CWE-keyed and fail-open.} A row applies only to the classes it
   lists; missing or generic CWEs earn nothing.
 \item \textbf{One rung; never None.} Impact moves High to Low only; zero-impact is
@@ -294,8 +299,8 @@ and is reviewed like one. Each row \rfckw{must} satisfy:
 \section{What PAIN Relief Never Does}
 No entry mutates the published EPSS score or the vendor CVSS base vector; both the
 original and the adjusted values appear in output. No entry alters the
-internet-reachability determination --- that is the companion exclusion-gated
-method's job, and PAIN Relief merely consumes its result. No entry extends or
+internet-reachability determination --- that is the companion reachability
+model's job, and PAIN Relief merely consumes its result. No entry extends or
 softens a CISA KEV / BOD~26-04 remediation date; a Known Exploited Vulnerability
 carries its CISA clock untouched no matter how thoroughly it is mitigated --- the
 governed NLEV exception can only relax the PAIN-matrix column \emph{beneath} that

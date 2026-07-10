@@ -366,31 +366,38 @@ that ``might be exploited or otherwise triggered by a payload originating from a
 source on the public internet'' --- explicitly including resources with \emph{no
 direct internet route} that process payloads received indirectly;
 \code{VER-EVA-EIR}'s canonical example is SQL injection reaching a database on a
-private network through the application tier. The determination is therefore made
-per finding:
+private network through the application tier. The companion paper distinguishes
+the directly computable network branch from the transitive content branch. Its
+current operational profile is:
 \[
-\mathrm{IRV}(v,a)\;=\;\ind\!\left[\,E(a)\cap X(v)\neq\varnothing\,\right],
+\mathrm{IRV}_0(v,a)=
+\ind\!\left[N(a)\cap X_N(v)\neq\varnothing\right]
+\;\lor\;
+\left(\ind[J(v)=\mathrm{confirmed}]\cdot C_0(a)
+\cdot\left(1-P_0(v,a)\right)\right),
 \]
-where $E(a)$ is the \emph{exposed surface} --- the delivery shapes (attack-vector
-class, protocol, version) an internet actor can actually get to component $a$,
-computed by pushing the internet's traffic through every routing, filtering,
-authentication, and \emph{sanitization} hop on the path --- and $X(v)$ is the
-\emph{required surface} the vulnerability needs in order to fire. Every factor
-defaults to reachable absent deterministic evidence. Sanitization verified in
-assessment (code review, SAST, unit tests, and the recurring DAST scanning
-continuous monitoring already requires) removes the neutralized vulnerability
-classes from downstream surfaces. A separate threat-intelligence promotion rule
-applies when a CVE is later determined to be indirectly triggerable by
-public-internet input; that rule promotes affected findings to IRV without adding a
-new term to this equation. Two corrections to common intuitions:
-(a) \code{FRD-IRV} imposes no unauthenticated requirement --- ``unauthenticated
-automated exploitation'' belongs to the \code{FRD-LEV} exploitability floor, not
-to reachability; (b) edge authentication (an identity-aware proxy and a client VPN
-alike) excludes a backend from IRV only in its \emph{remote-access} role, never as
-customer authentication for the service itself --- the latter is an exploitability
-signal, not an IRV exclusion. The full model, evidence requirements, and worked
-cases are specified in the companion paper \emph{A Finding-Level Model for
-Internet Reachability under the FedRAMP VDR/VER Rules}.
+where $N(a)$ is the directly exposed network surface, $X_N(v)$ is the direct
+network surface required by the vulnerability, $J(v)$ is the reusable CVE-level
+indirect-trigger promotion, and $C_0(a)$ is the current coarse assertion that the
+component receives internet-derived content. $P_0(v,a)$ is a current,
+assessment- and ConMon-backed assertion that the relevant trigger or input-control
+class is prevented before vulnerable processing. Recurring DAST and remediation
+refresh that assertion; stale, out-of-scope, failed, or contradicted evidence sets
+$P_0$ to zero. CVSS \code{AV:L/A/P} excludes a
+finding from the direct branch but does not prevent promotion into the indirect
+branch. The paper recommends this operational profile under today's metadata
+conditions, under which reachability converges operationally toward direct
+accessibility plus known uncovered indirect triggers. A separate, non-normative
+full-information form shows how structured
+content trigger profiles and optional application-edge evidence can refine the
+result when publishers or provider-selected tools supply them. A separate,
+bypass-free IAP/VPN remote-access boundary can remove the backend's direct path;
+application-level authentication is not an IRV/NIRV gate and instead informs
+LEV or attested mitigation. It lowers PAIN only when its enforced scope
+demonstrably reduces customer effect after successful exploitation. The full
+equations, optional extension model, and
+worked cases are specified in the companion paper \emph{A Scalable
+Trigger-Metadata Model for Internet Reachability under the FedRAMP VDR/VER Rules}.
 \end{definitionbox}
 
 Restricting the threat inputs to EPSS and the KEV catalog --- and to nothing else ---
@@ -567,8 +574,9 @@ S = 0.699/0.915 = 0.764 \;\Rightarrow\; \text{Disruptive},\ m=1 \;\Rightarrow\;
 \end{align*}
 The N5 timeframe is satisfied by the reduction, the reduction is reported under
 \code{VER-RPT-VDT}, and work proceeds on the N4 clock. The evidence is the
-NetworkPolicy object snapshot and the data-flow graph showing the egress edge
-removed (the companion method's telemetry). One clock is untouched: Log4Shell is a
+NetworkPolicy object snapshot and enforcement evidence showing the egress path
+removed; optional flow or graph evidence can help bind that control to the
+workload. One clock is untouched: Log4Shell is a
 KEV, so the \code{VDR-TFR-KEV} remediation date runs independently of any
 reduction.
 
@@ -615,8 +623,8 @@ hypothetical --- each has already played out in public:
 
 \paragraph{Column moves: the other axis.} Reachability and exploitability
 mitigations do not touch the impact metrics at all --- they move the finding's
-\emph{column}. Network segmentation that verifiably cuts the payload path (per the
-companion model's data-flow evidence) flips IRV to NIRV; a
+\emph{column}. Network segmentation that verifiably cuts the payload path, or a
+current prevention assertion under the companion model, can flip IRV to NIRV; a
 qualifying remote-access boundary (the companion model's Gate~3) defeats the
 \code{FRD-LEV} unauthenticated-automation floor. \code{VDR-TFR-PVR} is satisfied by landing on
 \emph{any} longer clock, whether the step down was a row or a column. The textual
@@ -735,7 +743,8 @@ $M[\text{C}][\text{PAIN}][\text{column}]$. The IRV column is evaluated \emph{per
 finding} via the companion finding-level model; (t) marks transitive payload
 exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
 (SQL-injection-class) finding on a datastore that is not internet-accessible is
-still IRV, tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
+still IRV because this sample assumes no current $P_0$ prevention assertion,
+tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
 vendor severity that still yields N4 (availability-High DoS on a
 High-availability-requirement asset; Example~3) --- stays NIRV because its
 vulnerable parser sits on the inter-broker replication surface, which receives no
@@ -817,7 +826,8 @@ deadlines --- an internet-facing exploitable flaw on the shared edge remediates 
 \textbf{12 hours} (CVE-2026-yyy1). CVE-2026-yyy3 shows a \emph{Low} vendor severity
 at N5 also remediating in \textbf{12 hours}: a content-triggered DoS in
 message-payload parsing on the shared backbone is transitively internet-reachable
-(t) through the tenant pods, even though the bus itself is not internet-accessible.
+(t) through the tenant pods, even though the bus itself is not internet-accessible;
+the sample assumes no current $P_0$ assertion covers that trigger.
 A confidentiality leak on shared DNS (CVE-2026-yyy6) stays N2 and NIRV ---
 ``Narrow'' does not escalate with scope.}
 \label{tab:scand}
@@ -1271,8 +1281,8 @@ various other team members at stackArmor who helped make it possible.
 \item[{[DEF]}] FedRAMP, \emph{FedRAMP Definitions}. Definitions cited:
   \texttt{FRD-IRV}, \texttt{FRD-LEV}. Pinned permalink: \defcite{} (commit of
   2026-06-24). Accessed 2026-07-01.
-\item[{[EGR]}] M.~Venne, \emph{A Finding-Level Model for Internet Reachability
-  under the FedRAMP VDR/VER Rules}, stackArmor,
+\item[{[EGR]}] M.~Venne, \emph{A Scalable Trigger-Metadata Model for Internet
+  Reachability under the FedRAMP VDR/VER Rules}, stackArmor,
   July 2026. Companion paper specifying the reachability determination used here.
 \item[{[BOD]}] CISA, \emph{Binding Operational Directive 26-04}, 2026-06-10.
 \item[{[KEV]}] CISA, \emph{Known Exploited Vulnerabilities (KEV) Catalog}. LEV
