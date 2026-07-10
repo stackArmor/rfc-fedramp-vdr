@@ -236,9 +236,10 @@ impact scalar $S$ from CVSS impact values and the asset's CR/IR/AR; translate
 $S$ into a customer-effect word (Minimal, Narrow, Disruptive, or Debilitating);
 then combine that word with the multi-agency flag to select N1--N5.
 
-All constants below are taken \emph{verbatim} from the CVSS v3.1 specification; only
-the normalization and the word thresholds (Section~\ref{sec:thresholds}) are
-additions.
+The numerical weights and cap in Eq.~\eqref{eq:isc} are taken from the CVSS v3.1
+specification. The normalization, word thresholds, and multi-agency mapping are
+this method's additions; Section~\ref{sec:cvss-divergence} delineates that boundary
+precisely.
 
 \begin{notation}
 \begin{itemize}[leftmargin=1.3em,nosep,topsep=2pt]
@@ -257,8 +258,10 @@ additions.
 \end{notation}
 
 \paragraph{Impact metric weights.}
-Each of the affected vulnerability's Confidentiality, Integrity and Availability
-impact metrics ($C$, $I$, $A$), read from the CVSS Base vector, takes a weight:
+Each of the affected vulnerability's effective Confidentiality, Integrity and
+Availability impact metrics ($C$, $I$, $A$) takes a weight. The initial values come
+from the CVSS Base vector; an evidence-gated Modified value can override them as
+described in Section~\ref{sec:ladder}:
 \[
 C, I, A \in \{\,\text{None}=0,\quad \text{Low}=0.22,\quad \text{High}=0.56\,\}.
 \]
@@ -270,9 +273,9 @@ Each asset's Requirement (CR, IR, AR) takes a multiplier:
 \]
 
 \paragraph{Modified Impact Sub-Score.}
-The per-dimension impacts and requirements combine as a probabilistic union --- the
-share of the asset left uncompromised on each dimension is multiplied, and the
-complement is the overall impact:
+The per-dimension impacts and requirements combine in CVSS's bounded
+complement-product form: multiply the arithmetic complement on each dimension,
+then take the complement of that product:
 \begin{equation}
 \mathrm{ISC} \;=\; \min\!\Big[\,1 - \big(1 - C\!\cdot\!\mathrm{CR}\big)\big(1 - I\!\cdot\!\mathrm{IR}\big)\big(1 - A\!\cdot\!\mathrm{AR}\big),\ \ 0.915\,\Big].
 \label{eq:isc}
@@ -283,6 +286,39 @@ requirements). We then normalize to a unit scalar:
 S \;=\; \frac{\mathrm{ISC}}{0.915} \ \in\ [0,1].
 \label{eq:s}
 \end{equation}
+
+\begin{plain}
+\textbf{Reading Eqs.~\eqref{eq:isc}--\eqref{eq:s} step by step.}
+Each of the three products --- $C\!\cdot\!\mathrm{CR}$,
+$I\!\cdot\!\mathrm{IR}$, and $A\!\cdot\!\mathrm{AR}$ --- multiplies two facts:
+how badly the flaw damages one property (from the CVE's vector) and how much this
+system depends on that property (from its requirements). A severe flaw on a system
+that does not care produces a small number; a modest flaw on a system that cares
+deeply produces a larger one. This is where ``same CVE, different asset, different
+score'' happens.
+
+Subtracting each product from 1 flips it, within the arithmetic, from ``damage
+dealt'' to ``share of that dimension left intact.'' Multiplying the three
+complements and subtracting the result from 1 is a bounded complement-product
+aggregation. It has the same algebraic form as the probability that at least one
+of several independent events occurs, but the C/I/A weights are not probabilities
+and the method makes no statistical-independence claim. Unlike simply adding the
+three products, which could exceed 1, this construction stays bounded and gives
+each additional affected dimension diminishing marginal weight.
+
+The $\min(\ldots,0.915)$ cap is CVSS's, not ours. The largest unweighted impact
+combination is all-High:
+$1-(1-0.56)^3=0.915$. High requirements multiply each dimension by $1.5$, so an
+individual product can reach $0.84$, and the three-dimension combination reaches
+approximately $0.996$. The cap prevents that adjusted result from exceeding
+CVSS's global maximum MISS. The CVE determines which dimensions are affected and
+their baseline magnitude; the asset requirements determine how strongly those
+dimensions count. Asset criticality can move a finding toward the scale's worst
+case, but not beyond its fixed ceiling. That fixed, specification-defined maximum
+also gives Eq.~\eqref{eq:s} a stable denominator: $S=1.0$ means ``maximum
+attainable MISS,'' and the word thresholds retain the same meaning across assets
+with different requirement profiles.
+\end{plain}
 
 \paragraph{Severity word.}
 \label{sec:thresholds}
@@ -321,6 +357,69 @@ from the word and scope:
 \end{cases}
 \label{eq:pain}
 \end{equation}
+
+\clearpage
+\subsection{Where this departs from standard CVSS scoring}
+\label{sec:cvss-divergence}
+Equation~\eqref{eq:isc} is algebraically identical to the CVSS v3.1 Modified
+Impact Sub-Score (MISS), with $C/I/A$ denoting the effective Modified impact
+values $\mathrm{MC}/\mathrm{MI}/\mathrm{MA}$ --- or their inherited Base values
+when the Modified metrics are Not Defined. The metric weights, requirement
+multipliers, complement-product formula, and $0.915$ cap are standard CVSS; the
+abbreviated notation is ours. The departures begin after MISS, with what this
+method does --- and deliberately does not do --- with that intermediate.
+
+In the v3.1 specification, MISS feeds the full Environmental Score. For Modified
+Scope Unchanged, the specification multiplies MISS by $6.42$; Modified Scope
+Changed uses a different impact expression. It then combines Modified Impact with
+Modified Exploitability, built from \code{MAV}/\code{MAC}/\code{MPR}/\code{MUI},
+applies the Temporal multipliers \code{E}/\code{RL}/\code{RC}, caps the score at
+10, and performs the prescribed rounding. MISS is not the specified final
+Environmental Score. We stop at MISS and do not carry any of that downstream
+machinery into the severity term. Three decisions follow, each with a reason.
+
+\paragraph{We drop the exploitability half of the score.}
+PAIN is Potential Agency Impact: the question is how badly the flaw lands if it
+fires, not how likely it is to fire. Exploitability is not discarded; it is routed
+to the axes FedRAMP built for it, the LEV/IRV remediation columns
+(Section~\ref{sec:remediation}), where threat and exposure are measured directly.
+CVSS's exploitability metrics encode technical preconditions for exploitation;
+EPSS estimates exploitation probability, and KEV membership records observed
+exploitation. That separation is consistent with the exposure- and threat-based
+prioritization of BOD~26-04. Folding
+\code{MAV}/\code{MAC}/\code{MPR}/\code{MUI} back into the severity term would let
+exploitability influence both the row and the column. The seam is clean by
+construction: impact picks the row; exploitability and reachability pick the
+column.
+
+\paragraph{We normalize instead of computing the 0--10 blend.}
+CVSS transforms MISS, together with its other inputs, into a standardized 0--10
+Environmental Score. Our deliverable is a classification --- four words and five
+N-levels --- so the scalar exists only to be bucketed. Equation~\eqref{eq:s}
+rescales MISS to the natural axis for drawing those lines: $S$ is the fraction of
+the maximum attainable MISS. A threshold of $\theta_3=0.80$ therefore means ``the
+cut point is 80\% of maximum MISS.'' It is not a claim that the vulnerability
+causes 80\% of some physically measurable damage; the CVSS coefficients are not a
+ratio-scale measurement of harm. The division changes no ordering --- it relabels
+the axis. The substantive choice is stopping at MISS.
+
+\paragraph{We do not repurpose CVSS Scope.}
+The full Environmental formula branches on the Changed/Unchanged Modified Scope
+metric. CVSS Scope asks whether exploitation can affect resources governed by a
+security authority beyond the vulnerable component's authority; it is not limited
+to sandbox or privilege-boundary escape, and Modified Scope can reflect the local
+environment. FedRAMP's blast-radius concern here asks a different question:
+whether the affected asset carries one agency's data or several agencies' data.
+The multi-agency flag in Eq.~\eqref{eq:pain} carries that concern directly. Because
+the two concepts are not semantically interchangeable, the CVSS Scope machinery is
+omitted rather than renamed or repurposed.
+
+The result is not a conformant CVSS Environmental Score. It reuses the standard
+MISS intermediate, routes exploitability and reachability to FedRAMP's remediation
+columns, represents multi-agency blast radius explicitly, and normalizes only for
+classification. A reviewer verifying the CVSS provenance can compare
+Eq.~\eqref{eq:isc} with the published MISS formula; every choice after it is
+enumerated above and in Appendix~\ref{app:opinions}.
 
 \section{Fail-safe behavior}
 Missing metadata \rfckw{must not} \emph{lower} PAIN. If a system has not been
@@ -1160,11 +1259,9 @@ on. Each item below names the value we use, why, and the fact that an implementa
   automated unauthenticated system can exploit over the internet is a likely
   exploitable vulnerability.''
 \item \textbf{Impact-only severity, normalized by $0.915$.} We take CVSS's
-  \emph{Modified Impact Sub-Score} and rescale it to $[0,1]$ (Eq.~\ref{eq:s}) rather
-  than computing the full 0--10 environmental score. PAIN is about \emph{impact on the
-  asset}, so we intentionally drop the exploitability half of the base score (and the
-  $6.42$ coefficient) from the severity term; exploitability re-enters separately as
-  the LEV/IRV remediation columns.
+  \emph{Modified Impact Sub-Score} and rescale it to $[0,1]$ rather than computing
+  the full Environmental Score; Section~\ref{sec:cvss-divergence} enumerates this
+  choice and every downstream CVSS component the method omits.
 \item \textbf{CISA Vulnrichment is deliberately excluded.} Two CISA Vulnrichment
   SSVC values are natural candidate inputs: the exploitation state (as a
   LEV input) and the technical impact (as an impact floor). We adopt neither. The
@@ -1253,6 +1350,9 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
 1.1 & June 29, 2026 & M. Venne & Various readability updates. \\
 1.2 & July 9, 2026 & M. Venne & Added the optional \code{asset-value} assignment
   scheme as a simpler alternative to \code{asset-archetype}. \\
+1.3 & July 10, 2026 & M. Venne & Expanded the mathematical walkthrough of
+  Eqs.~\eqref{eq:isc}--\eqref{eq:s} and delineated departures from standard CVSS
+  v3.1 scoring. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}
