@@ -104,15 +104,6 @@ connection peer. Nor does the vulnerability record normally know the
 provider's application graph: which API writes which queue, which worker parses
 which upload, or which validation is applied before a database query.
 
-The missing information cannot be recreated by multiplying the number of
-asset-level scanner findings. If one CVE is present on ten thousand assets,
-the trigger mechanism is still chiefly a fact about the CVE and affected
-product family. It should be determined once, carried with provenance, and
-reused. Deployment applicability should likewise be evaluated by component
-and path archetype rather than by repeating the same analysis for every
-instance. FedRAMP expressly permits logical grouping of affected resources to
-improve evaluation and response efficiency under \code{VER-EVA-GRV}.\cite{fedramp-ver}
-
 This paper defines a method that can be implemented now and separately records
 optional extension points for upstream standardization. Sections~\ref{sec:two-defaults}
 and~\ref{sec:gaps} define the operational problem. Section~\ref{sec:model}
@@ -353,6 +344,29 @@ presumption, not proof of non-reachability. Vendor guidance, a CNA update,
 threat intelligence, exploit analysis, agentic enrichment, or analyst review
 can promote $J(v)$ once and apply the result across every affected finding.
 
+\paragraph{CWE-seeded mandatory review.}
+A CWE is a routing signal, not proof of $J(v)$, but selected CWE mappings should
+always place a CVE into a one-time, CVE- or product/version-level review for
+indirect triggerability. A non-exhaustive high-priority seed set includes
+\code{CWE-78} (OS command injection), \code{CWE-79} (especially stored XSS),
+\code{CWE-89} (SQL injection), \code{CWE-94} and \code{CWE-95} (code or eval
+injection), \code{CWE-134} (externally controlled format strings),
+\code{CWE-409} (highly compressed data), \code{CWE-502} (deserialization of
+untrusted data), \code{CWE-611} (external entity references), \code{CWE-917}
+(expression-language injection), \code{CWE-1333} (inefficient regular-expression
+complexity), and \code{CWE-1336} (template-engine injection). The review asks
+whether the trigger can remain effective when carried in a string, file,
+message, record, log entry, or other content through an intermediary, without
+requiring the attacker to remain the vulnerable operation's connection peer.
+A CWE match alone must set neither \code{confirmed} nor \code{ruled out}.
+When authoritative or reproducible evidence confirms the behavior, the
+enrichment records $J(v)=\mathrm{confirmed}$ --- equivalently,
+\code{indirect\_internet\_trigger: true} in a Boolean representation --- with
+provenance. Every affected finding then enters the indirect branch of
+Equation~\ref{eq:operational}; it becomes IRV under that branch only where
+$C_0(a)=1$ and $P_0(v,a)=0$. The seed set is a review accelerator, not a
+definition or exhaustive allowlist of indirect-trigger vulnerabilities.
+
 $P_0(v,a)=1$ is a standing assurance claim, not a mathematical proof. It
 requires current evidence of the relevant scan or test scope, assessor-validated
 configuration, remediation and successful retest of relevant findings, and no
@@ -420,14 +434,39 @@ results over time without making Equation~\ref{eq:operational} unreasonable or
 incomplete for its declared operational purpose.
 
 \begin{plain}
-There are two ways an exploit reaches code. It can arrive as a network
-conversation, or it can ride inside content handed from one component to the
-next. We can automate much of the first path today. For the second, today's
-system uses a CVE-level promotion, a coarse ``receives internet content'' tag,
-and the standing prevention evidence already maintained through assessment and
-ConMon. The full-information form shows how optional structured metadata can
-plug in later; it does not turn that optional refinement into today's
-requirement.
+The first tuple is simply a detailed label for attacker-controlled content. It
+records five facts: what carries the input, its format, what the receiving
+component does with it, how much control the attacker retains, and whether the
+attacker must remain on the same connection. For example, it could describe an
+uploaded image containing arbitrary attacker-chosen bytes that a private worker
+later parses.
+
+Equation~\ref{eq:content-surface} says to start with everything the internet can
+send and follow it along every path to the component. At each handoff, update
+the description to reflect what actually happens. A queue changes the carrier;
+protocol translation changes the protocol; schema validation may restrict the
+allowed format; and a parameterized query changes SQL influence from
+instructions to data. The transformations are applied in path order. The large
+union symbol means to combine the result from every possible path: if any path
+still delivers a capability, it remains in $C(a)$.
+
+Equation~\ref{eq:fullinfo} then asks two independent questions:
+\begin{itemize}[leftmargin=1.35em,nosep]
+\item Does the component's directly exposed network surface overlap with the
+  network conditions the vulnerability needs?
+\item Does any internet-derived content capability that survives the path
+  overlap with a content trigger the vulnerability needs?
+\end{itemize}
+The intersection symbol $\cap$ means ``overlap,'' $\neq\varnothing$ means ``at
+least one match exists,'' and $\lor$ means ``or.'' If either the direct-network
+comparison or the carried-content comparison has a match, the finding is IRV.
+
+Current tools generally cannot populate these detailed content descriptions and
+transformations. That is why the recommended operational profile uses the
+coarser CVE promotion $J(v)$, content-receipt tag $C_0(a)$, and standing
+prevention assertion $P_0(v,a)$. The full-information form shows how richer
+metadata could improve precision later; it does not make a complete data-flow
+graph a present requirement.
 \end{plain}
 
 \section{Computing the Direct Network Branch}
