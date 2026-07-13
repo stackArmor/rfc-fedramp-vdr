@@ -1300,15 +1300,23 @@ on. Each item below names the value we use, why, and the fact that an implementa
   (most-specific wins); there is no automatic per-archetype escalation. (The
   tempting shortcut --- auto-escalating ``shared-infrastructure'' archetypes to
   multi-agency --- is rejected in favor of explicit, operator-controlled tagging.)
-\item \textbf{``Archetype'', not ``type''.} We classify assets by their
-  \emph{role/usage pattern}, not their intrinsic kind, and the label reflects that:
-  the same software lands in different archetypes by how it is used (an in-memory
-  store is \code{app-tier} as a cache, \code{identity-secrets} as a session store,
+\item \textbf{``Archetype'', not ``type'' --- and archetype is an
+  implementation choice.} The formula ultimately requires only a per-asset
+  Security Requirements vector (\code{CR/IR/AR}); it does not require
+  \code{asset-archetype}, or any particular metadata key. Any governed metadata
+  label or classification scheme can supply that vector if each supported value
+  maps deterministically to a documented security-requirements gradient. We chose
+  \code{asset-archetype} because classifying assets by their \emph{role/usage
+  pattern}, rather than their intrinsic kind, provides more granularity and a
+  clearer, auditable reasoning chain. The same software can therefore land in
+  different archetypes by how it is used (an in-memory store is \code{app-tier}
+  as a cache, \code{identity-secrets} as a session store, or
   \code{data-backbone} as a broker). ``Type'' would wrongly suggest an intrinsic
   property of the software and collides with overloaded terms (e.g.\ Kubernetes
   Service \code{type}); ``archetype'' names the pattern an asset matches in the
-  estate. An adopter \rfckw{may} rename the label, but the role-not-kind semantics
-  should be preserved.
+  estate. An adopter \rfckw{may} instead use another metadata vocabulary, provided
+  its mappings and defaults are governed and auditable; if it retains an archetype
+  taxonomy, the role-not-kind semantics should be preserved.
 \item \textbf{Fail-safe defaults to conservative High.} An unclassified asset defaults
   to CR/IR/AR all High so it scores loudly, rather than to a low default. ``Unknown''
   is treated as serious until classified.
@@ -1357,7 +1365,9 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
   v3.1 scoring. \\
 1.4 & July 13, 2026 & M. Venne & Changed the recommended EPSS
   Likely-Exploitable threshold from $0.70$ to $0.50$ and updated the worked
-  remediation examples. \\
+  remediation examples. Clarified that the scoring formula requires a per-asset
+  Security Requirements vector, while \code{asset-archetype} is an optional,
+  granular metadata mapping chosen for its auditable rationale. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}
