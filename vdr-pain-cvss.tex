@@ -1172,7 +1172,8 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \code{telemetry-backbone} & data    & M & M & M & metrics/trace pipelines, telemetry queues, event buses carrying no agency payload \\
 \code{app-tier}           & data    & M & M & M & stateless services, APIs, UIs, caches \\
 \code{batch-analytics}    & data    & M & M & L & ETL, reporting, analytics jobs \\
-\code{public-edge}        & data    & L & L & H & load balancers, public web, ingress \\
+\code{public-edge}        & data    & M & M & H & TLS-terminating L7 edge: ingress, API gateways, public web \\
+\code{passthrough-edge}   & data    & L & L & H & L4/SNI passthrough load balancers (no TLS termination) \\
 \code{internal-tooling}   & data    & L & L & L & dashboards, metrics/log agents \\
 \code{dev-test}           & data    & L & L & L & non-production \\
 \midrule
@@ -1181,7 +1182,7 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \end{tabular}
 \end{table}
 
-Two assignments deserve their reasoning on the record. First, \code{data-backbone}
+Three assignments deserve their reasoning on the record. First, \code{data-backbone}
 is reserved for components that carry agency payload data; a bus that moves only
 metrics, traces, and heartbeats is \code{telemetry-backbone}, one grade lower on
 every dimension. Routing payload data through a telemetry bus is a
@@ -1193,7 +1194,19 @@ shared by the whole class---and an edge-class outage closes the front door for
 every user. \code{app-tier} sits at Medium because its blast radius is one service
 degrading. The same availability-High CVE therefore scores Debilitating on the
 edge and Disruptive on the application tier, which matches how an operations team
-actually experiences the two events.
+actually experiences the two events. Third, the edge itself is split by what it
+does with traffic. \code{public-edge} names the TLS-terminating L7 edge --- in
+practice, almost every modern ingress, gateway, or public web front --- and
+carries CR and IR at Medium: a terminating edge holds private keys and session
+material and sees every payload in flight, so a memory-disclosure flaw there is
+key and token theft, not reconnaissance. \code{passthrough-edge} is the
+deliberate opt-in for an edge that never terminates --- an L4 or SNI passthrough
+that routes payload but holds none --- where CR and IR genuinely drop to Low.
+The stronger values sit on the default-sounding name on purpose: an edge tagged
+\code{public-edge} out of habit should overrate, not underrate. Where
+termination is handled by a managed cloud load balancer whose keys never enter
+the boundary, the passthrough tag is the honest one --- the terminating
+component sits on the provider's side of the shared-responsibility line.
 
 \section{Remediation deadline matrices}
 \label{app:matrix}
@@ -1377,6 +1390,10 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
 1.5 & July 15, 2026 & M. Venne & Refined the direct-IRV
   unauthenticated-automation floor to \code{AV:N/AC:L/PR:N/UI:N}, while retaining
   EPSS at or above $0.50$ and CISA KEV membership as independent LEV predicates. \\
+1.6 & July 15, 2026 & M. Venne & Split the edge archetype: \code{public-edge}
+  now names the TLS-terminating L7 edge (CR:M/IR:M/AR:H); added
+  \code{passthrough-edge} (CR:L/IR:L/AR:H) for edges that never terminate.
+  Expanded the catalog commentary with the reasoning. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}
