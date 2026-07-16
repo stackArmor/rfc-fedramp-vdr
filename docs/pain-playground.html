@@ -6,8 +6,8 @@
 <title>PAIN &amp; Remediation Playground — FedRAMP VDR/VER</title>
 <style>
   :root{
-    --bg:#0E1116; --panel:#151A21; --panel2:#1B222C; --line:#2A313C;
-    --ink:#E6EAF0; --muted:#8B95A5; --faint:#5C6675;
+    --bg:#0E1116; --panel:#151A21; --panel2:#1B222C; --line:#303946; --field:#566477;
+    --ink:#E6EAF0; --muted:#A1ABBA; --faint:#7D8898;
     --accent:#D9A441; --accent-dim:#8a6a2e;
     --crit:#C0392B; --high:#E67E22; --med:#F1C40F; --low:#27AE60;
     --info:#5B87B7;
@@ -16,13 +16,20 @@
     --serif:'Iowan Old Style',Palatino,'Palatino Linotype',Georgia,serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+  [hidden]{display:none!important}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55}
   button{font-family:inherit}
 
-  header{padding:18px 24px 12px;border-bottom:1px solid var(--line)}
+  header{padding:24px clamp(18px,3vw,40px) 18px;border-bottom:1px solid var(--line)}
   .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
-  header h1{font-size:20px;font-weight:650;margin-top:3px}
-  header p.sub{color:var(--muted);margin-top:2px;max-width:78ch;font-size:13px}
+  header h1{font-size:clamp(21px,2.4vw,28px);font-weight:680;margin-top:4px;letter-spacing:-.02em}
+  header p.sub{color:var(--muted);margin-top:4px;max-width:70ch;font-size:13.5px}
+  .examples{margin-top:14px;max-width:980px}
+  .examples summary{display:inline-flex;align-items:center;gap:8px;color:var(--ink);cursor:pointer;font-size:12.5px;
+    padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+  .examples summary::marker{color:var(--accent)}
+  .examples summary span{color:var(--faint);font-size:11px}
+  .examples[open] summary{border-color:var(--accent-dim)}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
   .preset{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:99px;
     padding:4px 11px;font-size:12px;cursor:pointer}
@@ -30,34 +37,47 @@
   .preset .pn{color:var(--accent);font-family:var(--mono);font-size:10px;margin-right:4px}
 
   /* stepper */
-  .stepper{display:flex;gap:4px;padding:12px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-  .stepper button{display:flex;align-items:center;gap:8px;background:none;border:1px solid transparent;
-    border-radius:8px;padding:7px 13px;cursor:pointer;color:var(--muted);font-size:13px}
+  .stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 clamp(12px,3vw,40px);
+    border-bottom:1px solid var(--line);max-width:1440px;margin:0 auto}
+  .stepper button{display:flex;align-items:center;justify-content:center;gap:8px;background:none;border:0;
+    border-bottom:2px solid transparent;padding:13px 8px 11px;cursor:pointer;color:var(--muted);font-size:12.5px}
   .stepper button .num{font-family:var(--mono);font-size:11px;width:20px;height:20px;border-radius:50%;
     border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;flex:none}
-  .stepper button.cur{background:var(--panel2);border-color:var(--accent-dim);color:var(--ink)}
+  .stepper button.cur{border-color:var(--accent);color:var(--ink)}
   .stepper button.cur .num{background:var(--accent);border-color:var(--accent);color:#14100a;font-weight:700}
+  .stepper button.done .num{border-color:var(--accent-dim);color:var(--accent)}
   .stepper button:hover{color:var(--ink)}
-  .stepper .arrow{color:var(--faint);align-self:center;font-size:12px}
+  @media(max-width:620px){
+    .stepper{padding:0 10px}
+    .stepper button{padding-inline:4px}
+    .stepper .steptext{display:none}
+  }
 
-  .layout{display:grid;grid-template-columns:430px minmax(0,1fr);align-items:start}
-  @media(max-width:980px){.layout{grid-template-columns:1fr}}
+  .layout{display:grid;grid-template-columns:minmax(340px,400px) minmax(0,1fr);align-items:start;
+    max-width:1440px;margin:0 auto}
+  @media(max-width:980px){
+    .layout{grid-template-columns:1fr}
+    .outcome{display:contents}
+    .verdictstrip{grid-row:1;margin:16px 18px 0}
+    .controls{grid-row:2}
+    #stepPanel{grid-row:3;margin:22px 18px 38px;min-width:0}
+  }
 
   /* ---------- left: wizard controls ---------- */
-  .controls{border-right:1px solid var(--line);padding:20px 22px 28px;min-height:520px}
+  .controls{border-right:1px solid var(--line);padding:26px clamp(18px,2.5vw,28px) 32px;min-height:520px}
   @media(max-width:980px){.controls{border-right:none;border-bottom:1px solid var(--line);min-height:0}}
   .wstep{display:none}
   .wstep.cur{display:block}
-  .wstep h2{font-size:16px;font-weight:650;margin-bottom:2px}
-  .wstep p.lead{color:var(--muted);font-size:12.5px;margin-bottom:16px}
+  .wstep h2{font-size:18px;font-weight:650;margin-bottom:3px;letter-spacing:-.01em}
+  .wstep p.lead{color:var(--muted);font-size:12.5px;margin-bottom:20px;max-width:48ch}
 
   .fld{font-size:12.5px;color:var(--muted);display:block;margin-bottom:4px;margin-top:14px}
   .fld:first-of-type{margin-top:0}
-  input[type=text]{background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  input[type=text]{background:var(--panel);border:1px solid var(--field);color:var(--ink);
     font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:6px;width:100%}
   input[type=text]:focus,select:focus,button:focus-visible,input[type=range]:focus-visible,input[type=checkbox]:focus-visible{
     outline:2px solid var(--accent);outline-offset:1px}
-  select{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:13px;
+  select{background:var(--panel);border:1px solid var(--field);color:var(--ink);font-size:13px;
     padding:7px 9px;border-radius:6px;max-width:100%;width:100%}
   .btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:8px 13px;
     border-radius:6px;font-size:13px;cursor:pointer;white-space:nowrap}
@@ -65,9 +85,20 @@
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#14100a;font-weight:600}
   .btn.primary:hover{filter:brightness(1.08)}
   .btn.ghost{background:none}
+  .btn:disabled,.stepper button:disabled{cursor:not-allowed;opacity:.42}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .status{font-size:12px;color:var(--muted);min-height:16px;font-family:var(--mono);margin-top:6px}
   .status.err{color:var(--high)}
+  .field-set{border:0;min-width:0}
+
+  .control-details{border:1px solid var(--line);border-radius:8px;margin-top:18px;background:rgba(21,26,33,.45)}
+  .control-details>summary{cursor:pointer;padding:10px 12px;color:var(--ink);font-size:12.5px;font-weight:600}
+  .control-details>summary small{display:block;color:var(--faint);font-size:11px;font-weight:400;margin-left:18px}
+  .control-details[open]>summary{border-bottom:1px solid var(--line)}
+  .control-details>.details-body{padding:2px 12px 14px}
+  .question-group{border-top:1px solid var(--line);margin-top:16px;padding-top:16px}
+  .question-group h3{font-size:12.5px;font-weight:650;margin-bottom:2px}
+  .question-group>p{font-size:11.5px;color:var(--faint);margin-bottom:8px}
 
   .triple{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .cell{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 9px}
@@ -86,7 +117,13 @@
     border-radius:50%;background:var(--ink);transition:left .15s}
   .switch input:checked::after{left:17px;background:#14100a}
   @media (prefers-reduced-motion:reduce){.switch input,.switch input::after{transition:none}}
-  .switch .hint{color:var(--faint);font-size:11.5px;display:block;line-height:1.45}
+  @media (forced-colors:active){
+    .switch input{appearance:auto;width:auto;height:auto}
+    .switch input::after{display:none}
+    .seg button.on,.badge,.matrix td.active{forced-color-adjust:none}
+  }
+  .switch .hint{color:var(--faint);font-size:11px;display:block;line-height:1.4;margin-top:1px}
+  .switch:has(input:disabled){color:var(--muted);cursor:not-allowed}
   .sym{font-family:var(--mono);font-size:10px;color:var(--faint)}
 
   .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
@@ -96,6 +133,15 @@
   .seg button.on{background:var(--accent);color:#14100a;font-weight:700}
   input[type=range]{width:100%;accent-color:var(--accent)}
   .rangeval{font-family:var(--mono);font-size:13px;color:var(--ink);min-width:44px;text-align:right}
+  .path-options{border:0;display:grid;gap:8px}
+  .path-options legend{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+  .radio-card{display:flex;align-items:flex-start;gap:9px;border:1px solid var(--field);border-radius:7px;
+    padding:9px 10px;cursor:pointer;color:var(--muted);font-size:12.5px}
+  .radio-card:has(input:checked){border-color:var(--accent-dim);background:rgba(217,164,65,.07);color:var(--ink)}
+  .radio-card input{accent-color:var(--accent);margin-top:3px;flex:none}
+  .radio-card input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .radio-card small{display:block;color:var(--faint);font-size:11px;margin-top:1px}
+  .relay-conditions{margin-top:8px;padding-left:2px}
 
   .reqchips{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
   .reqchip{font-size:12px;padding:3px 9px;border-radius:5px;border:1px solid var(--line)}
@@ -108,18 +154,20 @@
     border:1px solid var(--line);background:var(--panel2)}
   .cwechip.seed{border-color:var(--accent);color:var(--accent);background:rgba(217,164,65,.1)}
 
-  .wnav{display:flex;gap:10px;margin-top:26px;border-top:1px solid var(--line);padding-top:16px}
+  .wnav{display:flex;gap:10px;margin-top:30px;border-top:1px solid var(--line);padding-top:18px}
   .wnav .spacer{flex:1}
 
   /* ---------- right: outcome ---------- */
-  .outcome{padding:20px 26px 30px;min-width:0}
+  .outcome{padding:26px clamp(18px,3vw,36px) 38px;min-width:0}
 
-  .verdictstrip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--panel);
-    border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:18px}
+  .verdictstrip{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:20px;position:sticky;top:10px;z-index:20;
+    box-shadow:0 8px 24px rgba(0,0,0,.18)}
   .verdictstrip .lab{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--faint);
-    text-transform:uppercase;width:100%}
+    text-transform:uppercase;margin-right:2px}
   .verdictstrip .go{margin-left:auto;font-size:12px;color:var(--info);background:none;border:none;
     cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+  .stripsummary{font-size:11.5px;color:var(--muted);flex-basis:100%;padding-left:1px}
 
   .badge{display:inline-block;font-family:var(--mono);font-weight:700;padding:4px 12px;border-radius:6px;font-size:14px}
   .word-Minimal{background:rgba(39,174,96,.2);color:#7fe0a8;border:1px solid var(--low)}
@@ -133,16 +181,20 @@
   .n-N5{background:rgba(192,57,43,.24);color:#f39288;border:1px solid var(--crit)}
   .badge.big{font-size:20px;padding:8px 18px}
   .stripdl{font-family:var(--mono);font-weight:700;font-size:16px;color:var(--accent)}
-  .striptags{display:flex;gap:6px;flex-wrap:wrap}
-  .minitag{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-  .minitag.hot{border-color:rgba(192,57,43,.5);color:#f39288}
-  .minitag.cool{border-color:rgba(39,174,96,.45);color:#8fe0b0}
+  .wordlabel{font-size:12.5px;color:var(--muted)}
 
-  .plainbox{font-family:var(--serif);font-size:14.5px;line-height:1.55;color:#e8ddc4;
-    background:rgba(217,164,65,.07);border:1px solid rgba(217,164,65,.35);border-left:3px solid var(--accent);
-    border-radius:6px;padding:12px 16px;margin-bottom:18px}
-  .plainbox .t{font-family:var(--sans);font-size:10.5px;font-weight:700;letter-spacing:.13em;
-    color:var(--accent);display:block;margin-bottom:5px}
+  .verdict-hero{background:linear-gradient(135deg,rgba(217,164,65,.11),rgba(21,26,33,.92));
+    border:1px solid rgba(217,164,65,.35);border-radius:12px;padding:20px;margin-bottom:18px}
+  .verdict-hero .kicker{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent)}
+  .verdict-hero .hero-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:6px 0 8px}
+  .verdict-hero .hero-deadline{font-family:var(--mono);font-size:clamp(30px,5vw,46px);line-height:1;font-weight:800;color:var(--accent)}
+  .verdict-hero p{color:#e8ddc4;font-family:var(--serif);font-size:15px;max-width:76ch}
+  .factors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:16px}
+  .factors>div{background:rgba(14,17,22,.82);padding:9px 10px;min-width:0}
+  .factors dt{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em}
+  .factors dd{font-size:12px;color:var(--ink);margin-top:2px;overflow-wrap:anywhere}
+  @media(max-width:700px){.factors{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
   .card{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:16px;overflow:hidden}
   .card>.head{display:flex;align-items:baseline;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);
@@ -150,6 +202,15 @@
   .card>.head h3{font-size:13.5px;font-weight:600}
   .card>.head .cite{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
   .card .body{padding:14px 16px}
+  details.card>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:12px 16px;
+    background:var(--panel2);font-size:13.5px;font-weight:600}
+  details.card>summary::-webkit-details-marker{display:none}
+  details.card>summary::before{content:'+';font-family:var(--mono);color:var(--accent);font-size:16px;font-weight:400}
+  details.card[open]>summary{border-bottom:1px solid var(--line)}
+  details.card[open]>summary::before{content:'\2212'}
+  .inline-details{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+  .inline-details summary{cursor:pointer;color:var(--muted);font-size:11.5px}
+  .inline-details p{font-size:11.5px;color:var(--faint);margin-top:8px}
 
   /* impact bars */
   .impbar{display:grid;grid-template-columns:110px 1fr 90px;gap:10px;align-items:center;margin-bottom:10px}
@@ -193,6 +254,10 @@
   .callout.kev .ct{color:#f39288}
   .callout.note{background:rgba(91,135,183,.08);border:1px solid rgba(91,135,183,.4)}
   .callout.note .ct{color:var(--info)}
+  details.callout{padding:0}
+  details.callout summary{cursor:pointer;padding:10px 13px;font-size:12.5px;font-weight:600}
+  details.callout .callout-body{padding:0 13px 11px;color:var(--muted)}
+  details.callout[open] summary{padding-bottom:6px}
 
   .matrix{border-collapse:collapse;font-family:var(--mono);font-size:13px;width:100%;max-width:560px}
   .matrix th,.matrix td{border:1px solid var(--line);padding:7px 10px;text-align:center}
@@ -230,8 +295,9 @@
 
   .tip,.tipicon{cursor:help;position:relative}
   .tip{border-bottom:1px dotted var(--muted)}
-  .tipicon{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  .tipicon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;
     border-radius:50%;border:1px solid var(--muted);color:var(--muted);font-size:10px;font-family:var(--mono);vertical-align:1px}
+  .tipicon:focus-visible,.tip:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .tip:hover::after,.tip:focus::after,.tipicon:hover::after,.tipicon:focus::after{
     content:attr(data-tip);position:absolute;left:0;bottom:calc(100% + 7px);z-index:50;
     background:#242c37;color:var(--ink);border:1px solid var(--line);border-radius:7px;
@@ -239,7 +305,25 @@
     white-space:normal;font-weight:400;text-align:left;box-shadow:0 6px 22px rgba(0,0,0,.5)}
   .tipicon:hover::after,.tipicon:focus::after{left:50%;transform:translateX(-50%)}
 
-  footer{border-top:1px solid var(--line);padding:14px 24px 26px;color:var(--faint);font-size:11.5px;max-width:100ch}
+  footer{border-top:1px solid var(--line);padding:16px clamp(18px,3vw,40px) 28px;color:var(--faint);font-size:11.5px}
+  footer p{max-width:100ch}
+  .empty-panel{border:1px dashed var(--line);border-radius:10px;padding:28px;min-height:220px;
+    display:flex;flex-direction:column;justify-content:center;align-items:flex-start;color:var(--muted)}
+  .empty-panel .empty-title{color:var(--ink);font-size:17px;font-weight:650;margin-bottom:5px}
+  .empty-result{color:var(--muted);font-size:12.5px}
+  .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+    overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+  .table-scroll{overflow-x:auto;max-width:100%;padding:2px}
+  @media(max-width:520px){
+    .triple{grid-template-columns:1fr}
+    .details-body .triple{grid-template-columns:1fr!important}
+    .impbar{grid-template-columns:1fr 68px;gap:5px 10px}
+    .impbar .track{grid-column:1/2;grid-row:2}
+    .impbar .vv{grid-column:2;grid-row:2}
+    .btn{min-height:42px}
+    .verdictstrip{top:4px}
+    .deadline .dval{font-size:31px}
+  }
 </style>
 </head>
 <body>
@@ -247,177 +331,201 @@
 <header>
   <div class="eyebrow">FedRAMP Rev5 VDR/VER &middot; CVSS-Environmental method</div>
   <h1>PAIN &amp; Remediation Playground</h1>
-  <p class="sub">Five questions take a CVE from scanner output to a defensible PAIN level and remediation deadline. How bad picks the <b>row</b>; how exploitable and how exposed pick the <b>column</b>. Everything updates live.</p>
-  <div class="presets" id="presets"></div>
+  <p class="sub">Four guided steps turn a CVE into a defensible PAIN level and remediation deadline. Your result updates as you go.</p>
+  <details class="examples">
+    <summary>Try a worked example <span>7 scenarios</span></summary>
+    <div class="presets" id="presets"></div>
+  </details>
 </header>
 
-<nav class="stepper" id="stepper" aria-label="wizard steps">
-  <button data-step="1"><span class="num">1</span>The flaw</button><span class="arrow">&rarr;</span>
-  <button data-step="2"><span class="num">2</span>The asset</button><span class="arrow">&rarr;</span>
-  <button data-step="3"><span class="num">3</span>Exploitation</button><span class="arrow">&rarr;</span>
-  <button data-step="4"><span class="num">4</span>Exposure</button><span class="arrow">&rarr;</span>
-  <button data-step="5"><span class="num">5</span>Verdict</button>
+<nav class="stepper" id="stepper" aria-label="Assessment progress">
+  <button type="button" data-step="1" aria-label="Step 1: Flaw"><span class="num">1</span><span class="steptext">Flaw</span></button>
+  <button type="button" data-step="2" aria-label="Step 2: Asset"><span class="num">2</span><span class="steptext">Asset</span></button>
+  <button type="button" data-step="3" aria-label="Step 3: Exposure"><span class="num">3</span><span class="steptext">Exposure</span></button>
+  <button type="button" data-step="4" aria-label="Step 4: Likelihood"><span class="num">4</span><span class="steptext">Likelihood</span></button>
+  <button type="button" data-step="5" aria-label="Step 5: Verdict"><span class="num">5</span><span class="steptext">Verdict</span></button>
 </nav>
 
-<div class="layout">
+<main class="layout">
   <!-- ============================ WIZARD ============================ -->
   <div class="controls">
 
     <!-- STEP 1: the flaw -->
-    <section class="wstep" data-step="1">
-      <h2>What is the flaw?</h2>
-      <p class="lead">Pick a CVE, or set the three damage dials yourself. Only what the flaw can <i>break</i> matters here — how hard it is to exploit is handled later, on its own axis.</p>
+    <section class="wstep" data-step="1" aria-labelledby="step1Title">
+      <h2 id="step1Title" tabindex="-1">Start with the flaw</h2>
+      <p class="lead">Look up a CVE to import its impact and exploit facts. You can review or correct the source data if needed.</p>
 
       <label class="fld" for="cveInput">CVE ID</label>
       <div class="row">
-        <input type="text" id="cveInput" placeholder="CVE-2021-44228" style="flex:1;min-width:150px" spellcheck="false">
-        <button class="btn primary" id="btnLookup">Look up</button>
-        <button class="btn" id="btnRandom" title="Pick a random CVE from the bundled library">Random</button>
+        <input type="text" id="cveInput" placeholder="CVE-2021-44228" style="flex:1;min-width:150px" spellcheck="false" autocomplete="off" aria-describedby="lookupStatus">
+        <button type="button" class="btn primary" id="btnLookup">Look up</button>
+        <button type="button" class="btn" id="btnRandom" title="Pick a random CVE from the bundled library">Random</button>
       </div>
-      <div class="status" id="lookupStatus"></div>
+      <div class="status" id="lookupStatus" role="status"></div>
 
-      <label class="fld">Impact — what can it break? <span class="tipicon" tabindex="0" data-tip="The CVE&rsquo;s C / I / A impact metrics: secrecy, correctness, and uptime. CVSS weights: None = 0, Low = 0.22, High = 0.56. These are the only CVSS metrics the severity math consumes.">?</span></label>
-      <div class="triple">
-        <div class="cell"><label><b>Confidentiality</b> <span class="sym">C</span></label>
-          <select id="mC"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
-        <div class="cell"><label><b>Integrity</b> <span class="sym">I</span></label>
-          <select id="mI"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
-        <div class="cell"><label><b>Availability</b> <span class="sym">A</span></label>
-          <select id="mA"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
-      </div>
+      <details class="control-details" id="flawDetails">
+        <summary>Edit imported CVSS details <small>Impact, exploit preconditions, weakness type, and raw vector</small></summary>
+        <div class="details-body">
+          <fieldset class="field-set">
+            <legend class="fld">Impact — what can it break? <span class="tipicon" tabindex="0" data-tip="The CVE&rsquo;s C / I / A impact metrics: secrecy, correctness, and uptime. CVSS weights: None = 0, Low = 0.22, High = 0.56. These are the only CVSS metrics the severity math consumes.">?</span></legend>
+            <div class="triple">
+              <div class="cell"><label for="mC"><b>Confidentiality</b> <span class="sym">C</span></label>
+                <select id="mC"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
+              <div class="cell"><label for="mI"><b>Integrity</b> <span class="sym">I</span></label>
+                <select id="mI"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
+              <div class="cell"><label for="mA"><b>Availability</b> <span class="sym">A</span></label>
+                <select id="mA"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
+            </div>
+          </fieldset>
 
-      <label class="fld">Exploit preconditions <span class="tipicon" tabindex="0" data-tip="These never change the PAIN level. They matter later: a flaw that is network-triggerable with low attack complexity, no privileges, and no user interaction, sitting directly on the internet, is automatically treated as likely-exploitable (FedRAMP&rsquo;s FRD-LEV floor, AV:N/AC:L/PR:N/UI:N).">?</span></label>
-      <div class="triple" style="grid-template-columns:repeat(2,1fr)">
-        <div class="cell"><label><b>Attack Vector</b> <span class="sym">AV</span></label>
-          <select id="mAV"><option value="N">Network</option><option value="A">Adjacent</option><option value="L">Local</option><option value="P">Physical</option></select></div>
-        <div class="cell"><label><b>Attack Complexity</b> <span class="sym">AC</span></label>
-          <select id="mAC"><option value="L">Low</option><option value="H">High</option></select></div>
-        <div class="cell"><label><b>Privileges Required</b> <span class="sym">PR</span></label>
-          <select id="mPR"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
-        <div class="cell"><label><b>User Interaction</b> <span class="sym">UI</span></label>
-          <select id="mUI"><option value="N">None</option><option value="R">Required</option></select></div>
-      </div>
+          <fieldset class="field-set">
+            <legend class="fld">Exploit preconditions <span class="tipicon" tabindex="0" data-tip="These never change the PAIN level. They matter later: a flaw that is network-triggerable with low attack complexity, no privileges, and no user interaction, sitting directly on the internet, is automatically treated as likely-exploitable (FedRAMP&rsquo;s FRD-LEV floor, AV:N/AC:L/PR:N/UI:N).">?</span></legend>
+            <div class="triple" style="grid-template-columns:repeat(2,1fr)">
+              <div class="cell"><label for="mAV"><b>Attack Vector</b> <span class="sym">AV</span></label>
+                <select id="mAV"><option value="N">Network</option><option value="A">Adjacent</option><option value="L">Local</option><option value="P">Physical</option></select></div>
+              <div class="cell"><label for="mAC"><b>Attack Complexity</b> <span class="sym">AC</span></label>
+                <select id="mAC"><option value="L">Low</option><option value="H">High</option></select></div>
+              <div class="cell"><label for="mPR"><b>Privileges Required</b> <span class="sym">PR</span></label>
+                <select id="mPR"><option value="N">None</option><option value="L">Low</option><option value="H">High</option></select></div>
+              <div class="cell"><label for="mUI"><b>User Interaction</b> <span class="sym">UI</span></label>
+                <select id="mUI"><option value="N">None</option><option value="R">Required</option></select></div>
+            </div>
+          </fieldset>
 
-      <label class="fld" for="cweInput">Weakness type (CWE)</label>
-      <input type="text" id="cweInput" placeholder="CWE-502" spellcheck="false">
-      <div class="cwe-chips" id="cweChips"></div>
-      <div class="vectorline" id="vectorLine"></div>
+          <label class="fld" for="cweInput">Weakness type (CWE)</label>
+          <input type="text" id="cweInput" placeholder="CWE-502" spellcheck="false">
+          <div class="cwe-chips" id="cweChips"></div>
+          <div class="vectorline" id="vectorLine"></div>
+        </div>
+      </details>
     </section>
 
     <!-- STEP 2: the asset -->
-    <section class="wstep" data-step="2">
-      <h2>Where does it live?</h2>
-      <p class="lead">The same flaw lands differently on different systems. The asset's role sets how much it depends on secrecy, correctness, and uptime — the other half of the score.</p>
+    <section class="wstep" data-step="2" aria-labelledby="step2Title">
+      <h2 id="step2Title" tabindex="-1">Where does it live?</h2>
+      <p class="lead">Choose the affected system&rsquo;s role. This sets how much it depends on secrecy, correctness, and uptime.</p>
 
       <label class="fld" for="archetype">Role of the affected system <span class="tipicon" tabindex="0" data-tip="Each role carries pre-assigned Security Requirements (CR/IR/AR: Low = 0.5&times;, Medium = 1&times;, High = 1.5&times;). The catalog is the memo&rsquo;s worked example — each provider should derive its own from its system categorization. Untagged assets deliberately default to all-High so they score loudly.">?</span></label>
       <select id="archetype"></select>
       <div class="reqchips" id="reqChips"></div>
       <div class="triple" id="customReqRow" style="display:none;margin-top:10px">
-        <div class="cell"><label><b>Confidentiality</b> <span class="sym">CR</span></label><select id="cCR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
-        <div class="cell"><label><b>Integrity</b> <span class="sym">IR</span></label><select id="cIR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
-        <div class="cell"><label><b>Availability</b> <span class="sym">AR</span></label><select id="cAR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="cCR"><b>Confidentiality</b> <span class="sym">CR</span></label><select id="cCR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="cIR"><b>Integrity</b> <span class="sym">IR</span></label><select id="cIR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="cAR"><b>Availability</b> <span class="sym">AR</span></label><select id="cAR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
       </div>
 
       <label class="switch" style="margin-top:14px">
         <input type="checkbox" id="multiAgency">
         <span>Holds more than one agency's data
-          <span class="hint">Set by explicit tag on the asset, its boundary, or the provider default — most-specific wins. Widens the blast radius one N-level, but only for Disruptive or Debilitating findings.</span></span>
+          <span class="hint">Widens the blast radius one level only for Disruptive or Debilitating findings.</span></span>
       </label>
 
-      <label class="fld">Provider Certification Class <span class="tipicon" tabindex="0" data-tip="Chooses which deadline table applies — higher classes run tighter clocks. Classes A and B share one schedule. The day counts themselves are FedRAMP&rsquo;s, verbatim; the Class is the only provider-side choice.">?</span></label>
-      <div class="seg" id="classSeg">
-        <button data-cls="A/B">A / B</button><button data-cls="C" class="on">C</button><button data-cls="D">D</button>
-      </div>
+      <fieldset class="field-set">
+        <legend class="fld">Provider Certification Class <span class="tipicon" tabindex="0" data-tip="Chooses which deadline table applies — higher classes run tighter clocks. Classes A and B share one schedule. The day counts themselves are FedRAMP&rsquo;s, verbatim; the Class is the only provider-side choice.">?</span></legend>
+        <div class="seg" id="classSeg">
+          <button type="button" data-cls="A/B" aria-pressed="false">A / B</button><button type="button" data-cls="C" class="on" aria-pressed="true">C</button><button type="button" data-cls="D" aria-pressed="false">D</button>
+        </div>
+      </fieldset>
     </section>
 
-    <!-- STEP 3: exploitation -->
-    <section class="wstep" data-step="3">
-      <h2>Is anyone exploiting it?</h2>
-      <p class="lead">Two facts about the outside world. Neither changes how bad the flaw is — they only speed up the clock.</p>
+    <!-- STEP 4: exploitation -->
+    <section class="wstep" data-step="4" aria-labelledby="step4Title">
+      <h2 id="step4Title" tabindex="-1">How likely is exploitation?</h2>
+      <p class="lead">Use the imported EPSS and KEV facts, or adjust them to explore how likelihood changes the clock.</p>
 
-      <label class="fld">Predicted chance of exploitation (EPSS)</label>
+      <label class="fld" for="epss">Predicted chance of exploitation (EPSS)</label>
       <div class="row">
         <input type="range" id="epss" min="0" max="1" step="0.01" value="0.30" style="flex:1">
-        <span class="rangeval" id="epssVal">0.30</span>
+        <output class="rangeval" id="epssVal" for="epss">0.30</output>
       </div>
       <div class="status" id="epssHint"></div>
 
       <label class="switch" style="margin-top:10px">
         <input type="checkbox" id="kev">
         <span>CISA has seen it exploited in the wild (KEV catalog)
-          <span class="hint">Observed exploitation beats any prediction — and starts a second, independent clock on CISA's published due date.</span></span>
+          <span class="hint">Starts CISA&rsquo;s published due-date clock in parallel.</span></span>
       </label>
     </section>
 
-    <!-- STEP 4: exposure -->
-    <section class="wstep" data-step="4">
-      <h2>Can the internet deliver the trigger?</h2>
-      <p class="lead">Reachability is about the <i>payload's</i> path, not just open ports. A database on a private subnet is still reachable if a SQL injection rides in through the app in front of it.</p>
+    <!-- STEP 3: exposure -->
+    <section class="wstep" data-step="3" aria-labelledby="step3Title">
+      <h2 id="step3Title" tabindex="-1">Can a payload reach it?</h2>
+      <p class="lead">Check both delivery paths: directly from the internet, or second-hand through another system.</p>
 
-      <label class="switch">
-        <input type="checkbox" id="exposed">
-        <span>The vulnerable service is directly open to the internet
-          <span class="hint">The exposed surface is the one this flaw triggers on. Local-only flaws can never be hit this way, but may still be reachable second-hand below.</span></span>
-      </label>
-      <label class="switch">
-        <input type="checkbox" id="gate3">
-        <span>A VPN or identity-aware proxy is the only way in
-          <span class="hint">A bypass-free boundary that authorizes <i>before</i> traffic arrives takes the service off the direct internet path. An app login screen does not count — by then the payload has already arrived.</span></span>
-      </label>
+      <fieldset class="path-options">
+        <legend>Direct internet path</legend>
+        <label class="radio-card"><input type="radio" name="directPath" value="direct"><span>Directly exposed<small>The internet can reach the vulnerable service itself.</small></span></label>
+        <label class="radio-card"><input type="radio" name="directPath" value="boundary"><span>Only through a VPN or identity-aware proxy<small>Authorization happens before traffic reaches the service.</small></span></label>
+        <label class="radio-card"><input type="radio" name="directPath" value="none"><span>Not directly exposed<small>There is no direct internet path to the vulnerable service.</small></span></label>
+      </fieldset>
 
-      <label class="fld" style="margin-top:16px">Can the exploit arrive second-hand? <span class="tipicon" tabindex="0" data-tip="Decided once per CVE and reused everywhere: does the trigger still work when it arrives inside a string, file, message, record, or log entry relayed by another system — with the attacker long gone? Vendor guidance, threat intel, exploit analysis, or analyst review can confirm or rule it out. A suspicious weakness type alone decides nothing (memo: J(v)).">?</span></label>
-      <select id="jstatus">
-        <option value="unknown">Not reviewed yet — treated as "no" for now, but that's a presumption, not proof</option>
-        <option value="confirmed">Yes — confirmed to work inside relayed content</option>
-        <option value="ruled_out">No — reviewed and ruled out</option>
-      </select>
+      <div id="secondHandSection">
+        <div class="question-group">
+          <h3>Second-hand delivery</h3>
+          <p>There is no usable direct path, so check whether a payload can ride in through another system.</p>
+        </div>
+        <label class="fld" for="jstatus">Can this CVE trigger from relayed content? <span class="tipicon" tabindex="0" data-tip="Decided once per CVE and reused everywhere: does the trigger still work when it arrives inside a string, file, message, record, or log entry relayed by another system — with the attacker long gone? Vendor guidance, threat intel, exploit analysis, or analyst review can confirm or rule it out. A suspicious weakness type alone decides nothing (memo: J(v)).">?</span></label>
+        <select id="jstatus">
+          <option value="unknown">Not reviewed yet — treated as "no" for now, but that's a presumption, not proof</option>
+          <option value="confirmed">Yes — confirmed to work inside relayed content</option>
+          <option value="ruled_out">No — reviewed and ruled out</option>
+        </select>
 
-      <label class="switch" style="margin-top:12px">
-        <input type="checkbox" id="c0">
-        <span>This system processes content that started on the internet
-          <span class="hint">Files, messages, records, or log entries that originated outside — even if they pass through other systems first. <span class="sym">memo: C&#8320;</span></span></span>
-      </label>
-      <label class="switch">
-        <input type="checkbox" id="p0">
-        <span>Tested defenses currently block this kind of payload
-          <span class="hint">Backed by current assessment and monitoring evidence that the payload is stopped <i>before</i> it reaches the flaw. Stale, failed, or out-of-scope evidence doesn't count. <span class="sym">memo: P&#8320;</span></span></span>
-      </label>
+        <div class="relay-conditions" id="relayConditions">
+          <label class="switch" style="margin-top:10px">
+            <input type="checkbox" id="c0">
+            <span>This system processes internet-derived content
+              <span class="hint">Files, messages, records, or logs that originated outside.</span></span>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="p0">
+            <span>Tested defenses block this payload
+              <span class="hint">Requires current assessment and monitoring evidence.</span></span>
+          </label>
+        </div>
+      </div>
     </section>
 
     <!-- STEP 5: verdict-side levers -->
-    <section class="wstep" data-step="5">
-      <h2>The verdict — and what would change it</h2>
-      <p class="lead">FedRAMP doesn't demand every flaw be fixed inside its deadline — it demands the potential damage come down the ladder on schedule. Try the levers; the same math re-runs.</p>
+    <section class="wstep" data-step="5" aria-labelledby="step5Title">
+      <h2 id="step5Title" tabindex="-1">Explore what would change it</h2>
+      <p class="lead">Apply evidence-backed mitigations to see whether the finding moves to a lower-impact or slower clock.</p>
 
       <label class="fld">Mitigations already deployed <span class="tipicon" tabindex="0" data-tip="Evidence-gated: each step needs cited, signed evidence (an egress-deny policy object, a read-only filesystem, a scoped DB credential&hellip;) and is re-evaluated when the control changes. High can drop to Low — never to &ldquo;no impact,&rdquo; which is a different kind of claim with its own paperwork (VEX).">?</span></label>
-      <label class="switch"><input type="checkbox" id="mitC"><span>Limits what can leak <span class="hint">e.g. egress-deny, scoped credentials &mdash; secrecy damage High &rarr; Low</span></span></label>
-      <label class="switch"><input type="checkbox" id="mitI"><span>Limits what can be tampered with <span class="hint">e.g. non-root user, read-only filesystem &mdash; correctness damage High &rarr; Low</span></span></label>
-      <label class="switch"><input type="checkbox" id="mitA"><span>Limits the outage <span class="hint">e.g. verified redundancy (auto-credit only if not internet-reachable), rate limits &mdash; uptime damage High &rarr; Low</span></span></label>
-      <label class="switch"><input type="checkbox" id="mitE"><span>Reduces the odds of exploitation <span class="hint">e.g. disabling the vulnerable feature path, strict rate limiting, source restrictions &mdash; an evidence-backed likelihood reduction (FedRAMP defines mitigation over likelihood <i>or</i> PAIN). Moves the <i>column</i>, not the row: the EPSS test is attested below the trigger point. Cannot erase a KEV listing, and only a VPN/identity-proxy boundary defeats the auto-exploitable floor.</span></span></label>
+      <label class="switch"><input type="checkbox" id="mitC"><span>Limits what can leak <span class="hint">For example: egress deny or scoped credentials.</span></span></label>
+      <label class="switch"><input type="checkbox" id="mitI"><span>Limits what can be tampered with <span class="hint">For example: non-root or a read-only filesystem.</span></span></label>
+      <label class="switch"><input type="checkbox" id="mitA"><span>Limits the outage <span class="hint">For example: verified redundancy or rate limits.</span></span></label>
+      <label class="switch"><input type="checkbox" id="mitE"><span>Reduces the odds of exploitation <span class="hint">Moves the urgency column; it cannot erase KEV or direct-automation facts.</span></span></label>
 
-      <label class="fld" style="margin-top:18px">Tuning knobs (governed configuration) <span class="tipicon" tabindex="0" data-tip="The method&rsquo;s only calibratable judgments. They must live in documented, governed configuration — back-tested against analyst-rated findings — never as ad-hoc settings.">?</span></label>
-      <div class="row"><span class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Minimal&rarr;Narrow</span><input type="range" id="t1" min="0.05" max="0.95" step="0.01" value="0.25" style="flex:1"><span class="rangeval" id="t1v">0.25</span></div>
-      <div class="row"><span class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Narrow&rarr;Disruptive</span><input type="range" id="t2" min="0.05" max="0.95" step="0.01" value="0.55" style="flex:1"><span class="rangeval" id="t2v">0.55</span></div>
-      <div class="row"><span class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Disruptive&rarr;Debilitating</span><input type="range" id="t3" min="0.05" max="0.95" step="0.01" value="0.80" style="flex:1"><span class="rangeval" id="t3v">0.80</span></div>
-      <div class="row" style="margin-top:6px"><span class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">EPSS trigger point</span><input type="range" id="thEpss" min="0.05" max="0.95" step="0.05" value="0.50" style="flex:1"><span class="rangeval" id="thEpssV">0.50</span></div>
+      <details class="control-details">
+        <summary>Method settings <small>Governed thresholds for administrators and model exploration</small></summary>
+        <div class="details-body">
+          <label class="fld">Severity thresholds <span class="tipicon" tabindex="0" data-tip="The method&rsquo;s only calibratable judgments. They must live in documented, governed configuration — back-tested against analyst-rated findings — never as ad-hoc settings.">?</span></label>
+          <div class="row"><label for="t1" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Minimal&rarr;Narrow</label><input type="range" id="t1" min="0.05" max="0.95" step="0.01" value="0.25" style="flex:1"><output class="rangeval" id="t1v" for="t1">0.25</output></div>
+          <div class="row"><label for="t2" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Narrow&rarr;Disruptive</label><input type="range" id="t2" min="0.05" max="0.95" step="0.01" value="0.55" style="flex:1"><output class="rangeval" id="t2v" for="t2">0.55</output></div>
+          <div class="row"><label for="t3" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Disruptive&rarr;Debilitating</label><input type="range" id="t3" min="0.05" max="0.95" step="0.01" value="0.80" style="flex:1"><output class="rangeval" id="t3v" for="t3">0.80</output></div>
+          <div class="row" style="margin-top:6px"><label for="thEpss" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">EPSS trigger point</label><input type="range" id="thEpss" min="0.05" max="0.95" step="0.05" value="0.50" style="flex:1"><output class="rangeval" id="thEpssV" for="thEpss">0.50</output></div>
+        </div>
+      </details>
     </section>
 
     <div class="wnav">
-      <button class="btn ghost" id="btnBack">&larr; Back</button>
+      <button type="button" class="btn ghost" id="btnBack">&larr; Back</button>
       <span class="spacer"></span>
-      <button class="btn primary" id="btnNext">Next &rarr;</button>
+      <button type="button" class="btn primary" id="btnNext">Next &rarr;</button>
     </div>
   </div>
 
   <!-- ============================ OUTCOME ============================ -->
   <div class="outcome">
     <div class="verdictstrip" id="verdictStrip"></div>
+    <div class="sr-only" id="verdictAnnouncer" role="status" aria-live="polite" aria-atomic="true"></div>
     <div id="stepPanel"></div>
   </div>
-</div>
+</main>
 
 <footer>
-  Built solely on <i>A Deterministic, CVSS-Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization</i> and its companion <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog is the memo&rsquo;s illustrative example, not a standard.
+  <p>Built solely on <i>A Deterministic, CVSS-Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization</i> and its companion <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog is the memo&rsquo;s illustrative example, not a standard.</p>
 </footer>
 
 <script>
@@ -518,15 +626,16 @@ const PRESETS = [
 
 /* ============================== state ============================== */
 const state = {
-  step:1,
-  cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C',
-  cwes:['CWE-502','CWE-400'], cveName:'Log4Shell (log4j JNDI RCE)', kevDue:null, cvssVer:'3.1',
-  arch:'data-sensitive', cCR:'H',cIR:'H',cAR:'H', m:true, cls:'C',
-  epss:0.97, kev:true,
-  exposed:true, gate3:false, j:'confirmed', c0:true, p0:false,
+  step:1, ready:false, sourceLabel:'',
+  cve:'', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'U',
+  cwes:[], cveName:'', kevDue:null, cvssVer:'3.1',
+  arch:'unclassified', cCR:'H',cIR:'H',cAR:'H', m:false, cls:'C',
+  epss:0.30, kev:false,
+  exposed:false, gate3:false, j:'unknown', c0:false, p0:false,
   mitC:false, mitI:false, mitA:false, mitE:false,
   t1:0.25, t2:0.55, t3:0.80, thEpss:0.50,
 };
+const INITIAL_STATE = JSON.parse(JSON.stringify(state));
 
 /* ============================== engine (unchanged from the memo) ============================== */
 function requirements(){
@@ -594,27 +703,53 @@ const NEED_PLAIN = {L:'low',M:'medium',H:'high'};
 
 /* ============================== render ============================== */
 function render(){
+  syncNavigationAvailability();
+  if (!state.ready){
+    syncControls(null);
+    renderStrip(null);
+    renderPanel(null);
+    return;
+  }
   const r = compute();
   syncControls(r);
   renderStrip(r);
   renderPanel(r);
 }
+function syncNavigationAvailability(){
+  document.querySelectorAll('.stepper button').forEach(b=>b.disabled=!state.ready && +b.dataset.step>1);
+  $('btnNext').disabled=!state.ready;
+  $('btnNext').textContent = state.step===5 ? 'Start a new assessment' : (state.step===4 ? 'See the verdict →' : 'Next →');
+}
 
 function renderStrip(r){
+  if (!state.ready || !r){
+    $('verdictStrip').innerHTML = '<span class="lab">Current result</span><span class="empty-result">Look up a CVE or choose an example to begin.</span>';
+    return;
+  }
   const lev = r.lev, irv = r.irv;
+  const contextNote = state.sourceLabel.startsWith('Worked example:') ? ' &middot; Viewing an example'
+    : (state.sourceLabel==='Manual CVSS values' ? ' &middot; Manual values' : '');
   $('verdictStrip').innerHTML =
-    '<span class="lab">Live verdict — updates as you answer</span>'+
-    '<span class="badge big n-'+r.pain+'">'+r.pain+'</span>'+
-    '<span class="badge word-'+r.word+'">'+r.word+'</span>'+
+    '<span class="lab">'+(state.step===5?'Current result':'Working result')+'</span>'+
     '<span class="stripdl">'+(r.deadline===null?'no deadline':fmtDays(r.deadline))+'</span>'+
-    '<span class="striptags">'+
-      '<span class="minitag '+(lev?'hot':'cool')+'">'+(lev?'likely exploited':'not likely exploited')+'</span>'+
-      '<span class="minitag '+(irv?'hot':'cool')+'">'+(irv?(r.D?'internet-reachable':'reachable second-hand'):'not internet-reachable')+'</span>'+
-      '<span class="minitag">Class '+state.cls+'</span>'+
-    '</span>'+
+    '<span class="badge big n-'+r.pain+'">'+r.pain+'</span>'+
+    '<span class="wordlabel">'+r.word+'</span>'+
     (state.step!==5?'<button class="go" id="jumpVerdict">Full verdict &rarr;</button>':'');
+  $('verdictStrip').insertAdjacentHTML('beforeend','<span class="stripsummary">'+
+    (lev?'Likely exploited':'Not likely exploited')+' &middot; '+
+    (irv?(r.D?'Directly reachable':'Reachable second-hand'):'Not internet-reachable')+
+    ' &middot; Class '+state.cls+contextNote+'</span>');
   const j = $('jumpVerdict');
-  if (j) j.addEventListener('click', ()=>goStep(5));
+  if (j) j.addEventListener('click', ()=>goStep(5, true));
+  scheduleVerdictAnnouncement(r);
+}
+
+let verdictTimer;
+function scheduleVerdictAnnouncement(r){
+  clearTimeout(verdictTimer);
+  verdictTimer = setTimeout(()=>{
+    $('verdictAnnouncer').textContent = 'Working result: '+r.pain+', '+r.word+', '+fmtDays(r.deadline)+'.';
+  }, 350);
 }
 
 /* ---------- per-step right panels ---------- */
@@ -634,16 +769,17 @@ function impactBars(r){
 }
 
 function cweCallout(r){
+  if (r.D) return '';
   if (!r.seedHits.length) return '';
   const names = r.seedHits.map(c=>'<b>'+c+'</b> ('+SEED_CWES[c]+')').join(', ');
-  return '<div class="callout warn"><span class="ct">&#9888; Review required — suspicious weakness type</span>'+
-    names+' is on the reachability paper&rsquo;s watch list: weaknesses of this kind often fire from <i>relayed</i> content — a payload hidden in a file, message, database record, or log entry that another system passes along. This CVE must get a one-time review answering: <i>does the trigger still work second-hand?</i> '+
+  return '<details class="callout warn"><summary>&#9888; Second-hand trigger review required for '+r.seedHits.map(esc).join(', ')+'</summary><div class="callout-body">'+
+    names+' is on the reachability watch list: weaknesses of this kind may fire from <i>relayed</i> content. This CVE needs a one-time review answering: <i>does the trigger still work second-hand?</i> '+
     (state.j==='unknown'
-      ? 'It hasn&rsquo;t been reviewed yet, so for now it&rsquo;s treated as not reachable that way — a deliberate presumption to stay scalable, <b>not proof</b>. The weakness type alone must not decide the answer either way.'
+      ? 'It is currently treated as not reachable that way by presumption, <b>not proof</b>.'
       : (state.j==='confirmed'
-        ? 'Here it&rsquo;s been <b>confirmed</b>: every affected finding is reachable second-hand wherever the system processes internet-derived content and no tested defense blocks the payload.'
-        : 'Here it&rsquo;s been reviewed and <b>ruled out</b>, with the evidence on record.'))+
-    '</div>';
+        ? 'Here it is <b>confirmed</b>; check the affected system&rsquo;s content path on the Exposure step.'
+        : 'Here it has been <b>ruled out</b>, with the evidence on record.'))+
+    '</div></details>';
 }
 
 function gaugeHtml(r){
@@ -692,23 +828,23 @@ function irvBlock(r){
     [!state.p0, 'no current tested defense blocks the payload'],
   ];
   const indWhy = subs.map(([ok,txt])=>'<span style="color:'+(ok?'var(--muted)':'var(--faint)')+'">'+(ok?'&#10003;':'&#10007;')+' '+txt+'</span>').join(' &nbsp;&middot;&nbsp; ');
-  return disj(r.D, 'Direct path — the flaw itself faces the internet', dWhy)+
-    disj(r.indirect, 'Second-hand path — the payload rides in through other systems', indWhy+
-      (state.j==='unknown' ? '<br>Not yet reviewed for second-hand delivery — treated as &ldquo;no&rdquo; by presumption, not proof.' : ''));
+  const directRow = disj(r.D, 'Direct path — the flaw itself faces the internet', dWhy);
+  if (r.D) return directRow;
+  return directRow+disj(r.indirect, 'Second-hand path — the payload rides in through other systems', indWhy+
+    (state.j==='unknown' ? '<br>Not yet reviewed for second-hand delivery — treated as &ldquo;no&rdquo; by presumption, not proof.' : ''));
 }
 
 function stepPanel1(r){
-  return '<div class="plainbox"><span class="t">In plain terms</span>Every flaw can hurt three things: <b>secrecy</b>, <b>correctness</b>, and <b>uptime</b>. That&rsquo;s all the method takes from the CVE for severity — how hard it is to exploit never changes how bad it is, only how fast the clock runs (steps 3 and 4).</div>'
-  + cweCallout(r)
-  + '<div class="card"><div class="head"><h3>What this flaw can break</h3><span class="cite">'+esc(state.cve||'')+'</span></div><div class="body">'
+  return '<div class="card"><div class="head"><h3>Imported impact snapshot</h3><span class="cite">'+esc(state.cve||'manual values')+'</span></div><div class="body">'
   + impactBars(r)
-  + '<p style="font-size:12px;color:var(--faint);margin-top:10px">Exploit preconditions — Attack Vector: '
+  + '<details class="inline-details"><summary>View exploit preconditions</summary><p>Attack Vector: '
   + ({N:'Network',A:'Adjacent',L:'Local',P:'Physical'}[state.AV])
   + ' &middot; Attack Complexity: '+(state.AC==='L'?'Low':'High')
   + ' &middot; Privileges Required: '+IMPACT_WORD[state.PR]
   + ' &middot; User Interaction: '+(state.UI==='N'?'None':'Required')
-  + '. These feed steps 3–4, never the severity.</p>'
-  + '</div></div>';
+  + '. These affect urgency, not severity.</p></details>'
+  + '</div></div>'
+  + cweCallout(r);
 }
 function stepPanel2(r){
   const rows = [
@@ -722,8 +858,7 @@ function stepPanel2(r){
       '<span class="track"><span class="fill" style="width:'+pct+'%;background:'+color+'"></span></span>'+
       '<span class="vv">'+trim0(prod)+'</span></div>';
   }).join('');
-  return '<div class="plainbox"><span class="t">In plain terms</span>For each of the three, multiply <i>how badly the flaw breaks it</i> by <i>how much this system depends on it</i>. A severe flaw on a system that doesn&rsquo;t care produces a small number; a modest flaw on a system that cares deeply produces a bigger one. This is where the same CVE lands differently on different assets.</div>'
-  + (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe default</span>Untagged assets count as needing everything at High. Missing metadata must never make a problem look smaller — &ldquo;unknown&rdquo; scores loudly until someone classifies it.</div>' : '')
+  return (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe default</span>Untagged assets count as needing everything at High until someone classifies them.</div>' : '')
   + '<div class="card"><div class="head"><h3>Damage on <i>this</i> asset</h3><span class="cite">'+esc(state.arch)+'</span></div><div class="body">'
   + rows
   + '<div style="margin-top:14px;font-size:13px;color:var(--muted)">Combined damage score: <b style="color:var(--ink);font-family:var(--mono)">'+f3(r.S)+'</b> of 1.000'+(r.capped?' <span style="color:var(--accent)">(hit the scale&rsquo;s ceiling)</span>':'')+' &rarr; <span class="badge word-'+r.word+'">'+r.word+'</span></div>'
@@ -731,20 +866,21 @@ function stepPanel2(r){
   + '</div></div>';
 }
 function stepPanel3(r){
-  return '<div class="plainbox"><span class="t">In plain terms</span>Is this flaw <i>likely to be exploited</i>? Three ways to answer yes — a prediction, an observation, or FedRAMP&rsquo;s common-sense floor. Any one is enough. None of them changes the PAIN level; they move the finding onto a faster clock.</div>'
-  + '<div class="card"><div class="head"><h3>Likely exploited?</h3><span class="cite">any one suffices</span></div><div class="body">'
+  return '<div class="card"><div class="head"><h3>Likelihood check</h3><span class="cite">any one condition is enough</span></div><div class="body">'
   + levBlock(r)
   + '<div class="verdictline">Verdict: <span class="vbadge '+(r.lev?'v-on':'v-off')+'">'+(r.lev?'Likely exploited':'Not likely exploited')+'</span><span class="sym">memo: '+(r.lev?'LEV':'NLEV')+'</span></div>'
   + '</div></div>'
   + (state.kev ? '<div class="callout kev"><span class="ct">Second clock running</span>Because CISA has seen this exploited, the CISA-published due date'+(state.kevDue?' (<b>'+esc(state.kevDue)+'</b>)':'')+' applies in parallel — on CISA&rsquo;s schedule, regardless of anything else on this page.</div>' : '');
 }
 function stepPanel4(r){
-  return '<div class="plainbox"><span class="t">In plain terms</span>&ldquo;Reachable&rdquo; is about whether an attacker&rsquo;s payload can <i>get to</i> the flaw — not just open ports. FedRAMP&rsquo;s own example: SQL injection reaching a database on a private network through the app in front of it. So there are two paths to check: the front door, and the relay.</div>'
-  + cweCallout(r)
-  + '<div class="card"><div class="head"><h3>Internet-reachable?</h3><span class="cite">judged per finding, not per asset</span></div><div class="body">'
+  const exampleNote = state.sourceLabel.startsWith('Worked example:')
+    ? '<div class="callout note"><span class="ct">Review this assumption</span>The example is loaded. Confirm its exposure path before continuing to likelihood and the verdict.</div>'
+    : '';
+  return exampleNote+'<div class="card"><div class="head"><h3>Payload path check</h3><span class="cite">'+(r.D?'direct path confirmed':'direct or second-hand')+'</span></div><div class="body">'
   + irvBlock(r)
   + '<div class="verdictline">Verdict: <span class="vbadge '+(r.irv?'v-on':'v-off')+'">'+(r.irv?(r.D?'Internet-reachable':'Reachable second-hand'):'Not internet-reachable')+'</span><span class="sym">memo: '+(r.irv?'IRV':'NIRV')+'</span></div>'
-  + '</div></div>';
+  + '</div></div>'
+  + cweCallout(r);
 }
 function stepPanel5(r){
   /* verdict sentence */
@@ -760,8 +896,8 @@ function stepPanel5(r){
     else if (w==='Disruptive') n = mm?'N4':'N3'; else n = mm?'N5':'N4';
     return '<td class="'+((w===r.word && mm===state.m)?'on':'')+'">'+n+'</td>';
   };
-  const painmap = '<table class="painmap"><tr><th>Customer effect</th><th>one agency</th><th>several</th></tr>'+
-    ['Minimal','Narrow','Disruptive','Debilitating'].map(w=>'<tr><th>'+w+'</th>'+mapCell(w,false)+mapCell(w,true)+'</tr>').join('')+'</table>';
+  const painmap = '<div class="table-scroll"><table class="painmap"><caption class="sr-only">PAIN level by customer effect and agency scope</caption><tr><th scope="col">Customer effect</th><th scope="col">one agency</th><th scope="col">several</th></tr>'+
+    ['Minimal','Narrow','Disruptive','Debilitating'].map(w=>'<tr><th scope="row">'+w+'</th>'+mapCell(w,false)+mapCell(w,true)+'</tr>').join('')+'</table></div>';
 
   /* matrix */
   const tbl = MATRIX[state.cls];
@@ -770,9 +906,9 @@ function stepPanel5(r){
       const active = (n===r.pain && ci===r.col && r.deadline!==null);
       return '<td class="cell'+(active?' active':'')+'">'+(v===0.5?'12 h':v)+'</td>';
     }).join('');
-    return '<tr'+(n===r.pain?'':' class="dimrow"')+'><td class="rowh">'+n+'</td>'+cells+'</tr>';
+    return '<tr'+(n===r.pain?'':' class="dimrow"')+'><th scope="row" class="rowh">'+n+'</th>'+cells+'</tr>';
   }).join('')
-  + '<tr class="'+(r.pain==='N1'?'':'dimrow')+'"><td class="rowh">N1</td><td colspan="3" class="nodeadline'+(r.pain==='N1'?' active':'')+'">no FedRAMP deadline — routine operations</td></tr>';
+  + '<tr class="'+(r.pain==='N1'?'':'dimrow')+'"><th scope="row" class="rowh">N1</th><td colspan="3" class="nodeadline'+(r.pain==='N1'?' active':'')+'">no FedRAMP deadline — routine operations</td></tr>';
 
   const capTip = '0.915 is CVSS&rsquo;s own ceiling: 1 &minus; (1 &minus; 0.56)&sup3;, an all-High flaw at Medium needs. High needs can push a finding toward the worst case but never past it — which keeps &ldquo;1.000&rdquo; meaning the same thing on every asset.';
   function dimRow(sym, base, eff, mit, mult, prod){
@@ -799,38 +935,50 @@ function stepPanel5(r){
       (state.mitE ? 'The exploitability mitigation moves the <i>column</i>, not the row — FedRAMP defines mitigation over likelihood or PAIN, and an evidence-backed exploitability reduction is the likelihood half. ' : '')+
       'The pre-mitigation rating stays on record; the evidence is cited and signed; and no mitigation can claim <i>zero</i> impact — that claim travels separately (VEX) with its own guardrails.</div>' : '';
 
-  return '<div class="plainbox"><span class="t">In plain terms</span>'+sentence+'</div>'
-  + '<div class="card"><div class="head"><h3>How bad — the row</h3></div><div class="body">'
+  return '<section class="verdict-hero" aria-labelledby="verdictTitle"><span class="kicker">'+esc(state.sourceLabel||'Assessment result')+'</span>'
+  + '<div class="hero-row"><span class="hero-deadline" id="verdictTitle">'+(r.deadline===null?'no deadline':fmtDays(r.deadline))+'</span><span class="badge big n-'+r.pain+'">'+r.pain+'</span></div>'
+  + '<p>'+sentence+'</p>'
+  + '<dl class="factors">'
+  + '<div><dt>Customer effect</dt><dd>'+r.word+'</dd></div>'
+  + '<div><dt>PAIN level</dt><dd>'+r.pain+(state.m?' · multi-agency':' · single-agency')+'</dd></div>'
+  + '<div><dt>Urgency</dt><dd>'+COLPLAIN[r.col]+'</dd></div>'
+  + '<div><dt>Provider class</dt><dd>'+state.cls+'</dd></div>'
+  + '</dl></section>'
+  + (state.kev ? '<div class="callout kev"><span class="ct">Second clock running</span>CISA&rsquo;s published due date'+(state.kevDue?' (<b>'+esc(state.kevDue)+'</b>)':'')+' applies in parallel.</div>' : '')
+  + '<details class="card"><summary>See how the PAIN level was determined</summary><div class="body">'
   + gaugeHtml(r)
   + '<div style="font-size:13px;color:var(--muted)">Customer effect <span class="badge word-'+r.word+'">'+r.word+'</span> '
   + (state.m?'on a multi-agency asset':'on a single-agency asset')+' &rarr; <span class="badge big n-'+r.pain+'">'+r.pain+'</span></div>'
   + painmap
   + ((r.word==='Minimal'||r.word==='Narrow') && state.m ? '<div class="callout note"><span class="ct">No escalation</span>&ldquo;'+r.word+'&rdquo; stays put even on shared infrastructure — only Disruptive and Debilitating findings widen with blast radius.</div>':'')
   + mitNote
-  + '</div></div>'
-  + '<div class="card"><div class="head"><h3>How fast — the column &amp; the deadline</h3><span class="cite">FedRAMP&rsquo;s table, verbatim</span></div><div class="body">'
-  + '<table class="matrix"><tr><th>Class '+state.cls+'</th>'
-  + COLPLAIN.map((c,i)=>'<th>'+c+'<small>'+COLNAMES[i]+'</small></th>').join('')+'</tr>'+matrixRows+'</table>'
+  + '</div></details>'
+  + '<details class="card"><summary>View the deadline table and calculation</summary><div class="body">'
+  + '<div class="table-scroll"><table class="matrix"><caption class="sr-only">FedRAMP remediation deadlines for provider Class '+state.cls+'</caption><tr><th scope="col">Class '+state.cls+'</th>'
+  + COLPLAIN.map((c,i)=>'<th scope="col">'+c+'<small>'+COLNAMES[i]+'</small></th>').join('')+'</tr>'+matrixRows+'</table></div>'
   + '<div class="deadline'+(r.deadline===null?' none':'')+'">'
   + '<span class="dval">'+(r.deadline===null?'no deadline':fmtDays(r.deadline))+'</span>'
   + '<span class="dlab">'+(r.deadline===null
       ? 'Minimal-effect findings carry no FedRAMP timeframe in any class; they return to routine operations.'
       : 'counted from when evaluation completes — to remediate, fully mitigate, or knock the finding down to a lower PAIN level.')+'</span>'
   + '</div>'
-  + (state.kev ? '<div class="callout kev"><span class="ct">Second clock running</span>CISA-listed: the published due date'+(state.kevDue?' (<b>'+esc(state.kevDue)+'</b>)':'')+' applies in parallel, and no ladder step pauses it.</div>' : '')
   + '<p class="mfoot">Days; 12 h = half a day. Anything not fully fixed or mitigated within 192 days of evaluation must be formally recorded as an accepted vulnerability — the biggest cell in the table and that boundary meet by design.</p>'
   + math
-  + '</div></div>'
+  + '</div></details>'
   + cweCallout(r);
 }
 
 function renderPanel(r){
   const p = $('stepPanel');
+  if (!state.ready || !r){
+    p.innerHTML = '<div class="empty-panel"><span class="empty-title">Start with a CVE</span><p>Look one up, choose Random, or open a worked example. The playground will keep the policy detail out of the way until you ask for it.</p></div>';
+    return;
+  }
   switch(state.step){
     case 1: p.innerHTML = stepPanel1(r); break;
     case 2: p.innerHTML = stepPanel2(r); break;
-    case 3: p.innerHTML = stepPanel3(r); break;
-    case 4: p.innerHTML = stepPanel4(r); break;
+    case 3: p.innerHTML = stepPanel4(r); break;
+    case 4: p.innerHTML = stepPanel3(r); break;
     default: p.innerHTML = stepPanel5(r);
   }
 }
@@ -846,6 +994,8 @@ function syncControls(r){
     '<span class="reqchip req-'+req.ir+'">IR: '+REQ_WORD[req.ir]+'</span>'+
     '<span class="reqchip req-'+req.ar+'">AR: '+REQ_WORD[req.ar]+'</span>';
   $('customReqRow').style.display = state.arch==='custom' ? 'grid' : 'none';
+  $('secondHandSection').hidden = !!(r && r.D);
+  $('relayConditions').hidden = state.j!=='confirmed';
   $('cweChips').innerHTML = state.cwes.map(c=>{
     const seed = SEED_CWES[c];
     return '<span class="cwechip'+(seed?' seed':'')+'"'+(seed?' title="Watch list: '+esc(seed)+' — needs a one-time second-hand-trigger review"':'')+'>'+esc(c)+(seed?' &#9888;':'')+'</span>';
@@ -857,13 +1007,15 @@ function syncControls(r){
     const dim = ['C','I','A'][i];
     const el = $(k);
     el.disabled = state[dim]!=='H';
-    el.parentElement.style.opacity = el.disabled ? .45 : 1;
+    el.parentElement.title = el.disabled ? 'Only High impact can be reduced to Low by this mitigation.' : '';
     if (el.disabled && state[k]) { state[k]=false; el.checked=false; }
   });
 }
 
 /* ============================== CVE application & lookup ============================== */
 function applyCve(c, source){
+  state.ready = true;
+  state.sourceLabel = source==='lib' ? 'Bundled CVE snapshot' : 'Live NVD + EPSS data';
   state.cve = c.id; state.cveName = c.name||''; state.cvssVer = c.ver||'3.1';
   Object.assign(state, parseVector(c.v));
   state.cwes = (c.cwes||[]).slice();
@@ -873,6 +1025,8 @@ function applyCve(c, source){
   state.j = 'unknown';
   $('cveInput').value = state.cve;
   $('cweInput').value = state.cwes.join(', ');
+  $('cveInput').setAttribute('aria-invalid','false');
+  $('flawDetails').open = false;
   setStatus(source==='lib' ? 'Loaded bundled snapshot for '+c.id+' — demo values; use Look up for live data.'
                            : 'Live data loaded for '+c.id+'.', false);
   writeControls(); render();
@@ -891,6 +1045,8 @@ function parseVector(v){
 function setStatus(msg, isErr){
   const el = $('lookupStatus');
   el.textContent = msg; el.className = 'status'+(isErr?' err':'');
+  el.setAttribute('role', isErr?'alert':'status');
+  $('cveInput').setAttribute('aria-invalid', isErr?'true':'false');
 }
 async function lookup(){
   const id = $('cveInput').value.trim().toUpperCase();
@@ -924,17 +1080,39 @@ async function lookup(){
     if (epss===undefined) setStatus('NVD loaded for '+id+'; EPSS unavailable — set the slider manually.', false);
   }catch(e){
     setStatus('Lookup failed ('+(e&&e.message?e.message:'network')+'). Try Random for a bundled CVE, or set the dials manually.', true);
+    $('flawDetails').open = true;
   }
 }
 
 /* ============================== wizard nav & wiring ============================== */
-function goStep(n){
+function goStep(n, shouldFocus){
+  if (!state.ready && n>1){
+    setStatus('Look up a CVE, choose Random, or edit the CVSS details to continue.', true);
+    return;
+  }
   state.step = Math.min(5, Math.max(1, n));
   document.querySelectorAll('.wstep').forEach(s=>s.classList.toggle('cur', +s.dataset.step===state.step));
-  document.querySelectorAll('.stepper button').forEach(b=>b.classList.toggle('cur', +b.dataset.step===state.step));
+  document.querySelectorAll('.stepper button').forEach(b=>{
+    const step = +b.dataset.step;
+    const current = step===state.step;
+    b.classList.toggle('cur', current);
+    b.classList.toggle('done', step<state.step);
+    b.disabled = !state.ready && step>1;
+    if (current) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current');
+  });
   $('btnBack').style.visibility = state.step===1 ? 'hidden' : 'visible';
-  $('btnNext').textContent = state.step===5 ? 'Start over' : (state.step===4 ? 'See the verdict →' : 'Next →');
+  $('btnNext').disabled = !state.ready;
+  $('btnNext').textContent = state.step===5 ? 'Start a new assessment' : (state.step===4 ? 'See the verdict →' : 'Next →');
   render();
+  if (shouldFocus) document.querySelector('.wstep.cur h2').focus();
+}
+function resetAssessment(){
+  Object.assign(state, JSON.parse(JSON.stringify(INITIAL_STATE)));
+  $('cveInput').value=''; $('cweInput').value='';
+  $('flawDetails').open=false;
+  setStatus('', false);
+  writeControls(); goStep(1, false);
+  $('cveInput').focus();
 }
 function writeControls(){
   $('mC').value=state.C; $('mI').value=state.I; $('mA').value=state.A;
@@ -942,10 +1120,15 @@ function writeControls(){
   $('archetype').value=state.arch;
   $('cCR').value=state.cCR; $('cIR').value=state.cIR; $('cAR').value=state.cAR;
   $('multiAgency').checked=state.m;
-  document.querySelectorAll('#classSeg button').forEach(b=>b.classList.toggle('on', b.dataset.cls===state.cls));
+  document.querySelectorAll('#classSeg button').forEach(b=>{
+    const selected = b.dataset.cls===state.cls;
+    b.classList.toggle('on', selected); b.setAttribute('aria-pressed', selected?'true':'false');
+  });
   $('epss').value=state.epss; $('epssVal').textContent=state.epss.toFixed(2);
   $('kev').checked=state.kev;
-  $('exposed').checked=state.exposed; $('gate3').checked=state.gate3;
+  const path = state.exposed ? (state.gate3?'boundary':'direct') : 'none';
+  const pathRadio = document.querySelector('input[name="directPath"][value="'+path+'"]');
+  if (pathRadio) pathRadio.checked=true;
   $('jstatus').value=state.j; $('c0').checked=state.c0; $('p0').checked=state.p0;
   $('mitC').checked=state.mitC; $('mitI').checked=state.mitI; $('mitA').checked=state.mitA; $('mitE').checked=state.mitE;
   $('t1').value=state.t1; $('t2').value=state.t2; $('t3').value=state.t3;
@@ -962,11 +1145,16 @@ function wire(){
       arcSel.appendChild(og); lastLens=a.lens;
     }
     const o = document.createElement('option');
-    o.value=a.id; o.textContent = a.id+' — '+a.members;
+    const pretty = a.id.startsWith('asset-value:') ? a.id.replace('asset-value:','').trim()+' asset value'
+      : a.id.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    o.value=a.id; o.textContent = pretty+' — '+a.members;
     arcSel.lastChild.appendChild(o);
   });
 
   const bind = (id, key, kind) => $(id).addEventListener(kind==='check'?'change':'input', e=>{
+    if (!state.ready && ['mC','mI','mA','mAV','mAC','mPR','mUI'].includes(id)){
+      state.ready=true; state.sourceLabel='Manual CVSS values';
+    }
     if (kind==='check') state[key]=e.target.checked;
     else if (kind==='num') state[key]=parseFloat(e.target.value);
     else state[key]=e.target.value;
@@ -977,10 +1165,15 @@ function wire(){
   bind('archetype','arch'); bind('cCR','cCR'); bind('cIR','cIR'); bind('cAR','cAR');
   bind('multiAgency','m','check');
   bind('epss','epss','num'); bind('kev','kev','check');
-  bind('exposed','exposed','check'); bind('gate3','gate3','check');
   bind('jstatus','j'); bind('c0','c0','check'); bind('p0','p0','check');
   bind('mitC','mitC','check'); bind('mitI','mitI','check'); bind('mitA','mitA','check'); bind('mitE','mitE','check');
   bind('thEpss','thEpss','num');
+
+  document.querySelectorAll('input[name="directPath"]').forEach(el=>el.addEventListener('change', e=>{
+    state.exposed = e.target.value!=='none';
+    state.gate3 = e.target.value==='boundary';
+    render();
+  }));
 
   $('epss').addEventListener('input', e=>{ $('epssVal').textContent=parseFloat(e.target.value).toFixed(2); });
   $('thEpss').addEventListener('input', e=>{ $('thEpssV').textContent=parseFloat(e.target.value).toFixed(2); });
@@ -996,16 +1189,20 @@ function wire(){
   document.querySelectorAll('#classSeg button').forEach(b=>b.addEventListener('click', ()=>{
     state.cls=b.dataset.cls; writeControls(); render();
   }));
-  document.querySelectorAll('.stepper button').forEach(b=>b.addEventListener('click', ()=>goStep(+b.dataset.step)));
-  $('btnBack').addEventListener('click', ()=>goStep(state.step-1));
-  $('btnNext').addEventListener('click', ()=>goStep(state.step===5 ? 1 : state.step+1));
+  document.querySelectorAll('.stepper button').forEach(b=>b.addEventListener('click', ()=>goStep(+b.dataset.step, true)));
+  $('btnBack').addEventListener('click', ()=>goStep(state.step-1, true));
+  $('btnNext').addEventListener('click', ()=>state.step===5 ? resetAssessment() : goStep(state.step+1, true));
 
   $('cweInput').addEventListener('input', e=>{
+    if (!state.ready){state.ready=true; state.sourceLabel='Manual CVSS values';}
     state.cwes = e.target.value.split(',').map(s=>s.trim().toUpperCase()).filter(s=>/^CWE-\d+$/.test(s));
     render();
   });
   $('cveInput').addEventListener('keydown', e=>{ if(e.key==='Enter') lookup(); });
-  $('cveInput').addEventListener('input', e=>{ state.cve = e.target.value.trim().toUpperCase(); state.cveName=''; render(); });
+  $('cveInput').addEventListener('input', e=>{
+    state.cve = e.target.value.trim().toUpperCase(); state.cveName=''; state.ready=false; state.sourceLabel='';
+    setStatus(state.cve?'Press Look up to load this CVE.':'', false); goStep(1, false);
+  });
   $('btnLookup').addEventListener('click', lookup);
   $('btnRandom').addEventListener('click', ()=>{
     applyCve(CVE_LIB[Math.floor(Math.random()*CVE_LIB.length)], 'lib');
@@ -1014,7 +1211,7 @@ function wire(){
   const pDiv = $('presets');
   PRESETS.forEach(p=>{
     const b = document.createElement('button');
-    b.className='preset';
+    b.type='button'; b.className='preset';
     b.innerHTML='<span class="pn">'+esc(p.n)+'</span>'+esc(p.label);
     b.addEventListener('click', ()=>applyPreset(p));
     pDiv.appendChild(b);
@@ -1023,6 +1220,8 @@ function wire(){
 }
 function applyPreset(p){
   const s=p.s;
+  document.querySelector('.examples').open=false;
+  state.ready=true; state.sourceLabel='Worked example: '+p.label;
   const lib = CVE_LIB.find(c=>c.id===s.cve);
   state.cve=s.cve; state.cveName = lib?lib.name:''; state.cvssVer='3.1';
   state.C=s.C; state.I=s.I; state.A=s.A; state.AV=s.AV; state.PR=s.PR; state.UI=s.UI;
@@ -1031,17 +1230,18 @@ function applyPreset(p){
   state.epss=s.epss; state.kev=s.kev; state.kevDue=null;
   state.exposed=s.exposed; state.gate3=s.gate3; state.j=s.j; state.c0=s.c0; state.p0=s.p0;
   state.mitC=s.mitC; state.mitI=s.mitI; state.mitA=s.mitA; state.mitE=!!s.mitE;
+  state.t1=INITIAL_STATE.t1; state.t2=INITIAL_STATE.t2; state.t3=INITIAL_STATE.t3; state.thEpss=INITIAL_STATE.thEpss;
   $('cveInput').value=state.cve; $('cweInput').value=state.cwes.join(', ');
-  setStatus('Preset loaded: '+p.label, false);
-  writeControls(); goStep(5);
+  setStatus('Preset loaded: '+p.label+'. Review its exposure assumptions before continuing.', false);
+  writeControls(); goStep(3, true);
 }
 
 /* ============================== boot ============================== */
 wire();
-$('cveInput').value = state.cve;
-$('cweInput').value = state.cwes.join(', ');
+$('cveInput').value = '';
+$('cweInput').value = '';
 writeControls();
-goStep(1);
+goStep(1, false);
 </script>
 </body>
 </html>
