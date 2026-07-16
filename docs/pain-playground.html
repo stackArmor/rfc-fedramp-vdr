@@ -393,6 +393,7 @@
       <label class="switch"><input type="checkbox" id="mitC"><span>Limits what can leak <span class="hint">e.g. egress-deny, scoped credentials &mdash; secrecy damage High &rarr; Low</span></span></label>
       <label class="switch"><input type="checkbox" id="mitI"><span>Limits what can be tampered with <span class="hint">e.g. non-root user, read-only filesystem &mdash; correctness damage High &rarr; Low</span></span></label>
       <label class="switch"><input type="checkbox" id="mitA"><span>Limits the outage <span class="hint">e.g. verified redundancy (auto-credit only if not internet-reachable), rate limits &mdash; uptime damage High &rarr; Low</span></span></label>
+      <label class="switch"><input type="checkbox" id="mitE"><span>Reduces the odds of exploitation <span class="hint">e.g. disabling the vulnerable feature path, strict rate limiting, source restrictions &mdash; an evidence-backed likelihood reduction (FedRAMP defines mitigation over likelihood <i>or</i> PAIN). Moves the <i>column</i>, not the row: the EPSS test is attested below the trigger point. Cannot erase a KEV listing, and only a VPN/identity-proxy boundary defeats the auto-exploitable floor.</span></span></label>
 
       <label class="fld" style="margin-top:18px">Tuning knobs (governed configuration) <span class="tipicon" tabindex="0" data-tip="The method&rsquo;s only calibratable judgments. They must live in documented, governed configuration — back-tested against analyst-rated findings — never as ad-hoc settings.">?</span></label>
       <div class="row"><span class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Minimal&rarr;Narrow</span><input type="range" id="t1" min="0.05" max="0.95" step="0.01" value="0.25" style="flex:1"><span class="rangeval" id="t1v">0.25</span></div>
@@ -523,7 +524,7 @@ const state = {
   arch:'data-sensitive', cCR:'H',cIR:'H',cAR:'H', m:true, cls:'C',
   epss:0.97, kev:true,
   exposed:true, gate3:false, j:'confirmed', c0:true, p0:false,
-  mitC:false, mitI:false, mitA:false,
+  mitC:false, mitI:false, mitA:false, mitE:false,
   t1:0.25, t2:0.55, t3:0.80, thEpss:0.50,
 };
 
@@ -562,7 +563,7 @@ function compute(){
   const indirect = state.j==='confirmed' && state.c0 && !state.p0;
   const irv = D || indirect;
   const floor = D && state.AC==='L' && state.PR==='N' && state.UI==='N';
-  const byEpss = state.epss >= state.thEpss;
+  const byEpss = !state.mitE && state.epss >= state.thEpss;
   const lev = byEpss || state.kev || floor;
   const col = lev ? (irv ? 0 : 1) : 2;
   const deadline = pain==='N1' ? null : MATRIX[state.cls][pain][col];
@@ -665,8 +666,12 @@ function disj(on, title, why){
 
 function levBlock(r){
   const floorTip = 'FedRAMP&rsquo;s FRD-LEV floor: &ldquo;any vulnerability that an automated unauthenticated system can exploit over the internet is a likely exploitable vulnerability.&rdquo; The memo&rsquo;s deterministic profile: directly internet-reachable AND the vector permits low-complexity, unauthenticated automation (AV:N/AC:L/PR:N/UI:N). A high-complexity (AC:H) finding does not enter through this floor alone — but EPSS or KEV can still make it likely-exploitable.';
-  return disj(r.byEpss, 'Prediction says yes — EPSS '+state.epss.toFixed(2)+' is '+(r.byEpss?'at or above':'below')+' the '+state.thEpss.toFixed(2)+' trigger point',
-      'Statistical likelihood of exploitation in the wild, from FIRST&rsquo;s scoring system.')+
+  return disj(r.byEpss, state.mitE && state.epss>=state.thEpss
+      ? 'Prediction mitigated — EPSS '+state.epss.toFixed(2)+' attested below the '+state.thEpss.toFixed(2)+' trigger point'
+      : 'Prediction says yes — EPSS '+state.epss.toFixed(2)+' is '+(r.byEpss?'at or above':'below')+' the '+state.thEpss.toFixed(2)+' trigger point',
+      state.mitE && state.epss>=state.thEpss
+      ? 'An evidence-backed exploitability mitigation is on record — the likelihood half of FedRAMP mitigation. Re-evaluated whenever the control changes; the raw EPSS stays on the books.'
+      : 'Statistical likelihood of exploitation in the wild, from FIRST&rsquo;s scoring system.')+
     disj(state.kev, 'CISA says yes — '+(state.kev?'on':'not on')+' the Known Exploited Vulnerabilities list',
       'Observed exploitation overrides any prediction.')+
     disj(r.floor, '<span class="tip" tabindex="0" data-tip="'+floorTip+'">Auto-exploitable from the internet</span> — directly reachable, low complexity, no account, no user action',
@@ -788,8 +793,11 @@ function stepPanel5(r){
     '<div><span class="lbl">deadline</span> M['+state.cls+']['+r.pain+']['+COLNAMES[r.col]+'] = <span class="res">'+(r.deadline===null?'—':fmtDays(r.deadline))+'</span></div>'+
     '</div></div></details>';
 
-  const mitNote = (r.mitCok||r.mitIok||r.mitAok)
-    ? '<div class="callout note"><span class="ct">Mitigation applied — same math, new facts</span>The deployed control lowers what the flaw can still do here, the score re-runs, and the finding may land on a longer clock. The pre-mitigation rating stays on record; the evidence is cited and signed; and no mitigation can claim <i>zero</i> impact — that claim travels separately (VEX) with its own guardrails.</div>' : '';
+  const mitNote = (r.mitCok||r.mitIok||r.mitAok||state.mitE)
+    ? '<div class="callout note"><span class="ct">Mitigation applied — same math, new facts</span>'+
+      ((r.mitCok||r.mitIok||r.mitAok) ? 'The deployed control lowers what the flaw can still do here, the score re-runs, and the finding may land on a longer clock. ' : '')+
+      (state.mitE ? 'The exploitability mitigation moves the <i>column</i>, not the row — FedRAMP defines mitigation over likelihood or PAIN, and an evidence-backed exploitability reduction is the likelihood half. ' : '')+
+      'The pre-mitigation rating stays on record; the evidence is cited and signed; and no mitigation can claim <i>zero</i> impact — that claim travels separately (VEX) with its own guardrails.</div>' : '';
 
   return '<div class="plainbox"><span class="t">In plain terms</span>'+sentence+'</div>'
   + '<div class="card"><div class="head"><h3>How bad — the row</h3></div><div class="body">'
@@ -843,7 +851,8 @@ function syncControls(r){
     return '<span class="cwechip'+(seed?' seed':'')+'"'+(seed?' title="Watch list: '+esc(seed)+' — needs a one-time second-hand-trigger review"':'')+'>'+esc(c)+(seed?' &#9888;':'')+'</span>';
   }).join('');
   $('epssHint').textContent = 'Trigger point: '+state.thEpss.toFixed(2)+' (adjustable on the Verdict step). '+
-    (state.epss>=state.thEpss?'At or above — counts as likely exploited.':'Below — no effect on its own.');
+    (state.mitE && state.epss>=state.thEpss ? 'Attested exploitability mitigation active — treated as below the trigger point.'
+     : state.epss>=state.thEpss?'At or above — counts as likely exploited.':'Below — no effect on its own.');
   ['mitC','mitI','mitA'].forEach((k,i)=>{
     const dim = ['C','I','A'][i];
     const el = $(k);
@@ -860,7 +869,7 @@ function applyCve(c, source){
   state.cwes = (c.cwes||[]).slice();
   state.kev = !!c.kev; state.kevDue = c.kevDue||null;
   if (typeof c.epss === 'number') state.epss = c.epss;
-  state.mitC = state.mitI = state.mitA = false;
+  state.mitC = state.mitI = state.mitA = state.mitE = false;
   state.j = 'unknown';
   $('cveInput').value = state.cve;
   $('cweInput').value = state.cwes.join(', ');
@@ -938,7 +947,7 @@ function writeControls(){
   $('kev').checked=state.kev;
   $('exposed').checked=state.exposed; $('gate3').checked=state.gate3;
   $('jstatus').value=state.j; $('c0').checked=state.c0; $('p0').checked=state.p0;
-  $('mitC').checked=state.mitC; $('mitI').checked=state.mitI; $('mitA').checked=state.mitA;
+  $('mitC').checked=state.mitC; $('mitI').checked=state.mitI; $('mitA').checked=state.mitA; $('mitE').checked=state.mitE;
   $('t1').value=state.t1; $('t2').value=state.t2; $('t3').value=state.t3;
   $('t1v').textContent=state.t1.toFixed(2); $('t2v').textContent=state.t2.toFixed(2); $('t3v').textContent=state.t3.toFixed(2);
   $('thEpss').value=state.thEpss; $('thEpssV').textContent=state.thEpss.toFixed(2);
@@ -970,7 +979,7 @@ function wire(){
   bind('epss','epss','num'); bind('kev','kev','check');
   bind('exposed','exposed','check'); bind('gate3','gate3','check');
   bind('jstatus','j'); bind('c0','c0','check'); bind('p0','p0','check');
-  bind('mitC','mitC','check'); bind('mitI','mitI','check'); bind('mitA','mitA','check');
+  bind('mitC','mitC','check'); bind('mitI','mitI','check'); bind('mitA','mitA','check'); bind('mitE','mitE','check');
   bind('thEpss','thEpss','num');
 
   $('epss').addEventListener('input', e=>{ $('epssVal').textContent=parseFloat(e.target.value).toFixed(2); });
@@ -1021,7 +1030,7 @@ function applyPreset(p){
   state.cwes=s.cwes.slice(); state.arch=s.arch; state.m=s.m; state.cls=s.cls;
   state.epss=s.epss; state.kev=s.kev; state.kevDue=null;
   state.exposed=s.exposed; state.gate3=s.gate3; state.j=s.j; state.c0=s.c0; state.p0=s.p0;
-  state.mitC=s.mitC; state.mitI=s.mitI; state.mitA=s.mitA;
+  state.mitC=s.mitC; state.mitI=s.mitI; state.mitA=s.mitA; state.mitE=!!s.mitE;
   $('cveInput').value=state.cve; $('cweInput').value=state.cwes.join(', ');
   setStatus('Preset loaded: '+p.label, false);
   writeControls(); goStep(5);
