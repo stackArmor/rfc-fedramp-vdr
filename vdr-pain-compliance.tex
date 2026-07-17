@@ -78,7 +78,6 @@
 \newcommand{\verfactcite}{\href{\fedbase/providers/rev5/rules/vulnerability-evaluation-and-reporting.md\#evaluation-factors}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\vdrmitcite}{\href{\fedbase/providers/rev5/rules/vulnerability-detection-and-response.md\#mitigation-and-remediation-expectations}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\ciscite}{\href{https://www.cisecurity.org/cis-benchmarks/cis-benchmarks-faq}{cisecurity.org/cis-benchmarks-faq}}
-\newcommand{\scccite}{\href{https://docs.cloud.google.com/security-command-center/docs/attack-exposure-learn}{docs.cloud.google.com/security-command-center/docs/attack-exposure-learn}}
 
 \title{\bfseries A Deterministic PAIN and Remediation Method for\\
 FedRAMP Compliance and Security-Benchmark Findings}
@@ -679,15 +678,19 @@ is no EPSS for misconfigurations, and no individual provider should have to buil
 bespoke exploitability-evaluation framework for compliance findings --- that duty
 does not scale, and a hundred unvalidated bespoke frameworks would each be a soft
 lever on the clock. A richer evaluation is nevertheless permitted, from either
-direction: an EPSS-equivalent developed for compliance findings, or a scanner-native
-metric (SCC attack exposure, discussed after the back-test in
-Section~\ref{sec:backtest}, is the standing example). Either is admissible under the
-same discipline the method already applies to severity sources: it must be
-evidence-backed, and its logic for aligning the metric to the LEV/NLEV columns must
-be documented, versioned, and disclosed for assessor review. The metric value emitted
-at evaluation time is captured in the audit record as an input, so the column remains
-reproducible from the record even when the metric itself is recomputed upstream.
-Absent such a documented alignment, the baseline default governs.
+direction: an EPSS-equivalent developed for compliance findings, or an equivalent
+metric native to the scanner in use. Either is admissible under the same discipline
+the method already applies to severity sources: it must be evidence-backed, and its
+logic for aligning the metric to the LEV/NLEV columns must be documented, versioned,
+and disclosed for assessor review. One qualification is doing real work in that
+sentence: the metric must actually measure exploit likelihood. A score that is a
+function of internet reachability and asset value re-derives the two inputs this
+method already computes deterministically, and adopting one substitutes an opaque
+restatement for the determination table without adding the missing ingredient. The
+metric value emitted at evaluation time is captured in the audit record as an input,
+so the column remains reproducible from the record even when the metric itself is
+recomputed upstream. Absent such a documented alignment, the baseline default
+governs.
 
 \section{Deadlines}
 \label{sec:deadline}
@@ -876,39 +879,6 @@ where they belong. Dropping the asset assumption to Medium shifts the incident-c
 findings from N5 to N4 (a slightly slower incident clock) and leaves the N2/N1 bulk
 untouched, which is the intended behavior: the asset band moves the row, never the
 column.
-
-\paragraph{A related signal: SCC attack exposure scores.} It is worth noting where a
-commercial tool overlaps this method, because the resemblance is close enough to
-mislead. Google Security Command Center's attack exposure
-scores\footnote{Google, \emph{Security Command Center: Learn about attack exposure
-scores}. \scccite{}; accessed 2026-07-17.} are built from structurally the same two
-ingredients this method uses: a resource-value configuration (HIGH${}=10$,
-MEDIUM${}=5$, LOW${}=1$, the analogue of the asset band) and an internet-origin
-attack-path simulation (the analogue of exercisability). The parallel is real, and it
-makes SCC a useful neighbor. It cannot, however, replace this method for FedRAMP, for
-four concrete reasons.
-
-\begin{guidance}
-SCC attack exposure \textbf{complements but cannot replace} the method here.
-\emph{Not reproducible from an audit record:} the scoring algorithm is only partially
-published and includes probabilistic attack-path simulation recalculated roughly every
-six hours, so the same finding can carry different scores on different days and a
-reviewer cannot re-derive a score from what is written down --- the determinism
-requirement fails. \emph{No FedRAMP semantics:} it emits neither the effect/scope
-words nor the N-levels nor the Class-keyed \code{VDR-TFR-PVR} deadlines the rule
-requires. \emph{No NIRV analogue:} its simulations model only internet-origin
-attackers, so there is no not-internet-reachable branch --- the internal-actor cases
-this method routes to LEV+NIRV have no home in it. \emph{Single-provider, gated:} it
-requires org-level Premium activation on one cloud. Its right role is as a strong
-\emph{evidence source} for the override lanes --- an attack-path result is exactly the
-kind of evidence that supports a LEV+NIRV or LEV+IRV override, or a down-override off
-the fast clock --- and as an independent \emph{calibration cross-check} against the
-back-test distribution. A provider that wants it to do more than evidence individual
-overrides may adopt it under the alternative-exploitability-source rule
-(Section~\ref{sec:exerc}): document and version the score-to-column alignment and
-record the emitted score in each audit record, which is what answers the
-reproducibility objection above.
-\end{guidance}
 
 \section{Known limitations}
 \label{sec:limits}
