@@ -1,0 +1,890 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,backgrounds,calc}
+\usepackage[most]{tcolorbox}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\emergencystretch=3em  % absorb the occasional unbreakable prose line
+
+% Plain-language callout: a non-technical summary readers can rely on without
+% reading the math around it.
+\newtcolorbox{plain}{
+  enhanced, breakable,
+  colback=Sepia!7, colframe=Sepia!55, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=Sepia!72!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={IN PLAIN TERMS}
+}
+
+% Definition callout: for normative-ish local definitions used by the method.
+\newtcolorbox{definitionbox}{
+  enhanced, breakable,
+  colback=infoblue!4, colframe=infoblue!45, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=infoblue!80!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={DEFINITION}
+}
+
+% --- palette ---
+\definecolor{crit}{HTML}{C0392B}
+\definecolor{high}{HTML}{E67E22}
+\definecolor{med}{HTML}{F1C40F}
+\definecolor{low}{HTML}{27AE60}
+\definecolor{infoblue}{HTML}{2C3E50}
+\definecolor{tagbg}{HTML}{ECF0F1}
+\definecolor{rule}{HTML}{BDC3C7}
+
+\newcommand{\tagn}[1]{{\footnotesize\ttfamily #1}}
+\newcommand{\code}[1]{\texttt{#1}}
+% Category identifiers carry underscores; print them literally in \texttt and
+% allow a line break after each underscore so long names never run into the margin.
+\makeatletter
+\DeclareRobustCommand{\cat}[1]{\texttt{\cat@scan#1_\cat@end}}
+\def\cat@scan#1_#2\cat@end{%
+  #1%
+  \def\cat@rest{#2}%
+  \ifx\cat@rest\@empty\else\_\allowbreak\cat@scan#2\cat@end\fi}
+\makeatother
+\newcommand{\rfckw}[1]{\textsc{#1}}
+
+% Pinned FedRAMP sources, at the same reviewed commit as the companion CVSS memo.
+\newcommand{\fedbase}{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5}
+\newcommand{\defvulncite}{\href{\fedbase/definitions.md\#vulnerability}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\deflevcite}{\href{\fedbase/definitions.md\#likely-exploitable-vulnerability-lev}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\verpaincite}{\href{\fedbase/providers/rev5/rules/vulnerability-evaluation-and-reporting.md\#estimate-potential-agency-impact}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\verfactcite}{\href{\fedbase/providers/rev5/rules/vulnerability-evaluation-and-reporting.md\#evaluation-factors}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\vdrmitcite}{\href{\fedbase/providers/rev5/rules/vulnerability-detection-and-response.md\#mitigation-and-remediation-expectations}{FedRAMP/2026-markdown@2a75592}}
+\newcommand{\ciscite}{\href{https://www.cisecurity.org/cis-benchmarks/cis-benchmarks-faq}{cisecurity.org/cis-benchmarks-faq}}
+
+\title{\bfseries A Deterministic PAIN and Remediation Method for\\
+FedRAMP Compliance and Security-Benchmark Findings}
+\author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+FedRAMP's Vulnerability Detection and Response (VDR) and Vulnerability Evaluation
+and Reporting (VER) rules treat a vulnerability as any weakness --- not only a CVE
+but a misconfiguration, an exposure, or a control gap. Security-benchmark scanners
+(CIS, DISA STIG, cloud-configuration checks) therefore emit FedRAMP vulnerabilities,
+yet they rarely emit the inputs the companion CVSS-Environmental method needs: a
+benchmark check reports a rule identifier and a Pass/Fail, seldom a C/I/A impact
+vector, and often no severity at all. This memo supplies a deterministic classifier
+for that data. A severity-by-asset effect matrix (mirroring the CVE method's
+impact-by-requirements combination) produces a customer-effect word; FedRAMP's
+effect-and-scope table turns it into a PAIN level; a finding-level
+\emph{internet-exercisability} test selects the remediation column; and the same
+pinned \code{VDR-TFR-PVR} matrix used by the companion memo selects the deadline.
+The method consumes only what scanners and ordinary asset inventory already provide,
+fails safe and loud on provider-controlled unknowns, and discloses its one
+calibrated default rather than hiding it. A back-test on a real, sanitized CIS Google
+Cloud Platform scan of 1{,}378 findings shows no incident-class flood: fourteen
+findings (1.0\%) ride the fast clock. This is a companion to \emph{A Deterministic,
+CVSS--Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization};
+the two share notation, the asset model, and the deadline matrix, and are meant to
+be read as one family.
+\end{abstract}
+
+\tableofcontents
+
+\section{Status of this memo and terminology}
+This document is informational. It does not define a FedRAMP requirement; it
+specifies a standardized \emph{method} for satisfying the existing VDR/VER
+requirements when the finding under evaluation is a security-benchmark or
+compliance result rather than a CVE.\footnote{The VDR and VER rules launched on
+2026-06-24 as part of the FedRAMP Consolidated Rules for 2026 and apply to both
+FedRAMP 20x and Rev5 offerings.} It is a companion to the CVSS-Environmental memo
+(hereafter ``the CVE memo''); it reuses that memo's asset model, its remediation
+matrix, and its treatment of dispositions, and cites it rather than restating it.
+
+The key words \rfckw{must}, \rfckw{must not}, \rfckw{should}, \rfckw{should not},
+and \rfckw{may} are to be interpreted as described in RFC~2119.
+
+\begin{description}[leftmargin=1.5em,style=nextline]
+\item[PAIN] Potential Agency Impact, the FedRAMP N1--N5 rating of a finding.
+\item[Grade] This method's governed severity of a benchmark finding: Major,
+  Moderate, or Minor.
+\item[Customer effect] The FedRAMP effect word a finding lands on: Minimal, Narrow,
+  Disruptive, or Debilitating.
+\item[CR/IR/AR] The CVSS Environmental Confidentiality / Integrity / Availability
+  \emph{Requirements} of the affected asset; the asset band summarizes them.
+\item[LEV / IRV] Likely Exploitable / Internet-Reachable Vulnerability, the two VER
+  axes that select the remediation column.
+\item[Internet-exercisable] This method's operational test for whether an
+  unauthenticated internet actor can exercise a benchmark finding as it stands. It
+  is defined in Section~\ref{sec:exerc} and is \emph{not} a redefinition of IRV.
+\item[Class] The provider Certification Class (A--D) selecting a remediation table.
+\end{description}
+
+Three terms are held strictly apart throughout and are never interchangeable.
+\emph{Internet-accessible} names an entry point --- a listener an outside actor can
+reach directly. \emph{Internet-reachable} is FedRAMP's broader status: a finding
+that might be triggered by a payload originating on the public internet, including
+by an indirect path with no direct route. \emph{Internet-exercisable} is this
+method's own operational test for benchmark findings, defined below; it is a
+deliberately conservative proxy, not a synonym for either of the other two.
+
+\section{Scope: benchmark findings are FedRAMP vulnerabilities}
+\label{sec:scope}
+\begin{plain}
+A vulnerability, to FedRAMP, is any weakness an attacker could use --- not just a
+numbered CVE. A misconfigured storage bucket, a disabled log, an open management
+port, a missing encryption setting: each is a vulnerability the rules expect a
+provider to detect, evaluate, and remediate on a clock. The trouble is that the
+scanners that find these things speak a different dialect from CVE scanners. They
+tell you which rule failed and on what resource, but usually not ``how bad'' in the
+CVE sense and often not even a severity. This memo builds the missing bridge from
+that thin data to a defensible PAIN level and deadline.
+\end{plain}
+
+FedRAMP's definition of a vulnerability is deliberately broad: it covers control
+gaps, misconfigurations, exposures, and other weaknesses, not only
+CVEs.\footnote{FedRAMP, \emph{Definitions} (\emph{vulnerability}). Pinned permalink:
+\defvulncite{} (commit of 2026-06-24); accessed 2026-07-16.} A security-benchmark
+failure is therefore a FedRAMP vulnerability, and the VDR/VER duties --- estimate
+its Potential Agency Impact, evaluate exploitability and reachability, and remediate
+within the timeframe matrix --- apply to it in full. The CVE memo answers those
+duties for findings that arrive with a CVSS vector. Benchmark findings do not, and
+that gap is what this memo closes.
+
+The obstacle is the input data, not the output vocabulary. A CVE scanner emits an
+impact vector the CVSS-Environmental formula can consume directly. A benchmark
+scanner emits a rule or category identifier and a Pass/Fail state. Some add a
+severity of their own, but those labels are not uniform across tools. CIS Benchmarks
+publish no severity at all: the Level~1 and Level~2 profiles are hardening
+\emph{scopes}, not severities, and \rfckw{must not} be read as one.\footnote{CIS,
+\emph{CIS Benchmarks FAQ} (Level 1 and Level 2 profiles). \ciscite{}; accessed
+2026-07-16.} DISA STIG content is the exception that proves the rule: it carries a
+severity category (CAT~I/II/III) that scanners translate faithfully. So the method
+must work from a Pass/Fail and a category name, respect a governed severity when one
+genuinely exists, and never invent one where none does.
+
+Two design commitments follow, and both are load-bearing. First, the method reuses
+the asset metadata the CVE method already requires --- the affected asset's CR/IR/AR
+(or an archetype that resolves to them), its multi-agency scope, and the offering's
+Certification Class --- and asks for no benchmark-specific metadata that ordinary
+scanners and inventory do not already provide. The only governed artifacts it adds
+are a severity source registry and a small per-benchmark exception table, both
+described below. Second, exploitability and reachability stay on the axes FedRAMP
+built for them: they select the remediation \emph{column}, never the PAIN level. A
+single fact is never counted twice.
+
+The normative FedRAMP anchors for what follows are the VER estimate-impact
+clause,\footnote{FedRAMP, \emph{VER} (\emph{Estimate Potential Agency Impact}):
+\verpaincite{}.} the VER evaluation factors,\footnote{FedRAMP, \emph{VER}
+(\emph{Evaluation Factors}): \verfactcite{}.} the VDR mitigation-and-remediation
+expectations,\footnote{FedRAMP, \emph{VDR} (\emph{Mitigation and Remediation
+Expectations}): \vdrmitcite{}.} and the LEV definition,\footnote{FedRAMP,
+\emph{Definitions} (\emph{Likely Exploitable Vulnerability}): \deflevcite{}.} each
+pinned at commit 2a75592 (2026-06-24).
+
+\section{The disposition gate}
+\label{sec:gate}
+\begin{plain}
+Before a finding is scored, it has to be real. A scanner's hit can be a false alarm,
+a check that does not apply to this system's role, or a weakness already neutralized
+by something else. Sorting those out is the disposition step, and it happens
+per-finding with evidence --- not by quietly softening the scoring formula to
+tolerate noise. The scoring engine assumes what it is handed is a genuine failure;
+this gate is what makes that assumption safe.
+\end{plain}
+
+Only a confirmed failed condition enters the PAIN calculation. Every other outcome
+is a disposition, recorded with its evidence:
+
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item A \code{Pass} is not a finding.
+\item A result that does not match the effective state is a \textbf{false positive}.
+\item A recommendation that does not apply to the asset's actual role is
+  \textbf{not applicable}. An N/A disposition is an auditable out-of-scope decision
+  and carries a mandatory reportable rationale --- it is not a silent drop.
+\item A failed configuration neutralized by an effective control is
+  \textbf{fully mitigated}; the evidence and the retained PAIN are recorded, exactly
+  as in the CVE memo's disposition overlay.
+\item A weakness intentionally justified rather than eliminated is an
+  \textbf{accepted} finding. Acceptance does not lower the computed PAIN.
+\item A weakness reduced but not eliminated by a compensating control is
+  \textbf{partially mitigated}: the grade and effect are re-evaluated against the
+  \emph{residual} condition on cited evidence, and both the pre- and
+  post-mitigation N-ratings are recorded. This matches VER's expectation that a
+  remediation clock is satisfied by partial mitigation to a lower N-rating.
+\end{itemize}
+
+The scoring algorithm is never weakened to compensate globally for scanner noise.
+Noise is resolved here, one finding at a time, against evidence. That discipline is
+what lets the rest of the method stay deterministic.
+
+\section{The asset-value band}
+\label{sec:band}
+\begin{plain}
+The same weakness matters more on a crown-jewel system than on a scratch sandbox, so
+the first thing the method needs is a sense of how much the affected asset is worth.
+It reuses the CVE method's answer exactly: each asset already carries three
+criticality dials --- for secrecy, correctness, and uptime. We collapse those three
+into one word --- High, Medium, or Low --- and that word is the asset half of the
+score. If an asset has never been classified, it is treated as top-value until
+someone proves otherwise.
+\end{plain}
+
+The affected asset's Security Requirements (CR, IR, AR) are the CVSS Environmental
+multipliers used throughout the CVE memo: Low${}=0.5$, Medium${}=1.0$,
+High${}=1.5$. The method summarizes them into a single band from their mean:
+\[
+\text{asset\_mean} = \tfrac{1}{3}(\mathrm{CR}+\mathrm{IR}+\mathrm{AR}),\qquad
+\text{band} =
+\begin{cases}
+\text{Low} & \text{asset\_mean} < 0.75\\
+\text{Medium} & 0.75 \le \text{asset\_mean} < 1.25\\
+\text{High} & \text{asset\_mean} \ge 1.25
+\end{cases}
+\]
+The attainable means are sixths ($0.5,\,0.667,\,\dots,\,1.5$), so no threshold is
+ever hit exactly. The formula is the derivation; the rule an operator actually needs
+to remember is plainer:
+
+\begin{definitionbox}
+\textbf{The band in plain language.} An asset is \textbf{High} when at least two of
+its three requirements are High and none is Low; \textbf{Low} when at least two are
+Low and none is High; \textbf{Medium} in every other case. A single Low requirement
+demotes two Highs to Medium --- \code{HHL} is Medium, not High.
+\end{definitionbox}
+
+Missing or unresolved asset metadata resolves to \code{HHH}${}\rightarrow{}$High.
+Asset classification is provider-controlled, so its absence fails safe and loud: an
+unclassified asset scores at the top of the band and surfaces itself for
+classification rather than hiding. This is the same fail-safe doctrine the CVE memo
+applies; the addendum inherits it unchanged.
+
+\paragraph{Affected-resource substitution.} A benchmark finding is often detected at
+one resource but really endangers a higher-value one. A finding that reasonably
+affects a higher-value dependent resource, an administrative plane, a shared
+credential store, backup or logging infrastructure with reach into higher-value
+assets, or a control plane is evaluated \emph{against that higher-value resource},
+not against the point of detection. Substitution is governed by that named trigger
+list so it is not an open-ended judgment. It carries a firm audit obligation: every
+substitution records the substituted resource and the rationale, and the decision is
+recorded \emph{both} when it is applied \emph{and} when it is declined
+(Section~\ref{sec:audit}). A full asset-adjacency graph would make substitution
+table-driven; it is noted as an optional refinement, not a baseline input, because
+the baseline may not assume metadata ordinary inventory does not provide.
+
+\section{Finding grade and provenance}
+\label{sec:grade}
+\begin{plain}
+Next the method needs to know how serious the failed check is on its own terms. Where
+a trustworthy severity exists --- a DISA STIG category, or a scanner whose severity
+scheme is documented and stable --- it is used. Where none exists, as with raw CIS
+Pass/Fail, the finding takes a middling ``Moderate'' by default. That default is a
+deliberate, disclosed calibration, not a shrug: it reflects that most benchmark
+checks really are middling, and that stamping hundreds of hardening gaps as
+top-severity would bury the few that are genuinely dangerous.
+\end{plain}
+
+The method assigns each finding one of three grades:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.18\textwidth} >{\raggedright\arraybackslash}p{0.70\textwidth}}
+\toprule
+\textbf{Grade} & \textbf{Sources} \\
+\midrule
+\textbf{Major} & STIG CAT~I; governed scanner Critical/High \\
+\textbf{Moderate} & STIG CAT~II; governed scanner Medium; \textbf{unscored \code{Fail}} (the calibrated prior) \\
+\textbf{Minor} & STIG CAT~III; governed scanner Low \\
+\bottomrule
+\end{tabular}
+\caption{Finding grade by governed severity source.}
+\label{tab:grade}
+\end{table}
+
+Provenance is resolved through a pinned, versioned \textbf{source registry}, and this
+is what keeps the grade from being provider-gameable. The registry records, per
+benchmark source, whether it is \emph{structurally unscored} (CIS --- eligible for
+the Moderate prior) or carries a \emph{governed mapping} (with the scanner's full
+severity vocabulary at a pinned version). A scanner on the published governed list is
+governed by default and cannot be un-elected. DISA STIG categories are authoritative.
+The starter governed list is DISA STIG CATs, Google Security Command Center category
+severities, and AWS Foundational Security Best Practices control severities.
+
+Two rules make the direction of every default explicit:
+
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item A blank or unrecognized severity \emph{from a scored, governed source} fails
+  loud to \textbf{Major}. A provider cannot suppress a governed High and quietly ride
+  the Moderate prior --- stripping a governed severity fails \emph{up}, not down.
+\item The Moderate prior applies \emph{only} to registry-marked structurally-unscored
+  sources. A provider can neither self-escalate nor self-reduce a governed severity,
+  and CIS Level~1/2 profiles are never read as severities.
+\end{itemize}
+
+\paragraph{Why the prior is Moderate, in full.} The default deserves its complete
+justification on the record, because a worst-case default would seem safer and is
+not. Missing benchmark severity is \emph{structural}, not a provider omission: CIS
+publishes no severities at all, so treating their absence as a fail-safe worst case
+would be miscalibration rather than caution --- it punishes a property of the
+benchmark, not a gap in the provider's evidence. This is the sharp line between the
+two kinds of unknown the method handles: a \emph{provider-controlled} unknown (an
+unclassified asset, an unknown firewall state, an unknown agency scope) fails safe
+and loud, but a \emph{structurally absent} input (benchmark severity) takes the
+calibrated prior. Beyond that principle, two empirical facts support Moderate
+specifically. CAT~II is the mode of real benchmark content --- most checks are
+genuinely middle-weight hardening items. And labeling hundreds of ordinary hardening
+deviations ``potentially debilitating multi-agency events'' would destroy the
+incident signal for the findings that actually deserve it. A default that cries wolf
+on everything protects nothing.
+
+\paragraph{The escalation override.} The prior can be wrong in the minority, and the
+method gives that minority a governed home rather than reopening the flood.
+Documented evidence that a specific finding yields direct High C/I/A impact on the
+(possibly substituted) resource promotes its grade one step
+(Moderate${}\rightarrow{}$Major). The step is audited, fenced by the same registry
+and assessor-review governance as the source registry, and expected to be rare. An
+encryption-at-rest CAT~II on a shared multi-agency datastore is the canonical case:
+genuinely under-claimed at its default grade, and now escalable on evidence.
+
+\section{Customer effect and PAIN}
+\label{sec:pain}
+\begin{plain}
+Now the two halves meet. The grade (how serious the check is) and the asset band (how
+much the system is worth) combine in a small lookup table to produce a plain-English
+effect word. That word, together with whether the system serves one agency or several,
+selects the N-level. The asset is a ceiling: a serious check on a throwaway box cannot
+climb higher than the box can support. And one boundary is drawn on purpose --- the
+line between an ``incident'' and ``maintenance'' sits exactly where it does to keep the
+routine flood out of the incident lane.
+\end{plain}
+
+The grade and the asset band select a customer-effect word:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l ccc}
+\toprule
+\textbf{Grade} & \textbf{Asset High} & \textbf{Asset Medium} & \textbf{Asset Low} \\
+\midrule
+\textbf{Major}    & \cellcolor{crit!20}Debilitating & \cellcolor{high!25}Disruptive & \cellcolor{med!30}Narrow \\
+\textbf{Moderate} & \cellcolor{med!30}Narrow         & \cellcolor{med!30}Narrow      & \cellcolor{low!25}Minimal \\
+\textbf{Minor}    & \cellcolor{low!25}Minimal        & \cellcolor{low!25}Minimal     & \cellcolor{low!25}Minimal \\
+\bottomrule
+\end{tabular}
+\caption{Customer-effect matrix (grade $\times$ asset band).}
+\label{tab:effect}
+\end{table}
+
+The effect word and the asset's agency scope select the PAIN level, using FedRAMP's
+fixed effect-and-scope semantics:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{l cc}
+\toprule
+\textbf{Customer effect} & \textbf{Single agency} & \textbf{Multi-agency} \\
+\midrule
+Debilitating & N4 & \cellcolor{crit!20}N5 \\
+Disruptive   & N3 & \cellcolor{high!25}N4 \\
+Narrow       & N2 & N2 \\
+Minimal      & N1 & N1 \\
+\bottomrule
+\end{tabular}
+\caption{Effect $\times$ agency scope $\rightarrow$ PAIN. N5 is reachable only for a
+Debilitating multi-agency finding.}
+\label{tab:paintbl}
+\end{table}
+
+Unknown agency scope resolves to multi-agency: scope is provider-controlled metadata,
+so its absence fails safe and loud. The band acts as a ceiling in
+Table~\ref{tab:effect}: severity never raises effect above what the asset can
+support, so a Major finding on a Low-band asset is still only Narrow. And the
+Moderate${}\rightarrow{}$Minor grade transition never drops the effect by more than
+one band (exactly one, unless the effect is already Minimal), which keeps the matrix
+monotone.
+
+\paragraph{Two observations the tables make plain.} First, \textbf{the multi-agency
+column has no N3.} Table~\ref{tab:paintbl} sends Narrow to N2 in both columns and
+Disruptive to N4 under multi-agency, so nothing lands on N3 when scope is
+multi-agency. The line between an incident (N4 and above) and maintenance (N2 and
+below) therefore sits exactly on the Disruptive boundary, and the effect matrix is
+calibrated with that boundary in view.
+
+Second, \textbf{the Moderate/High cell is a disclosed calibration knob.} It reads
+Narrow, not Disruptive. The alternative --- Disruptive --- would put every CAT~II and
+every raw CIS \code{Fail} on a high-value multi-agency asset at N4, which is
+incident-class in Class~D. That is precisely the flood this design exists to prevent,
+so the knob is set to Narrow deliberately and disclosed here rather than buried. The
+choice has a named residual risk, and the method owns it rather than papering over it:
+
+\begin{definitionbox}
+\textbf{Named residual risk (the N5$\leftrightarrow$N2 cliff on High assets).} Because
+Moderate/High caps at Narrow${}\rightarrow{}$N2, a genuinely dangerous CAT~II on a
+crown-jewel multi-agency asset --- the standing example is an account-lockout policy
+gap on an internet-exercisable admin plane, brute-forceable in practice --- is capped
+at N2 unless the escalation override (Section~\ref{sec:grade}) is invoked on evidence.
+The gap between that N2 and the N5 the finding might deserve is the calibration's
+known cliff. It is not closed by moving the matrix cell (that would let exercisability
+set PAIN, the double-count the method forbids); it is closed, when it applies, by the
+evidence-gated grade escalation, and it is owned by the certifying provider.
+\end{definitionbox}
+
+\section{Internet exercisability: the remediation column}
+\label{sec:exerc}
+\begin{plain}
+The N-level says how bad; this step says how fast. FedRAMP tightens the clock for
+findings that are likely exploitable and internet-reachable. For benchmark findings
+we cannot measure those directly, so the method uses one honest, conservative proxy:
+can an unauthenticated stranger on the internet actually exercise this failed
+setting, as it stands, without first getting something the finding itself does not
+hand them? If yes, it rides the fast clock. This test is a practical stand-in, not a
+new definition of FedRAMP's reachability --- and it only ever errs toward calling
+something \emph{not} exercisable, never the other way.
+\end{plain}
+
+The normative test is a single sentence: \textbf{a benchmark finding is
+internet-exercisable if and only if an unauthenticated internet actor can exercise
+the failed condition as it currently stands, with no precondition the finding does
+not itself supply.} It is the same spirit as the \code{FRD-LEV}
+unauthenticated-automation floor the CVE memo uses for direct-IRV CVEs.
+
+\begin{definitionbox}
+Internet-exercisability is an \textbf{operational test for benchmark findings}. It is
+\emph{not} a redefinition of FedRAMP's Internet-Reachable Vulnerability status, and it
+must not be read as one. The relationship is one-directional and stated as a soundness
+claim: \textbf{exercisable ${}\Longrightarrow{}$ IRV, never the converse.} A finding
+the test calls exercisable is genuinely internet-reachable; a finding it calls not
+exercisable may still be IRV by an indirect path the proxy cannot see. The baseline is
+therefore \emph{sound but incomplete} with respect to IRV --- it can only ever
+\emph{under}-select the fast clock, never over-select it --- and the evidence-backed
+overrides below exist to catch the cases it misses.
+\end{definitionbox}
+
+\paragraph{Per-family operational rules.} The test is evaluated by benchmark family,
+each family using only data ordinary scanners and inventory provide:
+
+\begin{itemize}[leftmargin=1.4em,topsep=3pt]
+\item \textbf{Host benchmarks, OS-level} (RHEL/Windows STIG and CIS): exercisable iff
+  the administrative/login plane is world-open, tested against a governed port set
+  (default $\{22, 3389, 5985, 5986, 5900, 10250\}$). The \code{admin\_plane\_open}
+  bit is not scanner-emitted metadata --- it is the output of a \emph{required join}
+  against governed firewall/load-balancer inventory, the same feed the CSP
+  benchmark's own network controls read. There is no per-rule mapping. Unknown
+  firewall state resolves to open: firewall state is a discoverable unknown, and the
+  doctrine is to score discoverable unknowns loud to force the inventory join. A
+  WAF/ALB-fronted surface counts as open --- a WAF is mitigation, not closure.
+\item \textbf{Host benchmarks, application-level} (web/db STIGs): exercisable iff that
+  application's own service surface is internet-open, by the same join.
+\item \textbf{Cloud-configuration benchmarks:} exercisable iff the finding category is
+  \emph{exposure-class}, decided by the keyword rule and exception table below.
+\end{itemize}
+
+\paragraph{The keyword rule.} For cloud benchmarks the normative default reads the
+category identifier itself, never the rule prose. The identifier is normalized ---
+uppercased and split on non-alphanumeric runs --- and the finding is exposure-class if
+any resulting token is one of $\{$\code{PUBLIC}, \code{OPEN}, \code{ANONYMOUS},
+\code{INTERNET}, \code{WORLD}$\}$. Normalizing on token boundaries is what makes the
+rule safe across scanner grammars: \cat{OPEN_SSH_PORT} matches on the \code{OPEN}
+token, while \cat{OPENSSH_CONFIG} does not, and an AWS Config identifier such as
+\code{s3-bucket-public-read-prohibited} normalizes to the same tokens as its GCP
+cousin. Because the rule reads scanner-emitted identifiers, the provider cannot game
+it by renaming.
+
+Two tokens that look tempting --- \code{EXTERNAL} and \code{UNRESTRICTED} --- are
+deliberately \emph{not} in the auto-match set. Their genuine true positives are
+already carried by \code{PUBLIC}/\code{OPEN}/\code{INTERNET} or by explicit table
+entries, while their false-positive rate is high (\cat{SQL_EXTERNAL_SCRIPTS_ENABLED}
+is not an internet exposure; \cat{API_KEY_APIS_UNRESTRICTED} scopes a key, not a
+surface). Keeping them out holds the auto-match vocabulary tight and moves the burden
+of proof onto a reviewed table entry. Screening every category list for token
+collisions is a normative table-build step, not an afterthought.
+
+\paragraph{The exception table and its governance.} The keyword rule is refined by a
+per-benchmark-version exception table with four kinds of entry: \code{add} (genuine
+exposure rules the keyword rule misses), \code{remove} (keyword false positives),
+\code{surface} (categories exercisable only when the attached resource is public,
+joined from the same scan's exposure findings; unknown attachment resolves to public),
+and \code{vocabulary} (the version's complete category list). The vocabulary closes an
+otherwise silent gap: a scanned category that is \emph{present} in the vocabulary but
+untagged is treated as identity/operations-plane and not exercisable --- a disclosed
+calibration choice --- whereas a category \emph{absent} from the vocabulary (a
+scanner's monthly new addition, say) fails loud to LEV+IRV and is flagged as
+unreviewed. The governance around the table is what makes it trustworthy rather than
+a hidden lever:
+
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item Canonical tables are published per (benchmark, version, scanner) and
+  \textbf{content-hashed}; the hash travels in the audit record. A version
+  \emph{string} enforces nothing; a hash does.
+\item Any provider deviation from the canonical table is enumerated per-entry with a
+  rationale and flagged for assessor review.
+\item Removing a token-matching category is a hard assessor-review trigger --- it is
+  the one move that silently slows a clock, so it never happens silently.
+\item Keeping the tables current is an operating requirement with a monthly
+  new-category diff, not a once-per-version event.
+\end{itemize}
+
+Categories that neither match a token nor appear in the exception table are
+identity- or operations-plane and are \emph{not} exercisable. The justification is
+the test's own precondition clause: a user-managed service-account key requires
+possessing the secret, and the public cloud control plane alone gives an internet
+actor nothing to exercise. A data-plane grant to \code{allUsers} or
+\code{allAuthenticatedUsers}, by contrast, \emph{is} exposure-class regardless of the
+category name --- \code{allAuthenticatedUsers} is satisfied by any self-registered
+account, which the unauthenticated test treats as self-suppliable.
+
+\paragraph{Overrides.} The overrides carry the cases the sound-but-incomplete
+baseline misses, and each is evidence-backed, audited, and expected to be uncommon:
+
+\begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
+\item \textbf{LEV+NIRV} when evidence shows a likely tenant, internal, adjacent, or
+  local actor can exercise the condition. The canonical case is the MFA-not-enforced
+  family (Section~\ref{sec:examples}).
+\item \textbf{LEV+IRV} when evidence shows public usability (for example a
+  known-leaked key, at which point incident response applies), or on
+  transitive-reachability evidence --- an indirect internet payload path, mirroring
+  the CVE companion's transitive branch --- which gives the VER indirect-payload case
+  a home in the IRV direction.
+\end{itemize}
+
+The column then selects itself: LEV+IRV if internet-exercisable or so overridden;
+LEV+NIRV on an evidence-backed internal-exploitability override; NLEV otherwise. The
+determination is stated once more for emphasis: \textbf{exercisability changes the
+column only; it never changes PAIN.} An affirmative not-exercisable determination
+(any \code{False} on \code{admin\_plane\_open}, \code{service\_open}, or
+\code{attached\_resource\_public}) requires an enforced-state evidence pointer --- a
+security-group or firewall rule identifier, a listener binding --- because the absence
+of an observation is not the same as enforced closure.
+
+\section{Deadlines}
+\label{sec:deadline}
+\begin{plain}
+The last step is a table lookup. The PAIN level, the remediation column, and the
+provider's assurance Class pick a single cell, and that cell is the number of days
+allowed. The numbers are FedRAMP's, not ours --- the very same matrix the CVE method
+uses --- so nothing benchmark-specific is invented here.
+\end{plain}
+
+The deadline is
+$\text{deadline} = M[\text{Class}][\text{PAIN}][\text{column}]$, drawn from the pinned
+\code{VDR-TFR-PVR} matrix reproduced in the CVE memo's appendix on remediation
+deadline matrices (days; $0.5 = 12$ hours; Classes~A and~B share a schedule; N1
+carries no FedRAMP deadline). The full tables are not restated here; only the single
+N2 row the worked examples use is reproduced for convenience:
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{l ccc @{\hspace{2em}} ccc @{\hspace{2em}} ccc}
+\toprule
+& \multicolumn{3}{c}{\textbf{Class A / B}} & \multicolumn{3}{c}{\textbf{Class C}} & \multicolumn{3}{c}{\textbf{Class D}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}\cmidrule(lr){8-10}
+\textbf{PAIN} & L+I & L+N & NLEV & L+I & L+N & NLEV & L+I & L+N & NLEV \\
+\midrule
+N2 & 96 & 160 & 192 & 48 & 128 & 192 & 24 & 96 & 192 \\
+\bottomrule
+\end{tabular}
+\caption{The single \code{VDR-TFR-PVR} row used by the worked examples, reproduced from
+the CVE memo's appendix. The complete N5--N2 matrix lives there and is not duplicated.}
+\label{tab:n2row}
+\end{table}
+
+The anchor case ties the whole chain together. A CAT~II on a medium-value,
+internet-exercisable host is Moderate${}\times{}$Medium${}\rightarrow{}$Narrow
+${}\rightarrow{}$N2, LEV+IRV, which is \textbf{24 days in Class~D} (48 in Class~C, 96
+in Classes~A/B) --- and 192 days if it were not exercisable. Exercisability moved the
+clock by an order of magnitude and left the N-level untouched.
+
+\section{The minimum audit record}
+\label{sec:audit}
+\begin{plain}
+Everything the method decides has to be reconstructable later from what it wrote down.
+Two reviewers handed the same finding, the same pinned tables, and the same evidence
+must reach the same answer --- so the audit record captures not just the result but
+every input and every judgment call, including the ones where the method chose
+\emph{not} to act.
+\end{plain}
+
+Every output is reproducible from a single record. It captures: the benchmark and
+version; the rule or category identifier and the scanner result; the disposition and
+its evidence (for anything other than an unqualified \code{Fail}); the affected asset
+and its resolved archetype; the affected-resource substitution and rationale when
+applied, \emph{and} the substitution decision and basis when declined; the CR/IR/AR
+and derived band; the agency scope, with a ``defaulted'' marker if it was unknown; a
+tenancy basis (agencies served, plus evidence) for any single-agency assertion on a
+shared-service archetype; the severity and its provenance (the grade and why the
+source is governed or unscored); the customer effect and PAIN; the exercisability
+determination together with the exception-table content hash and the enumerated
+provider delta; an enforced-state evidence pointer for any affirmative
+not-exercisable determination; the column and any override evidence reference; and the
+Certification Class, the evaluation completion time, and the resulting deadline.
+
+\section{Worked examples}
+\label{sec:examples}
+\begin{plain}
+The method run by hand on the cases that decide whether it is calibrated right ---
+including the two it deliberately handles differently from what a first glance
+suggests (the service-account key, and MFA).
+\end{plain}
+
+\paragraph{Example 1 --- user-managed service-account key
+(\cat{USER_MANAGED_SERVICE_ACCOUNT_KEY}).} No exposure token, not in the exception
+table, present in the vocabulary: identity/operations-plane
+${}\rightarrow{}$ \textbf{NLEV}. The public GCP API plane is not the finding's
+exposure; an internet actor lacks the secret, so the unauthenticated test fails at its
+precondition. Overrides remain available: NIRV on evidence of broad internal
+availability plus harmful permissions, IRV only on evidence of public disclosure.
+
+\emph{Contrast --- API keys (\cat{API_KEY_APPS_UNRESTRICTED}).} The same
+possess-the-secret reasoning does \emph{not} transfer. Client-embedded GCP API keys
+(Maps, Firebase web and mobile) are public by design; the finding is precisely that
+the compensating restriction on an already-public key is missing. These categories are
+therefore \code{surface}, not \code{remove}: the attachment is ``key is
+client-distributed,'' unknown distribution defaults to exercisable, and a down-override
+to NLEV requires evidence the key is server-side-only and network-scoped. Two findings
+that both contain \code{UNRESTRICTED} split on their actual exposure, not on a shared
+word.
+
+\paragraph{Example 2 --- public bucket (\cat{PUBLIC_BUCKET_ACL}).} Exposure-class by
+the \code{PUBLIC} token ${}\rightarrow{}$ \textbf{LEV+IRV}. Governed SCC severity
+High ${}\rightarrow{}$ Major; on a High-value multi-agency data archetype the effect
+is Debilitating ${}\rightarrow{}$ \textbf{N5} ${}\rightarrow{}$ \textbf{12 hours in
+Class~D}. That is an incident, and the method calls it one.
+
+\paragraph{Example 3 --- \cat{SSL_NOT_ENFORCED} on a Cloud SQL instance where
+\cat{SQL_PUBLIC_IP} is Compliant.} A \code{surface} category: exercisable only if the
+attached resource is public. The same scan shows the instance has no public IP, so the
+attachment joins to False ${}\rightarrow{}$ \textbf{NLEV}. This is the permitted
+category-level inference --- when the attaching exposure control is fully Compliant in
+the same scan, its resources are non-public by evidence, not assumption.
+
+\paragraph{Example 4 --- CAT~II on a public web VM with admin ports closed.} An
+OS-level host finding. The VM serves the public over 443, but the administrative plane
+is closed by the firewall join, so the finding is not exercisable via 443
+${}\rightarrow{}$ \textbf{NLEV}. On a Medium-band asset it is Moderate${}\times{}$
+Medium ${}\rightarrow{}$ Narrow ${}\rightarrow{}$ N2 ${}\rightarrow{}$ \textbf{192
+days in Class~D}. The application being internet-facing does not by itself make an
+OS-hardening deviation internet-exercisable.
+
+\paragraph{Example 5 --- MFA not enforced.} The strict test says not exercisable: an
+internet actor still needs a valid credential, which the finding does not supply. This
+is the canonical override case named in Section~\ref{sec:exerc}. A provider facing a
+likely tenant or internal actor \rfckw{should} consider the LEV+NIRV override (or a
+deliberate LEV+IRV where credential stuffing against a public sign-in is the realistic
+threat), recording the evidence once as a standing family rule rather than
+finding-by-finding.
+
+\section{Back-test results}
+\label{sec:backtest}
+\begin{plain}
+The real test of a calibration is whether it floods the incident queue on a genuine
+scan. It does not. Run against a real, sanitized CIS Google Cloud scan of nearly
+fourteen hundred findings --- and under the harshest asset assumption, treating every
+asset as top-value --- only fourteen findings land on a fast clock, and the incident
+lane stays essentially empty. The bulk sits at the low, slow end, which is exactly
+where routine hardening gaps belong.
+\end{plain}
+
+The method was back-tested against a sanitized real CIS Google Cloud Platform
+Foundation~2.0 scan of \textbf{1{,}378 findings} (Class~D, multi-agency, from Google
+Security Command Center). To stress the calibration, the run assumes the
+\emph{High} asset band uniformly --- the loudest assumption available. Even so, the
+distribution is dominated by the slow, low end:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\footnotesize
+\begin{tabular}{l l r r}
+\toprule
+\textbf{PAIN} & \textbf{Column} & \textbf{Findings} & \textbf{Class-D deadline} \\
+\midrule
+N5 & LEV+IRV & 5   & 12 hours \\
+N5 & NLEV    & 2   & 8 days \\
+N2 & LEV+IRV & 9   & 24 days \\
+N2 & NLEV    & 736 & 192 days \\
+N1 & NLEV    & 626 & no deadline \\
+\midrule
+\multicolumn{2}{l}{\textbf{Total}} & \textbf{1{,}378} & \\
+\bottomrule
+\end{tabular}
+\caption{Back-test distribution on the sanitized CIS GCP 2.0 scan (Class~D,
+multi-agency, uniform High-band assumption). Only exposure-class findings ride the
+LEV+IRV fast clock.}
+\label{tab:backtest}
+\end{table}
+
+Two properties matter. First, there is \textbf{no N4/N5 flood}: only seven findings
+reach incident-class at all, and just five ride the 12-hour clock, on the loudest
+possible asset assumption. Second, the fast clock is scarce and earned:
+$5 + 9 = 14$ findings ride LEV+IRV, exactly \textbf{1.0\%} of the population, and every
+one of them is an exposure-class category. The remainder --- the 736 N2 and 626 N1
+findings --- are the ordinary hardening backlog, correctly parked on the slow clocks
+where they belong. Dropping the asset assumption to Medium shifts the incident-class
+findings from N5 to N4 (a slightly slower incident clock) and leaves the N2/N1 bulk
+untouched, which is the intended behavior: the asset band moves the row, never the
+column.
+
+\section{Known limitations}
+\label{sec:limits}
+\begin{plain}
+The method is an honest proxy, and honest proxies have known blind spots. It can
+shout a little too loudly about harmless findings that merely sit on an exposed host,
+and it can under-rate a finding an insider could exploit unless someone supplies the
+evidence to override it. It is a calibrated triage tool for benchmark findings, not a
+substitute for a full exploitability analysis, and it is never presented as one.
+\end{plain}
+
+The method's approximations are disclosed, not hidden:
+
+\begin{itemize}[leftmargin=1.4em,topsep=3pt]
+\item \textbf{It over-prioritizes some non-exercisable findings on exposed surfaces.}
+  The host proxy rides the admin-plane bit for the whole host, so a bastion's entire
+  CAT~II set can ride LEV+IRV even though most of those findings are not individually
+  internet-exercisable. This over-generation is the named, disclosed error shape of
+  the host proxy; a login-plane rule-group refinement is available as an optional
+  governed extension, and the reporting layer groups findings so the noise is
+  legible.
+\item \textbf{It under-prioritizes internally exploitable findings absent an
+  override.} Because the baseline exercisability test is sound but incomplete
+  (exercisable ${}\Longrightarrow{}$ IRV, never the converse), a finding an insider,
+  tenant, or adjacent actor could exploit stays on the slow clock until the
+  evidence-backed override is applied. The MFA family and tenant-isolation families
+  are the standing examples, handled as family rules rather than per-finding.
+\item \textbf{The unclassified-asset and unknown-firewall defaults are loud on
+  purpose, and that is itself a flood vector.} Operating without an inventory
+  classification feed or a firewall feed will over-score, by design --- the loud
+  default exists to force those joins. Inventory classification is an operating
+  precondition, not a silent assumption.
+\item \textbf{It is not a full LEV evaluation.} The method is a calibrated,
+  deterministic triage for benchmark findings from the data scanners actually emit. It
+  is never described as equivalent to a full likely-exploitability analysis, and where
+  a finding warrants that depth, the override and disposition paths route it there.
+\end{itemize}
+
+\begin{plain}
+\textbf{What to take away.} The method scores benchmark findings using only what
+scanners and ordinary inventory already emit --- a rule identifier, a Pass/Fail, an
+asset tag, a firewall feed. Every unknown the \emph{provider} controls --- an
+unclassified asset, an unknown firewall state, an unknown agency scope --- scores
+loud, so silence never makes a problem look smaller than it is. The one place the
+method quietly picks a default is the severity of a benchmark that structurally
+publishes none, where an unscored \code{Fail} becomes Moderate; that single calibrated
+choice is disclosed here in full, not hidden, and it is the reason a real scan of
+1{,}378 findings produces fourteen fast-clock items instead of a wall of false
+alarms.
+\end{plain}
+
+\appendix
+\section{Worked exception table: CIS GCP Foundation 2.0}
+\label{app:table}
+The exception table below is the canonical artifact for the CIS Google Cloud Platform
+Foundation~2.0 benchmark as emitted by Google Security Command Center. It is what the
+back-test of Section~\ref{sec:backtest} ran against. In production the table is
+content-hashed and the hash is carried in each finding's audit record; the vocabulary
+is the benchmark version's complete category list, abbreviated here to the entries the
+classification logic turns on.
+
+The keyword rule alone classifies the pure-exposure categories --- their identifiers
+carry an exposure token, so they need no table entry and are always exercisable:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\begin{tabular}{l l l}
+\toprule
+\textbf{Category} & \textbf{Matching token} & \textbf{Result} \\
+\midrule
+\cat{PUBLIC_BUCKET_ACL}   & \code{PUBLIC} & LEV+IRV \\
+\cat{PUBLIC_DATASET}      & \code{PUBLIC} & LEV+IRV \\
+\cat{PUBLIC_SQL_INSTANCE} & \code{PUBLIC} & LEV+IRV \\
+\cat{KMS_PUBLIC_KEY}      & \code{PUBLIC} & LEV+IRV \\
+\cat{OPEN_SSH_PORT}       & \code{OPEN}   & LEV+IRV \\
+\cat{OPEN_RDP_PORT}       & \code{OPEN}   & LEV+IRV \\
+\bottomrule
+\end{tabular}
+\caption{Keyword-matched exposure categories (no table entry required).}
+\label{tab:kw}
+\end{table}
+
+The \code{surface} entries are exercisable only when the attached resource is public,
+joined from the same scan's exposure state; unknown attachment resolves to public
+(fail-safe toward the fast clock):
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\footnotesize
+\begin{tabular}{l >{\raggedright\arraybackslash}p{0.62\textwidth}}
+\toprule
+\textbf{\code{surface} category} & \textbf{Attachment tested} \\
+\midrule
+\cat{SSL_NOT_ENFORCED}          & Cloud SQL instance public (via \cat{SQL_PUBLIC_IP}) \\
+\cat{WEAK_SSL_POLICY}           & fronting load balancer public \\
+\cat{SQL_NO_ROOT_PASSWORD}      & Cloud SQL instance public \\
+\cat{PUBLIC_IP_ADDRESS}         & firewall/authorized-network state (reachability, not an exercisable surface) \\
+\cat{SQL_PUBLIC_IP}             & firewall/authorized-network state \\
+\cat{API_KEY_APPS_UNRESTRICTED} & key is client-distributed (public by design; unknown $\rightarrow$ exercisable) \\
+\cat{API_KEY_APIS_UNRESTRICTED} & key is client-distributed \\
+\bottomrule
+\end{tabular}
+\caption{\code{surface} categories: exercisable iff the attached resource is public.}
+\label{tab:surface}
+\end{table}
+
+The \code{add} and \code{remove} sets are both empty for this version: the keyword
+rule covers every pure-exposure category, and after the API-key categories were moved
+to \code{surface} there is no keyword false positive left to strip. Every other
+category in the vocabulary --- the logging, monitoring, IAM, CMEK, and SQL-hardening
+families such as \cat{USER_MANAGED_SERVICE_ACCOUNT_KEY}, \cat{MFA_NOT_ENFORCED},
+\cat{DNSSEC_DISABLED}, \cat{IP_FORWARDING_ENABLED}, and
+\cat{COMPUTE_SERIAL_PORTS_ENABLED} --- is identity/operations-plane and resolves to
+NLEV, with the MFA and tenant-isolation families carrying the standing overrides of
+Section~\ref{sec:exerc}. Integrity-hardening categories whose exploitation needs an
+off-path or race precondition (\cat{DNSSEC_DISABLED}, \cat{RSASHA1_FOR_SIGNING}) fail
+the unauthenticated-exercise test and take the NLEV default with an override available.
+A category scanned but \emph{absent} from the vocabulary fails loud to LEV+IRV and is
+flagged unreviewed.
+
+\section*{Normative sources}
+\addcontentsline{toc}{section}{Normative sources}
+\begingroup\sloppy
+\begin{itemize}[leftmargin=3.4em]
+\item[{[DEF]}] FedRAMP, \emph{FedRAMP Definitions}. Definitions cited:
+  \emph{vulnerability} (\defvulncite{}), \emph{Likely Exploitable Vulnerability}
+  (\deflevcite{}). Commit of 2026-06-24; accessed 2026-07-16.
+\item[{[VER]}] FedRAMP, \emph{Vulnerability Evaluation and Reporting (VER)}, Rev5.
+  Sections cited: \emph{Estimate Potential Agency Impact} (\verpaincite{}),
+  \emph{Evaluation Factors} (\verfactcite{}). Commit of 2026-06-24.
+\item[{[VDR]}] FedRAMP, \emph{Vulnerability Detection and Response (VDR)}, Rev5.
+  Section cited: \emph{Mitigation and Remediation Expectations} (\vdrmitcite{}); and
+  the \code{VDR-TFR-PVR} remediation matrix, reproduced in the CVE memo's appendix.
+  Commit of 2026-06-24.
+\item[{[CIS]}] CIS, \emph{CIS Benchmarks FAQ} (Level~1 and Level~2 profiles).
+  \ciscite{}; accessed 2026-07-16.
+\item[{[CVEM]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
+  FedRAMP Rev5 VDR/VER Vulnerability Prioritization}, stackArmor, July 2026. Companion
+  memo supplying the asset model, the disposition overlay, and the \code{VDR-TFR-PVR}
+  deadline matrix.
+\item[{[BOD]}] CISA, \emph{Binding Operational Directive 26-04}, 2026-06-10. The
+  mandating authority for the VDR/VER timeframes.
+\end{itemize}
+\endgroup
+
+\end{document}
