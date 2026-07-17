@@ -42,7 +42,7 @@ def test_finding_grade(severity, governed, unscored, expected):
     ("Moderate", "Medium", False, 2),# T07
     ("Moderate", "Low", True, 1),    # T08
     ("Minor", "High", True, 1),      # T09 CAT III floor
-    ("Major", "High", None, 5),      # T11 unknown scope -> multi
+    ("Major", "High", None, 4),      # T11 unknown scope -> single (disclosed calibration)
 ])
 def test_pain(grade, band, multi, expected):
     assert pain_level(customer_effect(grade, band), multi) == expected

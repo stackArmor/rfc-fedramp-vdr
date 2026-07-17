@@ -135,7 +135,11 @@ def customer_effect(grade, band):
 
 def pain_level(effect, multi_agency):
     if multi_agency is None:
-        multi_agency = True  # fail-safe: unknown scope scores loud
+        # Disclosed calibration: unknown scope defaults single-agency for
+        # signal-to-noise; offset operationally by tag enforcement. Applies
+        # to untagged assets only -- known-shared without containment
+        # evidence must be passed as multi_agency=True by the caller.
+        multi_agency = False
     single, multi = PAIN_TABLE[effect]
     return multi if multi_agency else single
 

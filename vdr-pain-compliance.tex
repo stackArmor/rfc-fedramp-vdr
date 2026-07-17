@@ -443,8 +443,18 @@ Debilitating multi-agency finding.}
 \label{tab:paintbl}
 \end{table}
 
-Unknown agency scope resolves to multi-agency: scope is provider-controlled metadata,
-so its absence fails safe and loud. The band acts as a ceiling in
+Unknown agency scope resolves to \emph{single}-agency. This is the one deliberate
+exception to the method's loud-default doctrine, made for signal-to-noise: benchmark
+findings arrive in the hundreds, and a multi-agency default on every untagged asset
+would move whole scan populations up the incident column on missing metadata alone.
+The exposure is bounded and disclosed. On a High-band asset the default costs one
+level --- N4 rather than N5, both incident-class in Class~D, so prioritization
+survives intact --- and on a Medium-band asset a Major finding lands N3 rather than
+N4, the one place the default crosses the incident line. The offset is operational
+rather than scoring-side: scope is provider-controlled metadata that tag-enforcement
+policy can require at provision time, and scanners surface untagged resources in
+their own reporting, so the unknown-scope population is visible and reducible. The
+audit record carries the ``defaulted'' marker either way. The band acts as a ceiling in
 Table~\ref{tab:effect}: severity never raises effect above what the asset can
 support, so a Major finding on a Low-band asset is still only Narrow. And the
 Moderate${}\rightarrow{}$Minor grade transition never drops the effect by more than
@@ -466,9 +476,12 @@ single agency's tenancy --- a per-tenant bucket-prefix policy error, a tenant-sc
 IAM binding that leaks only within one tenant --- scores single-agency, so a Disruptive
 such finding lands on N3, not N4. That single-agency assertion on a shared asset is
 exactly the case the audit record already requires a tenancy basis for
-(Section~\ref{sec:audit}); the containment must be evidenced, not asserted. The
-fail-safe is unchanged: unknown scope, or a finding on a shared control plane whose
-blast radius is not demonstrably contained, resolves to multi-agency.
+(Section~\ref{sec:audit}); the containment must be evidenced, not asserted. One
+boundary matters here: the single-agency default applies to \emph{unknown} scope ---
+an untagged asset --- not to assets known to be shared. A finding on a shared control
+plane whose blast radius is not demonstrably contained still resolves to
+multi-agency; missing containment evidence on a known-shared asset is not an unknown
+scope.
 
 Second, \textbf{the Moderate/High cell is a disclosed calibration knob.} It reads
 Narrow, not Disruptive. The alternative --- Disruptive --- would put every CAT~II and
@@ -646,7 +659,13 @@ baseline misses, and each is evidence-backed, audited, and expected to be uncomm
 \end{itemize}
 
 The column then selects itself: LEV+IRV if internet-exercisable or so overridden;
-LEV+NIRV on an evidence-backed internal-exploitability override; NLEV otherwise. The
+LEV+NIRV on an evidence-backed internal-exploitability override; NLEV otherwise. Note
+what this means for the baseline: the single exercisability determination sets both
+letters at once. A failed configuration needs no separate exploit-likelihood analysis
+--- the misconfiguration \emph{is} the exploitable state, so exercisable means likely
+exploitable \emph{and} internet-reachable for prioritization purposes, and LEV
+without IRV arises only through the evidence-backed override, never from the
+baseline. The
 determination is stated once more for emphasis: \textbf{exercisability changes the
 column only; it never changes PAIN.} An affirmative not-exercisable determination
 (any \code{False} on \code{admin\_plane\_open}, \code{service\_open}, or
@@ -910,13 +929,14 @@ The method's approximations are disclosed, not hidden:
 \textbf{What to take away.} The method scores benchmark findings using only what
 scanners and ordinary inventory already emit --- a rule identifier, a Pass/Fail, an
 asset tag, a firewall feed. Every unknown the \emph{provider} controls --- an
-unclassified asset, an unknown firewall state, an unknown agency scope --- scores
-loud, so silence never makes a problem look smaller than it is. The one place the
-method quietly picks a default is the severity of a benchmark that structurally
-publishes none, where an unscored \code{Fail} becomes Moderate; that single calibrated
-choice is disclosed here in full, not hidden, and it is the reason a real scan of
-1{,}378 findings produces fourteen fast-clock items instead of a wall of false
-alarms.
+unclassified asset, an unknown firewall state --- scores loud, so silence never makes
+a problem look smaller than it is. The method quietly picks a default in exactly two
+places, both calibrated for signal-to-noise and both disclosed here in full rather
+than hidden: the severity of a benchmark that structurally publishes none, where an
+unscored \code{Fail} becomes Moderate, and an unknown agency scope, which defaults
+single-agency and leans on tag enforcement to keep the untagged population shrinking.
+Those two choices are the reason a real scan of 1{,}378 findings produces fourteen
+fast-clock items instead of a wall of false alarms.
 \end{plain}
 
 \appendix

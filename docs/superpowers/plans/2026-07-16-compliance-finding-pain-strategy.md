@@ -13,7 +13,7 @@
 1. The asset-band→effect default (High→Debilitating) and Low-only severity adjustment are **replaced** by a severity×asset effect matrix. Unscored `Fail` carries a **Moderate** prior instead of a worst-case prior.
 2. The asset-level internet-accessibility flag is **replaced** by a finding-level internet-exercisability test with per-benchmark-family operational rules.
 3. A governed per-benchmark determination table (built at table-build time by a keyword/token generator, guidance-level) replaces any per-rule classification for cloud benchmarks; host benchmarks need zero per-rule mapping.
-4. Unknown agency scope now has an explicit fail-safe default (multi-agency) — a gap in the prior plan.
+4. Unknown agency scope has an explicit disclosed default (single-agency) — a signal-to-noise calibration, offset by tag enforcement; known-shared assets without containment evidence remain multi-agency.
 5. The audit record adds affected-resource substitution rationale, exercisability rule version, and severity provenance.
 
 ## Global Constraints
@@ -22,7 +22,7 @@
 - The repository is public: sample scan data MUST be sanitized (no org IDs, no assessed-resource domains) before committing.
 - FedRAMP effect/scope semantics are fixed: Narrow=N2 and Minimal=N1 regardless of agency count; N5 only for Debilitating multi-agency.
 - Internet exercisability changes the remediation column only, never PAIN (no double-counting one fact).
-- Missing **provider-controlled** metadata fails safe loud (asset→HHH/High, scope→multi-agency, admin-plane exposure→open, a category absent from the benchmark version's reviewed vocabulary→LEV+IRV (unreviewed fails loud); a reviewed-but-untagged category→NLEV as a disclosed calibration choice). Missing **structurally absent** metadata (benchmark severity) takes the calibrated Moderate prior — this distinction must be stated wherever the prior is used.
+- Missing **provider-controlled** metadata fails safe loud (asset→HHH/High, admin-plane exposure→open, a category absent from the benchmark version's reviewed vocabulary→LEV+IRV (unreviewed fails loud); a reviewed-but-untagged category→NLEV as a disclosed calibration choice). Two disclosed quiet defaults exist for signal-to-noise: structurally absent benchmark severity takes the calibrated Moderate prior (this distinction must be stated wherever the prior is used), and unknown agency scope defaults single-agency (untagged assets only; known-shared without containment evidence stays multi-agency; offset by tag enforcement).
 - Deadline day counts come only from the pinned `VDR-TFR-PVR` matrix in `vdr-pain-cvss.tex` (Appendix `app:matrix`); never invent benchmark-specific day counts. N1 has no deadline.
 - The TeX addendum follows the established whitepaper register: plain language, `IN PLAIN TERMS` boxes, math behind the prose, pinned normative sources.
 - Terminology: "internet-accessible" (entry points) and "internet-reachable" (FedRAMP's broader status) are never interchangeable; this method introduces and defines "internet-exercisable" for benchmark findings and must not present it as a redefinition of FedRAMP's IRV.
@@ -101,7 +101,7 @@ Severity provenance is resolved through a pinned, versioned source registry: str
 | Narrow | N2 | N2 |
 | Minimal | N1 | N1 |
 
-Unknown agency scope → multi-agency (fail-safe; provider-controlled metadata).
+Unknown agency scope → single-agency (disclosed signal-to-noise calibration; applies to untagged assets only — known-shared without containment evidence stays multi-agency; offset by tag-enforcement policy and scanner untagged-resource reporting; "defaulted" marker in the audit record).
 
 ## A6. Remediation column — internet exercisability
 
@@ -246,7 +246,7 @@ def test_finding_grade(severity, governed, expected):
     ("Moderate", "Medium", False, 2),# T07
     ("Moderate", "Low", True, 1),    # T08
     ("Minor", "High", True, 1),      # T09 CAT III floor
-    ("Major", "High", None, 5),      # T11 unknown scope -> multi
+    ("Major", "High", None, 4),      # T11 unknown scope -> single (disclosed calibration)
 ])
 def test_pain(grade, band, multi, expected):
     assert pain_level(customer_effect(grade, band), multi) == expected
@@ -404,7 +404,7 @@ def customer_effect(grade, band):
 
 def pain_level(effect, multi_agency):
     if multi_agency is None:
-        multi_agency = True  # fail-safe: unknown scope scores loud
+        multi_agency = False  # disclosed calibration: unknown scope -> single-agency
     single, multi = PAIN_TABLE[effect]
     return multi if multi_agency else single
 
