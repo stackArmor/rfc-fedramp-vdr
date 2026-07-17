@@ -539,6 +539,21 @@ each family using only data ordinary scanners and inventory provide:
   \emph{exposure-class} under the governed determination table below.
 \end{itemize}
 
+\begin{plain}
+Answering the stranger-on-the-internet question for hundreds of cloud finding types,
+without a human judging each finding one at a time, is the job of a lookup sheet.
+For each benchmark there is one pre-approved list of every finding type the scanner
+can emit, each stamped with one of three labels. \emph{Exposed}: the finding itself
+means something is open to the internet --- a public bucket --- so the stranger can
+poke it and the fast clock runs. \emph{Depends}: the finding is only dangerous if the
+thing it is attached to is public --- weak SSL on a database matters only if the
+database has a public IP, which the same scan already tells us --- and when we cannot
+tell, we assume public. \emph{Internal plumbing}: passwords, logging, admin hygiene
+--- a stranger on the internet cannot touch it, the normal clock runs, and most
+findings land here. Scoring is then just looking the finding type up on the sheet;
+everything below is about how the sheet is built, and how it is kept honest.
+\end{plain}
+
 \paragraph{The determination table.} For cloud benchmarks the normative object is a
 governed, content-hashed table published per (benchmark, version, scanner). The table
 assigns every category identifier in the version's vocabulary an effective
