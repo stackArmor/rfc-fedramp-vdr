@@ -897,9 +897,13 @@ The method's approximations are disclosed, not hidden:
   The host proxy rides the admin-plane bit for the whole host, so a bastion's entire
   CAT~II set can ride LEV+IRV even though most of those findings are not individually
   internet-exercisable. This over-generation is the named, disclosed error shape of
-  the host proxy; a login-plane rule-group refinement is available as an optional
-  governed extension, and the reporting layer groups findings so the noise is
-  legible.
+  the host proxy, and it is the accepted price of refusing per-rule mappings. It is
+  also less wrong than it first looks: on a host whose login plane faces the
+  internet, hardening gaps compound on the same attack surface, so treating the set
+  as urgent carries real signal. And the flood collapses through a single
+  remediation --- close the admin plane or gate it behind a VPN or identity-aware
+  proxy, and every finding on that host returns to NLEV at the next scan. The
+  over-generation points at exactly the fix that removes it.
 \item \textbf{It under-prioritizes internally exploitable findings absent an
   override.} Because the baseline exercisability test is sound but incomplete
   (exercisable ${}\Longrightarrow{}$ IRV, never the converse), a finding an insider,
