@@ -88,7 +88,7 @@
     <div class="card featured">
       <span class="badge">Primary document</span>
       <h3>The Method</h3>
-      <p class="sub">A Deterministic, CVSS-Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example asset-archetype catalog. The two companions below build on it.</p>
+      <p class="sub">A Deterministic, CVSS-Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example asset-archetype catalog. The companions below build on it.</p>
       <div class="actions">
         <a class="btn primary" href="vdr-pain-cvss.pdf">View PDF</a>
         <a class="btn ghost" href="vdr-pain-cvss.pdf" download>Download</a>
@@ -117,6 +117,15 @@
       </div>
       <p class="secondary-link">Prefer a lighter read? <a href="internet-reachability-companion-blog.pdf">Companion Blog</a></p>
     </div>
+    <div class="card">
+      <span class="badge">Companion method</span>
+      <h3>Compliance &amp; Benchmark Findings</h3>
+      <p class="sub">A Deterministic PAIN and Remediation Method for FedRAMP Compliance and Security-Benchmark Findings — extends the PAIN method to STIG, CIS, and cloud-configuration findings: a severity&times;asset effect matrix, an internet-exercisability test for remediation timeframes, and governed classifier artifacts — validated by adversarial review and a back-test against a real CIS GCP scan.</p>
+      <div class="actions">
+        <a class="btn primary" href="vdr-pain-compliance.pdf">View PDF</a>
+        <a class="btn ghost" href="vdr-pain-compliance.pdf" download>Download</a>
+      </div>
+    </div>
   </div>
 
   <h2>Further proposals</h2>
@@ -143,6 +152,7 @@
   <p class="note">These are informational documents. PDFs are rendered from the LaTeX sources:</p>
   <pre>brew install tectonic        # one-time
 tectonic vdr-pain-cvss.tex         # -&gt; vdr-pain-cvss.pdf
+tectonic vdr-pain-compliance.tex   # -&gt; vdr-pain-compliance.pdf
 tectonic vlev-proposal.tex         # -&gt; vlev-proposal.pdf
 tectonic vex-cyclonedx.tex         # -&gt; vex-cyclonedx.pdf
 tectonic internet-reachability.tex # -&gt; internet-reachability.pdf

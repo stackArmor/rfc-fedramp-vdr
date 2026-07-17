@@ -1,0 +1,93 @@
+Security Command Center compliance report
+Snapshot date,"Thursday, July 16, 2026"
+Assessed resource,REDACTED
+Assessed organization ID,REDACTED
+
+Assessed compliance standard,CIS Google Cloud Platform Foundation 2.0
+Assessed cloud provider,Google Cloud
+Controls with detected violations,37
+Controls without detected violations,41
+Supported controls,78
+Total findings,1378
+
+Control,Finding category,Status,Rule,Severity,Findings,Resources scanned
+"1.1",NON_ORG_IAM_MEMBER,Compliant,"Corporate login credentials should be used instead of Gmail accounts",High,0,-
+"1.2",MFA_NOT_ENFORCED,Compliant,"Multi-factor authentication should be enabled for all users in your org unit",High,0,-
+"1.4",USER_MANAGED_SERVICE_ACCOUNT_KEY,Non-compliant,"User-managed service accounts should not have user managed keys",Medium,32,-
+"1.5",ADMIN_SERVICE_ACCOUNT,Non-compliant,"ServiceAccount should not have Admin privileges",Medium,122,-
+"1.6",OVER_PRIVILEGED_SERVICE_ACCOUNT_USER,Non-compliant,"The iam.serviceAccountUser and iam.serviceAccountTokenCreator roles should not be assigned to a user at the project level",Medium,49,-
+"1.7",SERVICE_ACCOUNT_KEY_NOT_ROTATED,Non-compliant,"Service account keys should be rotated every 90 days or less",Medium,22,-
+"1.8",SERVICE_ACCOUNT_ROLE_SEPARATION,Non-compliant,"Separation of duties should be enforced while assigning service account related roles to users",Medium,2,-
+"1.9",KMS_PUBLIC_KEY,Compliant,"Cloud KMS cryptokeys should not be publicly accessible by anyone on the internet",High,0,-
+"1.10",KMS_KEY_NOT_ROTATED,Non-compliant,"Encryption keys should be rotated within a period of 90 days",Medium,13,-
+"1.11",KMS_PROJECT_HAS_OWNER,Non-compliant,"Users should not have ""Owner"" permissions on a project that has cryptographic keys",Medium,49,-
+"1.11",KMS_ROLE_SEPARATION,Non-compliant,"Separation of duties should be enforced while assigning KMS related roles to users",Medium,2,-
+"1.12",API_KEY_EXISTS,Non-compliant,"API Keys are insecure and should not be used",Medium,7,-
+"1.13",API_KEY_APPS_UNRESTRICTED,Non-compliant,"API Key usage should be restricted to trusted sources",Medium,7,-
+"1.14",API_KEY_APIS_UNRESTRICTED,Compliant,"Projects should restrict the APIs that can be called by each API key",Medium,0,-
+"1.15",API_KEY_NOT_ROTATED,Non-compliant,"API keys should be rotated every 90 days",Medium,4,-
+"1.16",ESSENTIAL_CONTACTS_NOT_CONFIGURED,Compliant,"Essential contacts should be configured for the organization",Low,0,-
+"1.17",DATAPROC_CMEK_DISABLED,Compliant,"Dataproc clusters should have a customer-managed encryption key (CMEK) set",Medium,0,-
+"1.18",SECRETS_IN_ENVIRONMENT_VARIABLES,Compliant,"A resource is storing credentials or other secret information in its environment variables. Move the secrets to Secret Manager.",High,0,-
+"2.1",AUDIT_LOGGING_DISABLED,Compliant,"Cloud Audit Logging should be configured properly across all services and all users from a project",Low,0,-
+"2.2",LOG_NOT_EXPORTED,Non-compliant,"Sinks should be configured for all Log entries",Low,69,-
+"2.3",LOCKED_RETENTION_POLICY_NOT_SET,Non-compliant,"A locked retention policy should be configured for Cloud Storage buckets",Low,18,-
+"2.4",OWNER_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for Project Ownership assignments/changes",Low,71,-
+"2.5",AUDIT_CONFIG_NOT_MONITORED,Non-compliant,"Metric filter and alerts should exist for Audit Configuration Changes",Low,70,-
+"2.6",CUSTOM_ROLE_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for Custom Role changes",Low,71,-
+"2.7",FIREWALL_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for VPC Network Firewall rule changes",Low,71,-
+"2.8",ROUTE_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for VPC network route changes",Low,71,-
+"2.9",NETWORK_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for VPC network changes",Low,71,-
+"2.10",BUCKET_IAM_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for Cloud Storage IAM permission changes",Low,71,-
+"2.11",SQL_INSTANCE_NOT_MONITORED,Non-compliant,"Log metric filter and alerts should exist for SQL instance configuration changes",Low,12,-
+"2.12",DNS_LOGGING_DISABLED,Non-compliant,"DNS logging should be enabled for VPC networks",Medium,1,-
+"2.13",CLOUD_ASSET_API_DISABLED,Compliant,"Cloud Asset API should be enabled for projects.",Low,0,-
+"2.14",ACCESS_TRANSPARENCY_DISABLED,Compliant,"Access transparency should be enabled.",Medium,0,-
+"2.16",LOAD_BALANCER_LOGGING_DISABLED,Compliant,"Enable logging for the load balancer backend service.",Medium,0,-
+"3.1",DEFAULT_NETWORK,Compliant,"Default network should not exist in a project",Medium,0,-
+"3.2",LEGACY_NETWORK,Compliant,"Legacy networks should not exist for a project",Medium,0,-
+"3.3",DNSSEC_DISABLED,Non-compliant,"DNSSEC should be Enabled for Cloud DNS",Medium,2,-
+"3.4",RSASHA1_FOR_SIGNING,Compliant,"RSASHA1 should not be used for signing",Medium,0,-
+"3.5",RSASHA1_FOR_SIGNING,Compliant,"RSASHA1 should not be used for signing",Medium,0,-
+"3.6",OPEN_SSH_PORT,Non-compliant,"Firewall rules should not allow connections from all IP addresses on TCP or SCTP port 22",High,1,-
+"3.7",OPEN_RDP_PORT,Compliant,"Firewall rules should not allow connections from all IP addresses on TCP or UDP port 3389",High,0,-
+"3.8",VPC_FLOW_LOGS_SETTINGS_NOT_RECOMMENDED,Compliant,"Activate and configure VPC Flow Logs as recommended for every subnet in a VPC network",Low,0,-
+"3.9",WEAK_SSL_POLICY,Non-compliant,"Weak or insecure SSL Policys should not be used",Medium,2,-
+"4.1",DEFAULT_SERVICE_ACCOUNT_USED,Compliant,"Instances should not be configured to use the default service account",Medium,0,-
+"4.2",FULL_API_ACCESS,Compliant,"Instances should not be configured to use the default service account with full access to all Cloud APIs",Medium,0,-
+"4.3",COMPUTE_PROJECT_WIDE_SSH_KEYS_ALLOWED,Non-compliant,"SSH keys should not be used project-wide",Medium,111,-
+"4.4",INSTANCE_OS_LOGIN_DISABLED,Non-compliant,"Ensure oslogin is enabled for all instances",Medium,102,-
+"4.4",OS_LOGIN_DISABLED,Non-compliant,"Ensure oslogin is Enabled for all projects",Medium,40,-
+"4.5",COMPUTE_SERIAL_PORTS_ENABLED,Non-compliant,"Interactive serial console support should be disabled",Medium,17,-
+"4.6",IP_FORWARDING_ENABLED,Non-compliant,"IP forwarding should not Enabled on Instances",Medium,2,-
+"4.7",DISK_CSEK_DISABLED,Compliant,"Disks should be encrypted with customer-supplied encryption keys",Medium,0,-
+"4.8",SHIELDED_VM_DISABLED,Non-compliant,"Ensure Compute instances are launched with Shielded VM enabled",Medium,119,-
+"4.9",PUBLIC_IP_ADDRESS,Non-compliant,"VMs should not be assigned public IP addresses",High,2,-
+"4.11",CONFIDENTIAL_COMPUTING_DISABLED,Non-compliant,"Confidential Computing should be enabled",Medium,3,-
+"5.1",PUBLIC_BUCKET_ACL,Non-compliant,"Cloud Storage buckets should not be anonymously or publicly accessible",High,2,-
+"5.2",BUCKET_POLICY_ONLY_DISABLED,Compliant,"Bucket Policy Only should be Enabled",Medium,0,-
+"6.1.1",SQL_NO_ROOT_PASSWORD,Compliant,"MySQL database instance should not allow anyone to connect with administrative privileges.",High,0,-
+"6.1.2",SQL_SKIP_SHOW_DATABASE_DISABLED,Non-compliant,"The skip_show_database database flag for a Cloud SQL MySQL instance should be set to on.",Medium,2,-
+"6.1.3",SQL_LOCAL_INFILE,Non-compliant,"The local_infile database flag for a Cloud SQL MySQL instance should be set to off.",Medium,2,-
+"6.2.1",SQL_LOG_ERROR_VERBOSITY,Compliant,"The log_error_verbosity database flag for a Cloud SQL Postgres instance should be set to default or verbose.",Medium,0,-
+"6.2.2",SQL_LOG_CONNECTIONS_DISABLED,Compliant,"The log_connections database flag for a Cloud SQL Postgres instance should be set to on.",Medium,0,-
+"6.2.3",SQL_LOG_DISCONNECTIONS_DISABLED,Compliant,"The log_disconnections database flag for a Cloud SQL Postgres instance should be set to on.",Medium,0,-
+"6.2.4",SQL_LOG_STATEMENT,Non-compliant,"The log_statement database flag for a Cloud SQL Postgres instance should be set to ddl.",Low,31,-
+"6.2.5",SQL_LOG_MIN_MESSAGES,Compliant,"The log_min_messages database flag for a Cloud SQL Postgres instance should be set to warning.",Low,0,-
+"6.2.6",SQL_LOG_MIN_ERROR_STATEMENT_SEVERITY,Compliant,"The log_min_error_statement database flag for a Cloud SQL Postgres instance should be set to Error or another value that is less strict.",Medium,0,-
+"6.2.7",SQL_LOG_MIN_DURATION_STATEMENT_ENABLED,Non-compliant,"The log_min_duration_statement database flag for a Cloud SQL Postgres instance should be set to -1.",Medium,33,-
+"6.2.9",SQL_PUBLIC_IP,Compliant,"Cloud SQL instances should not have public IP addresses",Medium,0,-
+"6.3.1",SQL_EXTERNAL_SCRIPTS_ENABLED,Compliant,"The ""external scripts enabled"" database flag for a Cloud SQL Server instance should be set to off",Medium,0,-
+"6.3.2",SQL_CROSS_DB_OWNERSHIP_CHAINING,Compliant,"The cross db ownership chaining database flag for a Cloud SQL SQL Server instance should be set to off.",Medium,0,-
+"6.3.3",SQL_USER_CONNECTIONS_CONFIGURED,Compliant,"The user connections database flag for a Cloud SQL for SQL Server instance should not be configured",Low,0,-
+"6.3.4",SQL_USER_OPTIONS_CONFIGURED,Compliant,"The user options database flag for a Cloud SQL SQL Server instance should not be configured",Medium,0,-
+"6.3.5",SQL_REMOTE_ACCESS_ENABLED,Compliant,"The remote access database flag for a Cloud SQL SQL Server instance should be set to off",Medium,0,-
+"6.3.6",SQL_TRACE_FLAG_3625,Compliant,"The 3625 (trace flag) database flag for a Cloud SQL SQL Server instance should be set to on",Medium,0,-
+"6.3.7",SQL_CONTAINED_DATABASE_AUTHENTICATION,Compliant,"The contained database authentication database flag for a Cloud SQL SQL Server instance should be set to off.",Medium,0,-
+"6.4",SSL_NOT_ENFORCED,Non-compliant,"Cloud SQL database instance should require all incoming connections to use SSL",High,2,-
+"6.5",PUBLIC_SQL_INSTANCE,Compliant,"Cloud SQL database instances should not be publicly accessible by anyone on the internet",High,0,-
+"6.6",SQL_PUBLIC_IP,Compliant,"Cloud SQL instances should not have public IP addresses",Medium,0,-
+"6.7",AUTO_BACKUP_DISABLED,Compliant,"Automated backups for a Cloud SQL instance should be enabled.",Medium,0,-
+"7.1",PUBLIC_DATASET,Compliant,"Datasets should not be publicly accessible by anyone on the internet",High,0,-
+"7.2",BIGQUERY_TABLE_CMEK_DISABLED,Compliant,"BigQuery tables should have a customer-managed encryption key (CMEK) set",Medium,0,-
+"7.3",DATASET_CMEK_DISABLED,Compliant,"Datasets should have a default customer-managed encryption key (CMEK) set",Medium,0,-
