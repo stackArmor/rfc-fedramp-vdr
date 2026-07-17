@@ -543,12 +543,14 @@ each family using only data ordinary scanners and inventory provide:
 governed, content-hashed table published per (benchmark, version, scanner). The table
 assigns every category identifier in the version's vocabulary an effective
 classification: \emph{exposure-class} (always exercisable), \emph{surface} (exercisable
-iff the attached resource is public; unknown attachment resolves to public), or
+iff the attached resource is public, joined from the same scan's exposure findings;
+unknown attachment resolves to public), or
 \emph{identity/operations-plane} (not exercisable). The classification reads the
 category identifier the scanner emits --- never the rule prose, and never per-resource
 IAM analysis --- so the determination is a lookup, and a second implementer reproduces
 any result from exactly two inputs in the audit record: the table hash and the category.
-A scanned category \emph{absent} from the table's vocabulary fails loud to LEV+IRV.
+A scanned category \emph{absent} from the table's vocabulary --- a scanner's monthly
+new addition, say --- fails loud to LEV+IRV and is flagged unreviewed.
 
 That is the whole normative requirement: the table, its three classes, the fail-loud
 rule, and the governance below. \emph{How a canonical table is built} --- what makes a
@@ -569,7 +571,11 @@ lose the meaning. So \code{sg-allow-ingress-from-0.0.0.0-0} matches, while the p
 numeric segments of \cat{TLS_1_0_ENABLED} do not. Because the generator reads
 scanner-emitted identifiers, a provider cannot game it by renaming; because its output
 is frozen into the reviewed, hashed table, the generator itself never runs at scoring
-time.
+time. In practice a canonical table is serialized as review deltas against the
+generator --- \code{add}, \code{remove}, and \code{surface} entries plus the
+\code{vocabulary} --- so review effort concentrates on deviations. A category left
+untagged in that serialization is not a gap: it is one the review affirmatively
+classified identity/operations-plane.
 
 Two tokens that look tempting --- \code{EXTERNAL} and \code{UNRESTRICTED} --- are
 deliberately \emph{not} in the auto-match set. Their genuine true positives are
@@ -585,20 +591,8 @@ relevance for triage is permitted and useful, but it is not required --- token a
 literal-pattern matching against a reviewed table meets the bar.
 \end{guidance}
 
-\paragraph{Table encoding and governance.} The canonical table is encoded as four
-kinds of entry, expressed as review decisions relative to the recommended generator:
-\code{add} (exposure categories the generator misses), \code{remove} (generator false
-positives), \code{surface} (categories exercisable only when the attached resource is
-public, joined from the same scan's exposure findings; unknown attachment resolves to
-public), and \code{vocabulary} (the version's complete category list). The encoding is
-a convenience that concentrates review effort on deviations; what binds is the
-effective per-category classification it produces. The vocabulary closes an
-otherwise silent gap: a scanned category that is \emph{present} in the vocabulary but
-untagged is treated as identity/operations-plane and not exercisable --- a disclosed
-calibration choice --- whereas a category \emph{absent} from the vocabulary (a
-scanner's monthly new addition, say) fails loud to LEV+IRV and is flagged as
-unreviewed. The governance around the table is what makes it trustworthy rather than
-a hidden lever:
+\paragraph{Governance.} The governance around the table is what makes it trustworthy
+rather than a hidden lever:
 
 \begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
 \item Canonical tables are published per (benchmark, version, scanner) and
@@ -613,14 +607,14 @@ a hidden lever:
   new-category diff, not a once-per-version event.
 \end{itemize}
 
-Categories present in the vocabulary but carrying no exposure or surface
-classification are identity- or operations-plane and are \emph{not} exercisable. The justification is
-the test's own precondition clause: a user-managed service-account key requires
-possessing the secret, and the public cloud control plane alone gives an internet
-actor nothing to exercise. A data-plane grant to \code{allUsers} or
-\code{allAuthenticatedUsers}, by contrast, \emph{is} exposure-class regardless of the
-category name --- \code{allAuthenticatedUsers} is satisfied by any self-registered
-account, which the unauthenticated test treats as self-suppliable.
+The identity/operations-plane class deserves its justification stated once, because
+it is where most of a benchmark lands. The test's own precondition clause supplies
+it: a user-managed service-account key requires possessing the secret, and the public
+cloud control plane alone gives an internet actor nothing to exercise. A data-plane
+grant to \code{allUsers} or \code{allAuthenticatedUsers}, by contrast, \emph{is}
+exposure-class regardless of the category name --- \code{allAuthenticatedUsers} is
+satisfied by any self-registered account, which the unauthenticated test treats as
+self-suppliable.
 
 \paragraph{Overrides.} The overrides carry the cases the sound-but-incomplete
 baseline misses, and each is evidence-backed, audited, and expected to be uncommon:
