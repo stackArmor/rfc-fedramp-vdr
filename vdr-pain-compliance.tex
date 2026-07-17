@@ -542,6 +542,27 @@ LEV+IRV. Not exercisable means NLEV. LEV without IRV --- the internal-actor colu
 --- arises only through the evidence-backed overrides at the end of this section,
 never from the baseline.
 
+\begin{definitionbox}
+\textbf{Alternative exploitability sources.} LEV${}={}$IRV is deliberately positioned
+as the adoptable default, not the only lawful answer. There is no EPSS for
+misconfigurations, and no individual provider should have to build a bespoke
+exploitability-evaluation framework for compliance findings --- that duty does not
+scale, and a hundred unvalidated bespoke frameworks would each be a soft lever on the
+clock. A richer evaluation is nevertheless permitted, from either direction: an
+EPSS-equivalent developed for compliance findings, or an equivalent metric native to
+the scanner in use. Either is admissible under the same discipline the method already
+applies to severity sources: it must be evidence-backed, and its logic for aligning
+the metric to the LEV/NLEV columns must be documented, versioned, and disclosed for
+assessor review. One qualification is doing real work in that sentence: the metric
+must actually measure \emph{exploit likelihood}. A score that is a function of
+internet reachability and asset value re-derives the two inputs this method already
+computes deterministically, and adopting one substitutes an opaque restatement for
+the determination table without adding the missing ingredient. The metric value
+emitted at evaluation time is captured in the audit record as an input, so the column
+remains reproducible from the record even when the metric itself is recomputed
+upstream. Absent such a documented alignment, the baseline default governs.
+\end{definitionbox}
+
 \paragraph{Per-family operational rules.} The test is evaluated by benchmark family,
 each family using only data ordinary scanners and inventory provide:
 
@@ -676,26 +697,6 @@ column only; it never changes PAIN.} An affirmative not-exercisable determinatio
 \code{attached\_resource\_public}) requires an enforced-state evidence pointer --- a
 security-group or firewall rule identifier, a listener binding --- because the absence
 of an observation is not the same as enforced closure.
-
-\paragraph{Alternative exploitability sources.} The LEV$=$IRV collapse above is
-deliberately positioned as the adoptable default, not the only lawful answer. There
-is no EPSS for misconfigurations, and no individual provider should have to build a
-bespoke exploitability-evaluation framework for compliance findings --- that duty
-does not scale, and a hundred unvalidated bespoke frameworks would each be a soft
-lever on the clock. A richer evaluation is nevertheless permitted, from either
-direction: an EPSS-equivalent developed for compliance findings, or an equivalent
-metric native to the scanner in use. Either is admissible under the same discipline
-the method already applies to severity sources: it must be evidence-backed, and its
-logic for aligning the metric to the LEV/NLEV columns must be documented, versioned,
-and disclosed for assessor review. One qualification is doing real work in that
-sentence: the metric must actually measure exploit likelihood. A score that is a
-function of internet reachability and asset value re-derives the two inputs this
-method already computes deterministically, and adopting one substitutes an opaque
-restatement for the determination table without adding the missing ingredient. The
-metric value emitted at evaluation time is captured in the audit record as an input,
-so the column remains reproducible from the record even when the metric itself is
-recomputed upstream. Absent such a documented alignment, the baseline default
-governs.
 
 \section{Deadlines}
 \label{sec:deadline}
