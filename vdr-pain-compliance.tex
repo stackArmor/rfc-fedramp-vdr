@@ -70,7 +70,7 @@
 \makeatother
 \newcommand{\rfckw}[1]{\textsc{#1}}
 
-% Pinned FedRAMP sources, at the same reviewed commit as the companion CVSS memo.
+% Pinned FedRAMP sources, at the same reviewed commit as the core CVSS memo.
 \newcommand{\fedbase}{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5}
 \newcommand{\defvulncite}{\href{\fedbase/definitions.md\#vulnerability}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\deflevcite}{\href{\fedbase/definitions.md\#likely-exploitable-vulnerability-lev}{FedRAMP/2026-markdown@2a75592}}
@@ -93,19 +93,19 @@ FedRAMP's Vulnerability Detection and Response (VDR) and Vulnerability Evaluatio
 and Reporting (VER) rules treat a vulnerability as any weakness --- not only a CVE
 but a misconfiguration, an exposure, or a control gap. Security-benchmark scanners
 (CIS, DISA STIG, cloud-configuration checks) therefore emit FedRAMP vulnerabilities,
-yet they rarely emit the inputs the companion CVSS-Environmental method needs: a
+yet they rarely emit the inputs the core CVSS-Environmental method needs: a
 benchmark check reports a rule identifier and a Pass/Fail, seldom a C/I/A impact
 vector, and often no severity at all. This memo supplies a deterministic classifier
 for that data. A severity-by-asset effect matrix (mirroring the CVE method's
 impact-by-requirements combination) produces a customer-effect word; FedRAMP's
 effect-and-scope table turns it into a PAIN level; a finding-level
 \emph{internet-exercisability} test selects the remediation column; and the same
-pinned \code{VDR-TFR-PVR} matrix used by the companion memo selects the deadline.
+pinned \code{VDR-TFR-PVR} matrix used by the core memo selects the deadline.
 The method consumes only what scanners and ordinary asset inventory already provide,
 fails safe and loud on provider-controlled unknowns, and discloses its one
 calibrated default rather than hiding it. A back-test on a real, sanitized CIS Google
 Cloud Platform scan of 1{,}378 findings shows no incident-class flood: fourteen
-findings (1.0\%) ride the fast clock. This is a companion to \emph{A Deterministic,
+findings (1.0\%) ride the fast clock. This is an addendum to \emph{A Deterministic,
 CVSS--Environmental Method for FedRAMP Rev5 VDR/VER Vulnerability Prioritization};
 the two share notation, the asset model, and the deadline matrix, and are meant to
 be read as one family.
@@ -119,7 +119,7 @@ specifies a standardized \emph{method} for satisfying the existing VDR/VER
 requirements when the finding under evaluation is a security-benchmark or
 compliance result rather than a CVE.\footnote{The VDR and VER rules launched on
 2026-06-24 as part of the FedRAMP Consolidated Rules for 2026 and apply to both
-FedRAMP 20x and Rev5 offerings.} It is a companion to the CVSS-Environmental memo
+FedRAMP 20x and Rev5 offerings.} It is an addendum to the CVSS-Environmental memo
 (hereafter ``the CVE memo''); it reuses that memo's asset model, its remediation
 matrix, and its treatment of dispositions, and cites it rather than restating it.
 
@@ -684,7 +684,7 @@ baseline misses, and each is evidence-backed, audited, and expected to be uncomm
 \item \textbf{LEV+IRV} when evidence shows public usability (for example a
   known-leaked key, at which point incident response applies), or on
   transitive-reachability evidence --- an indirect internet payload path, mirroring
-  the CVE companion's transitive branch --- which gives the VER indirect-payload case
+  the CVE memo's transitive branch --- which gives the VER indirect-payload case
   a home in the IRV direction.
 \end{itemize}
 
@@ -1031,8 +1031,8 @@ flagged unreviewed.
 \item[{[CIS]}] CIS, \emph{CIS Benchmarks FAQ} (Level~1 and Level~2 profiles).
   \ciscite{}; accessed 2026-07-16.
 \item[{[CVEM]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
-  FedRAMP Rev5 VDR/VER Vulnerability Prioritization}, stackArmor, July 2026. Companion
-  memo supplying the asset model, the disposition overlay, and the \code{VDR-TFR-PVR}
+  FedRAMP Rev5 VDR/VER Vulnerability Prioritization}, stackArmor, July 2026. The core
+  memo this addendum extends, supplying the asset model, the disposition overlay, and the \code{VDR-TFR-PVR}
   deadline matrix.
 \item[{[BOD]}] CISA, \emph{Binding Operational Directive 26-04}, 2026-06-10. The
   mandating authority for the VDR/VER timeframes.
