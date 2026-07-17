@@ -191,7 +191,7 @@ the asset metadata the CVE method already requires --- the affected asset's CR/I
 (or an archetype that resolves to them), its multi-agency scope, and the offering's
 Certification Class --- and asks for no benchmark-specific metadata that ordinary
 scanners and inventory do not already provide. The only governed artifacts it adds
-are a severity source registry and a small per-benchmark exception table, both
+are a severity source registry and a small per-benchmark determination table, both
 described below. Second, exploitability and reachability stay on the axes FedRAMP
 built for them: they select the remediation \emph{column}, never the PAIN level. A
 single fact is never counted twice.
@@ -536,36 +536,41 @@ each family using only data ordinary scanners and inventory provide:
 \item \textbf{Host benchmarks, application-level} (web/db STIGs): exercisable iff that
   application's own service surface is internet-open, by the same join.
 \item \textbf{Cloud-configuration benchmarks:} exercisable iff the finding category is
-  \emph{exposure-class}, decided by the keyword rule and exception table below.
+  \emph{exposure-class} under the governed determination table below.
 \end{itemize}
 
-\paragraph{The keyword rule.} For cloud benchmarks the normative default reads the
-category identifier itself, never the rule prose. The identifier is normalized ---
-uppercased and split on non-alphanumeric runs --- and the finding is exposure-class if
-any resulting token is one of $\{$\code{PUBLIC}, \code{OPEN}, \code{ANONYMOUS},
-\code{INTERNET}, \code{WORLD}$\}$. Normalizing on token boundaries is what makes the
-rule safe across scanner grammars: \cat{OPEN_SSH_PORT} matches on the \code{OPEN}
-token, while \cat{OPENSSH_CONFIG} does not, and an AWS Config identifier such as
-\code{s3-bucket-public-read-prohibited} normalizes to the same tokens as its GCP
-cousin. Because the rule reads scanner-emitted identifiers, the provider cannot game
-it by renaming.
+\paragraph{The determination table.} For cloud benchmarks the normative object is a
+governed, content-hashed table published per (benchmark, version, scanner). The table
+assigns every category identifier in the version's vocabulary an effective
+classification: \emph{exposure-class} (always exercisable), \emph{surface} (exercisable
+iff the attached resource is public; unknown attachment resolves to public), or
+\emph{identity/operations-plane} (not exercisable). The classification reads the
+category identifier the scanner emits --- never the rule prose, and never per-resource
+IAM analysis --- so the determination is a lookup, and a second implementer reproduces
+any result from exactly two inputs in the audit record: the table hash and the category.
+A scanned category \emph{absent} from the table's vocabulary fails loud to LEV+IRV.
 
-The rule also matches two literal patterns before tokenizing: an identifier
-containing the literal string \code{0.0.0.0} or \code{::/0} is exposure-class. The
-any-address CIDR is unambiguous exposure semantics, and it is caught by literal
-substring rather than by token matching precisely because normalization would split
-\code{0.0.0.0} into a bare \code{0} and lose the meaning. An identifier such as
-\code{sg-allow-ingress-from-0.0.0.0-0} therefore matches, while a plain numeric
-segment in a category like \cat{TLS_1_0_ENABLED} does not (it carries no any-address
-literal and no exposure token).
-
-The normative spec keeps only what a second implementer needs to reproduce a result:
-identifier-based matching (never prose), normalization, the token set and the
-\code{0.0.0.0}/\code{::/0} literal patterns, the vocabulary fail-loud rule, and the
-exception-table governance below. The reasoning behind which tokens made the set is
-implementation guidance:
+That is the whole normative requirement: the table, its three classes, the fail-loud
+rule, and the governance below. \emph{How a canonical table is built} --- what makes a
+category exposure-class in the first place --- is implementation guidance:
 
 \begin{guidance}
+The recommended generator is token and literal-pattern matching on the identifier.
+Normalize --- uppercase, split on non-alphanumeric runs --- and classify exposure-class
+if any token is one of $\{$\code{PUBLIC}, \code{OPEN}, \code{ANONYMOUS},
+\code{INTERNET}, \code{WORLD}$\}$. Token boundaries make the match safe across scanner
+grammars: \cat{OPEN_SSH_PORT} matches on the \code{OPEN} token while
+\cat{OPENSSH_CONFIG} does not, and an AWS Config identifier such as
+\code{s3-bucket-public-read-prohibited} normalizes to the same tokens as its GCP
+cousin. Before tokenizing, match two literal patterns: an identifier containing
+\code{0.0.0.0} or \code{::/0} is exposure-class --- caught by literal substring
+precisely because normalization would split \code{0.0.0.0} into a bare \code{0} and
+lose the meaning. So \code{sg-allow-ingress-from-0.0.0.0-0} matches, while the plain
+numeric segments of \cat{TLS_1_0_ENABLED} do not. Because the generator reads
+scanner-emitted identifiers, a provider cannot game it by renaming; because its output
+is frozen into the reviewed, hashed table, the generator itself never runs at scoring
+time.
+
 Two tokens that look tempting --- \code{EXTERNAL} and \code{UNRESTRICTED} --- are
 deliberately \emph{not} in the auto-match set. Their genuine true positives are
 already carried by \code{PUBLIC}/\code{OPEN}/\code{INTERNET} or by explicit
@@ -580,12 +585,14 @@ relevance for triage is permitted and useful, but it is not required --- token a
 literal-pattern matching against a reviewed table meets the bar.
 \end{guidance}
 
-\paragraph{The exception table and its governance.} The keyword rule is refined by a
-per-benchmark-version exception table with four kinds of entry: \code{add} (genuine
-exposure rules the keyword rule misses), \code{remove} (keyword false positives),
-\code{surface} (categories exercisable only when the attached resource is public,
-joined from the same scan's exposure findings; unknown attachment resolves to public),
-and \code{vocabulary} (the version's complete category list). The vocabulary closes an
+\paragraph{Table encoding and governance.} The canonical table is encoded as four
+kinds of entry, expressed as review decisions relative to the recommended generator:
+\code{add} (exposure categories the generator misses), \code{remove} (generator false
+positives), \code{surface} (categories exercisable only when the attached resource is
+public, joined from the same scan's exposure findings; unknown attachment resolves to
+public), and \code{vocabulary} (the version's complete category list). The encoding is
+a convenience that concentrates review effort on deviations; what binds is the
+effective per-category classification it produces. The vocabulary closes an
 otherwise silent gap: a scanned category that is \emph{present} in the vocabulary but
 untagged is treated as identity/operations-plane and not exercisable --- a disclosed
 calibration choice --- whereas a category \emph{absent} from the vocabulary (a
@@ -599,14 +606,15 @@ a hidden lever:
   \emph{string} enforces nothing; a hash does.
 \item Any provider deviation from the canonical table is enumerated per-entry with a
   rationale and flagged for assessor review.
-\item Removing a token-matching category is a hard assessor-review trigger --- it is
-  the one move that silently slows a clock, so it never happens silently.
+\item Reclassifying a category out of exposure-class is a hard assessor-review
+  trigger --- it is the one move that silently slows a clock, so it never happens
+  silently.
 \item Keeping the tables current is an operating requirement with a monthly
   new-category diff, not a once-per-version event.
 \end{itemize}
 
-Categories that neither match a token nor appear in the exception table are
-identity- or operations-plane and are \emph{not} exercisable. The justification is
+Categories present in the vocabulary but carrying no exposure or surface
+classification are identity- or operations-plane and are \emph{not} exercisable. The justification is
 the test's own precondition clause: a user-managed service-account key requires
 possessing the secret, and the public cloud control plane alone gives an internet
 actor nothing to exercise. A data-plane grant to \code{allUsers} or
@@ -711,7 +719,7 @@ and derived band; the agency scope, with a ``defaulted'' marker if it was unknow
 tenancy basis (agencies served, plus evidence) for any single-agency assertion on a
 shared-service archetype; the severity and its provenance (the grade and why the
 source is governed or unscored); the customer effect and PAIN; the exercisability
-determination together with the exception-table content hash and the enumerated
+determination together with the determination-table content hash and the enumerated
 provider delta; an enforced-state evidence pointer for any affirmative
 not-exercisable determination; the column and any override evidence reference; and the
 Certification Class, the evaluation completion time, and the resulting deadline.
@@ -725,8 +733,8 @@ suggests (the service-account key, and MFA).
 \end{plain}
 
 \paragraph{Example 1 --- user-managed service-account key
-(\cat{USER_MANAGED_SERVICE_ACCOUNT_KEY}).} No exposure token, not in the exception
-table, present in the vocabulary: identity/operations-plane
+(\cat{USER_MANAGED_SERVICE_ACCOUNT_KEY}).} Present in the vocabulary with no exposure
+or surface classification: identity/operations-plane
 ${}\rightarrow{}$ \textbf{NLEV}. The public GCP API plane is not the finding's
 exposure; an internet actor lacks the secret, so the unauthenticated test fails at its
 precondition. Overrides remain available: NIRV on evidence of broad internal
@@ -742,8 +750,9 @@ to NLEV requires evidence the key is server-side-only and network-scoped. Two fi
 that both contain \code{UNRESTRICTED} split on their actual exposure, not on a shared
 word.
 
-\paragraph{Example 2 --- public bucket (\cat{PUBLIC_BUCKET_ACL}).} Exposure-class by
-the \code{PUBLIC} token ${}\rightarrow{}$ \textbf{LEV+IRV}. Governed SCC severity
+\paragraph{Example 2 --- public bucket (\cat{PUBLIC_BUCKET_ACL}).} Exposure-class in
+the determination table (matched on the \code{PUBLIC} token by the generator)
+${}\rightarrow{}$ \textbf{LEV+IRV}. Governed SCC severity
 High ${}\rightarrow{}$ Major; on a High-value multi-agency data archetype the effect
 is Debilitating ${}\rightarrow{}$ \textbf{N5} ${}\rightarrow{}$ \textbf{12 hours in
 Class~D}. That is an incident, and the method calls it one.
@@ -902,17 +911,18 @@ alarms.
 \end{plain}
 
 \appendix
-\section{Worked exception table: CIS GCP Foundation 2.0}
+\section{Worked determination table: CIS GCP Foundation 2.0}
 \label{app:table}
-The exception table below is the canonical artifact for the CIS Google Cloud Platform
-Foundation~2.0 benchmark as emitted by Google Security Command Center. It is what the
-back-test of Section~\ref{sec:backtest} ran against. In production the table is
-content-hashed and the hash is carried in each finding's audit record; the vocabulary
-is the benchmark version's complete category list, abbreviated here to the entries the
-classification logic turns on.
+The determination table below is the canonical artifact for the CIS Google Cloud
+Platform Foundation~2.0 benchmark as emitted by Google Security Command Center. It is
+what the back-test of Section~\ref{sec:backtest} ran against. In production the table
+is content-hashed and the hash is carried in each finding's audit record; the
+vocabulary is the benchmark version's complete category list, abbreviated here to the
+entries the classification logic turns on.
 
-The keyword rule alone classifies the pure-exposure categories --- their identifiers
-carry an exposure token, so they need no table entry and are always exercisable:
+The recommended generator classifies the pure-exposure categories automatically ---
+their identifiers carry an exposure token --- and review confirmed each, so they carry
+no delta entry and are always exercisable:
 
 \begin{table}[H]
 \centering
@@ -930,7 +940,7 @@ carry an exposure token, so they need no table entry and are always exercisable:
 \cat{OPEN_RDP_PORT}       & \code{OPEN}   & LEV+IRV \\
 \bottomrule
 \end{tabular}
-\caption{Keyword-matched exposure categories (no table entry required).}
+\caption{Exposure-class categories (generator-matched, confirmed on review).}
 \label{tab:kw}
 \end{table}
 
@@ -959,9 +969,9 @@ joined from the same scan's exposure state; unknown attachment resolves to publi
 \label{tab:surface}
 \end{table}
 
-The \code{add} and \code{remove} sets are both empty for this version: the keyword
-rule covers every pure-exposure category, and after the API-key categories were moved
-to \code{surface} there is no keyword false positive left to strip. Every other
+The \code{add} and \code{remove} sets are both empty for this version: the generator
+covers every pure-exposure category, and after the API-key categories were moved to
+\code{surface} there is no generator false positive left to strip. Every other
 category in the vocabulary --- the logging, monitoring, IAM, CMEK, and SQL-hardening
 families such as \cat{USER_MANAGED_SERVICE_ACCOUNT_KEY}, \cat{MFA_NOT_ENFORCED},
 \cat{DNSSEC_DISABLED}, \cat{IP_FORWARDING_ENABLED}, and
