@@ -101,3 +101,22 @@ def test_exercisability_never_changes_pain():
     p = pain_level(customer_effect("Moderate", "Medium"), True)
     for col in ("LEV+IRV", "LEV+NIRV", "NLEV"):
         assert p == 2 and deadline("D", p, col) is not None
+
+
+def test_api_key_restriction_findings_are_not_exposure_class():
+    # Adjudicated keyword false positives: UNRESTRICTED here scopes the key,
+    # not an internet surface; exercising requires possessing the key.
+    for cat in ("API_KEY_APPS_UNRESTRICTED", "API_KEY_APIS_UNRESTRICTED"):
+        assert not is_exposure_class(cat, CIS_GCP_20_EXCEPTIONS)
+
+
+def test_backtest_distribution_class_d_high_band():
+    from backtest_cis_gcp import backtest
+    dist = backtest("../data/samples/cis-gcp-foundation-2.0-sample.csv",
+                    band="High", cert_class="D")
+    hot = sum(n for (pain, col), n in dist.items() if pain >= 4)
+    total = sum(dist.values())
+    assert total > 1000          # the sample has 1,378 findings
+    assert hot < 10              # no N4/N5 flood even on High-band assumption
+    fast = sum(n for (pain, col), n in dist.items() if col == "LEV+IRV")
+    assert fast < 10             # only exposure-class findings ride LEV+IRV

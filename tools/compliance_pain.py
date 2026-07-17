@@ -30,9 +30,12 @@ EXPOSURE_TOKENS = {"PUBLIC", "OPEN", "ANONYMOUS", "UNRESTRICTED",
                    "INTERNET", "EXTERNAL", "WORLD"}
 
 # Per-benchmark-version exception table (governed artifact).
+# remove: adjudicated keyword false positives — UNRESTRICTED in the API-key
+# categories scopes the key, not an internet surface; exercising requires
+# possessing the key (same precondition reasoning as A9 example 1).
 CIS_GCP_20_EXCEPTIONS = {
     "add": set(),        # keyword rule covers all eight exposure categories
-    "remove": set(),
+    "remove": {"API_KEY_APPS_UNRESTRICTED", "API_KEY_APIS_UNRESTRICTED"},
     "surface": {"WEAK_SSL_POLICY", "SSL_NOT_ENFORCED",
                 "SQL_NO_ROOT_PASSWORD", "DNSSEC_DISABLED",
                 "RSASHA1_FOR_SIGNING"},
