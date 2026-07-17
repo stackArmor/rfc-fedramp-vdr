@@ -17,15 +17,18 @@ def test_asset_band(cr, ir, ar, expected):
     assert asset_band(cr, ir, ar) == expected
 
 
-@pytest.mark.parametrize("severity,governed,expected", [
-    ("high", True, "Major"), ("critical", True, "Major"),
-    ("medium", True, "Moderate"), ("low", True, "Minor"),
-    (None, True, "Moderate"),           # unscored Fail -> Moderate prior
-    ("high", False, "Moderate"),        # non-governed severity is unscored
-    ("low", False, "Moderate"),         # cannot self-reduce either
+@pytest.mark.parametrize("severity,governed,unscored,expected", [
+    ("high", True, False, "Major"), ("critical", True, False, "Major"),
+    ("medium", True, False, "Moderate"), ("low", True, False, "Minor"),
+    (None, True, True, "Moderate"),    # CIS: structurally unscored -> prior
+    (None, True, False, "Major"),      # stripped severity fails loud (F-1)
+    ("", True, False, "Major"),        # blank from scored source fails loud
+    ("severity_unspecified", True, False, "Major"),  # unknown label fails loud (G-8)
+    ("high", False, False, "Moderate"),  # non-governed severity is unscored
+    ("low", False, False, "Moderate"),   # cannot self-reduce either
 ])
-def test_finding_grade(severity, governed, expected):
-    assert finding_grade(severity, governed) == expected
+def test_finding_grade(severity, governed, unscored, expected):
+    assert finding_grade(severity, governed, structurally_unscored=unscored) == expected
 
 
 # T01-T12: PAIN fixtures (grade, band, multi_agency -> N-level)
@@ -71,17 +74,21 @@ def _cloud(category, **kw):
     ({"family": "host-os", "admin_plane_open": False}, "NLEV"),     # C06
     (_cloud("USER_MANAGED_SERVICE_ACCOUNT_KEY", override="LEV+NIRV"),
      "LEV+NIRV"),                                                   # C07
-    (_cloud("OPENSSH_CONFIG"), "NLEV"),                             # C08 token guard
+    (_cloud("OPENSSH_CONFIG"), "LEV+IRV"),  # C08 not in vocabulary -> unreviewed fails loud (F-2)
     ({"family": "host-os"}, "LEV+IRV"),                             # C09 unknown -> open
 ])
 def test_column(finding, expected):
     assert remediation_column(finding, CIS_GCP_20_EXCEPTIONS) == expected
 
 
-def test_keyword_rule_matches_all_gcp_exposure_categories():
+def test_token_guard_rejects_substring_matches():
+    exc = {"add": set(), "remove": set(), "surface": set()}
+    assert not is_exposure_class("OPENSSH_CONFIG", exc)
+
+
+def test_keyword_rule_matches_pure_exposure_categories():
     for cat in ("KMS_PUBLIC_KEY", "OPEN_SSH_PORT", "OPEN_RDP_PORT",
-                "PUBLIC_IP_ADDRESS", "PUBLIC_BUCKET_ACL",
-                "PUBLIC_SQL_INSTANCE", "SQL_PUBLIC_IP", "PUBLIC_DATASET"):
+                "PUBLIC_BUCKET_ACL", "PUBLIC_SQL_INSTANCE", "PUBLIC_DATASET"):
         assert is_exposure_class(cat, CIS_GCP_20_EXCEPTIONS)
 
 
@@ -103,11 +110,51 @@ def test_exercisability_never_changes_pain():
         assert p == 2 and deadline("D", p, col) is not None
 
 
-def test_api_key_restriction_findings_are_not_exposure_class():
-    # Adjudicated keyword false positives: UNRESTRICTED here scopes the key,
-    # not an internet surface; exercising requires possessing the key.
-    for cat in ("API_KEY_APPS_UNRESTRICTED", "API_KEY_APIS_UNRESTRICTED"):
-        assert not is_exposure_class(cat, CIS_GCP_20_EXCEPTIONS)
+def test_api_key_findings_default_exercisable_surface():
+    # C-1: client-embedded API keys are public by design; unknown
+    # distribution fails safe to the fast clock, evidence overrides down.
+    f = _cloud("API_KEY_APPS_UNRESTRICTED")
+    assert remediation_column(f, CIS_GCP_20_EXCEPTIONS) == "LEV+IRV"
+    f = _cloud("API_KEY_APPS_UNRESTRICTED", attached_resource_public=False)
+    assert remediation_column(f, CIS_GCP_20_EXCEPTIONS) == "NLEV"
+
+
+def test_normalization_handles_non_gcp_category_grammars():
+    # O-1: AWS Config hyphen-lowercase IDs must tokenize
+    assert is_exposure_class("s3-bucket-public-read-prohibited",
+                             {"add": set(), "remove": set(), "surface": set()})
+    assert not is_exposure_class("restricted-ssh",
+                                 {"add": set(), "remove": set(), "surface": set()})
+
+
+def test_novel_category_outside_vocabulary_fails_loud():
+    # F-2/O-6: unreviewed categories ride the fast clock until adjudicated
+    f = _cloud("ALLOYDB_PUBLICLY_ACCESSIBLE")
+    assert remediation_column(f, CIS_GCP_20_EXCEPTIONS) == "LEV+IRV"
+
+
+def test_dnssec_is_ops_plane_not_surface():
+    # O-11: integrity hardening fails the unauthenticated-exercise test
+    f = _cloud("DNSSEC_DISABLED")
+    assert remediation_column(f, CIS_GCP_20_EXCEPTIONS) == "NLEV"
+
+
+def test_dropped_tokens_no_longer_classify():
+    # O-2/C-7: EXTERNAL and UNRESTRICTED are collision-prone; carried by
+    # add-entries instead of auto-match
+    exc = {"add": set(), "remove": set(), "surface": set()}
+    assert not is_exposure_class("SQL_EXTERNAL_SCRIPTS_ENABLED", exc)
+
+
+def test_unrecognized_family_and_missing_category_fail_loud():
+    # F-7
+    assert remediation_column({"family": "network-device"}) == "LEV+IRV"
+    assert remediation_column({"family": "cloud"}, CIS_GCP_20_EXCEPTIONS) == "LEV+IRV"
+
+
+def test_unknown_cert_class_raises():
+    with pytest.raises(ValueError):
+        deadline("E", 3, "NLEV")
 
 
 def test_backtest_distribution_class_d_high_band():
@@ -119,4 +166,5 @@ def test_backtest_distribution_class_d_high_band():
     assert total > 1000          # the sample has 1,378 findings
     assert hot < 10              # no N4/N5 flood even on High-band assumption
     fast = sum(n for (pain, col), n in dist.items() if col == "LEV+IRV")
-    assert fast < 10             # only exposure-class findings ride LEV+IRV
+    assert fast < 20  # gate widened by adjudication C-1/C-2 (API keys +
+    # PUBLIC_IP default exercisable); expected fast = 14 of 1378 (1.0%)

@@ -13,11 +13,15 @@ from collections import Counter
 from compliance_pain import (CIS_GCP_20_EXCEPTIONS, customer_effect, deadline,
                              finding_grade, pain_level, remediation_column)
 
-# Attached-resource exposure for surface-class categories, joined from the
-# same scan's exposure findings (SQL_PUBLIC_IP is Compliant in this sample).
-ATTACHED_PUBLIC = {"SSL_NOT_ENFORCED": False, "WEAK_SSL_POLICY": True,
-                   "SQL_NO_ROOT_PASSWORD": False, "DNSSEC_DISABLED": True,
-                   "RSASHA1_FOR_SIGNING": True}
+# Surface-attachment joins. False entries carry category-level evidence:
+# SQL_PUBLIC_IP is fully Compliant in this scan, so no Cloud SQL instance
+# is public (decision log C-4 inference rule). True entries are the
+# fail-safe default where no resource-level exposure feed exists.
+ATTACHED_PUBLIC = {"SSL_NOT_ENFORCED": False, "SQL_NO_ROOT_PASSWORD": False,
+                   "WEAK_SSL_POLICY": True, "PUBLIC_IP_ADDRESS": True,
+                   "SQL_PUBLIC_IP": False,
+                   "API_KEY_APPS_UNRESTRICTED": True,
+                   "API_KEY_APIS_UNRESTRICTED": True}
 
 
 def rows(path):

@@ -22,7 +22,7 @@
 - The repository is public: sample scan data MUST be sanitized (no org IDs, no assessed-resource domains) before committing.
 - FedRAMP effect/scope semantics are fixed: Narrow=N2 and Minimal=N1 regardless of agency count; N5 only for Debilitating multi-agency.
 - Internet exercisability changes the remediation column only, never PAIN (no double-counting one fact).
-- Missing **provider-controlled** metadata fails safe loud (asset→HHH/High, scope→multi-agency, admin-plane exposure→open, unmapped exposure category→LEV+IRV). Missing **structurally absent** metadata (benchmark severity) takes the calibrated Moderate prior — this distinction must be stated wherever the prior is used.
+- Missing **provider-controlled** metadata fails safe loud (asset→HHH/High, scope→multi-agency, admin-plane exposure→open, a category absent from the benchmark version's reviewed vocabulary→LEV+IRV (unreviewed fails loud); a reviewed-but-untagged category→NLEV as a disclosed calibration choice). Missing **structurally absent** metadata (benchmark severity) takes the calibrated Moderate prior — this distinction must be stated wherever the prior is used.
 - Deadline day counts come only from the pinned `VDR-TFR-PVR` matrix in `vdr-pain-cvss.tex` (Appendix `app:matrix`); never invent benchmark-specific day counts. N1 has no deadline.
 - The TeX addendum follows the established whitepaper register: plain language, `IN PLAIN TERMS` boxes, math behind the prose, pinned normative sources.
 - Terminology: "internet-accessible" (entry points) and "internet-reachable" (FedRAMP's broader status) are never interchangeable; this method introduces and defines "internet-exercisable" for benchmark findings and must not present it as a redefinition of FedRAMP's IRV.
@@ -39,9 +39,10 @@ Only a confirmed failed condition enters PAIN calculation.
 
 1. `Pass` is not a finding.
 2. A scanner result that does not match the effective state is a **false positive**.
-3. A recommendation that does not apply to the asset's actual role is **not applicable**.
+3. A recommendation that does not apply to the asset's actual role is **not applicable**. N/A dispositions are auditable out-of-scope decisions with a mandatory reportable rationale.
 4. A failed configuration neutralized by an effective control is **fully mitigated**; evidence and retained PAIN are recorded.
 5. A weakness intentionally justified rather than eliminated is an **accepted finding**. Acceptance does not lower computed PAIN.
+6. A weakness reduced but not eliminated by a compensating control is **partially mitigated**: grade/effect are re-evaluated against the residual condition on cited evidence, and the pre- and post-mitigation N-ratings are recorded.
 
 The scoring algorithm is never weakened to compensate globally for scanner noise; noise is resolved here, per finding, with evidence.
 
@@ -76,6 +77,8 @@ Provenance rules:
 - CIS Level 1/2 profiles are not severities.
 - Rationale for the Moderate prior (must appear in the addendum): missing benchmark severity is **structural** (CIS publishes none), not a provider omission, so a worst-case default is miscalibration, not fail-safety; CAT II is the empirical mode of benchmark content; and labeling hundreds of hardening deviations "potentially debilitating multi-agency events" destroys the incident signal for findings that deserve it.
 
+Severity provenance is resolved through a pinned, versioned source registry: structurally-unscored sources (CIS) take the Moderate prior; scanners on the published governed list are governed by default and cannot be un-elected; a blank or unrecognized severity from a scored/governed source fails loud to Major. Starter governed list: DISA STIG CATs, Google SCC category severities, AWS FSBP control severities.
+
 ## A4. Customer-effect matrix (grade × asset band)
 
 | Grade | Asset High | Asset Medium | Asset Low |
@@ -87,6 +90,7 @@ Provenance rules:
 - The asset band is a ceiling: severity never raises effect above what the asset supports (Major/Low is still Narrow).
 - Calibration knob (documented, deliberate): Moderate/High = Narrow, not Disruptive. The alternative puts every CAT II and raw CIS Fail on high-value multi-agency assets at N4 — incident-class in Class D — which is the flood this design exists to prevent. The multi-agency PAIN column has no N3; the line between "incident" (N4+) and "maintenance" (N2−) sits exactly at the Disruptive boundary.
 - Grade transition invariant: Moderate→Minor moves the effect down at most one band (exactly one unless already Minimal).
+- Evidence-gated escalation override: documented evidence that a specific finding yields direct High C/I/A impact on the (substituted) resource promotes the grade one step (Moderate→Major), audited and expected rare. The N5↔N2 boundary on High assets (e.g., an account-lockout CAT II on an internet-exercisable crown-jewel admin plane capped at N2) is the calibration's named residual risk.
 
 ## A5. Effect × agency scope → PAIN
 
@@ -105,13 +109,13 @@ Normative test: **a benchmark finding is internet-exercisable iff an unauthentic
 
 Per-family operational rules:
 
-- **Host benchmarks, OS-level (RHEL/Windows STIG & CIS):** exercisable iff the admin/login plane (tcp/22, tcp/3389) is world-open. Unknown → open (fail-safe). No per-rule mapping.
+- **Host benchmarks, OS-level (RHEL/Windows STIG & CIS):** exercisable iff the admin/login plane (governed port set, default {22, 3389, 5985, 5986, 5900, 10250}) is world-open. Unknown → open (fail-safe). No per-rule mapping. `admin_plane_open` is the output of a required join against governed firewall/LB inventory; a WAF/ALB-fronted service surface counts as open (mitigation, not closure).
 - **Host benchmarks, application-level (web/db STIGs):** exercisable iff that application's service surface is internet-open.
 - **Cloud-configuration benchmarks:** exercisable iff the finding category is **exposure-class**:
-  - Keyword rule (normative default): the category identifier contains any of {PUBLIC, OPEN, ANONYMOUS, UNRESTRICTED, INTERNET, EXTERNAL, WORLD} as an **underscore-delimited token** (token match — `OPEN_SSH_PORT` matches, `OPENSSH_CONFIG` does not). Match category identifiers only, never rule prose.
-  - A per-benchmark-version **exception table** refines the keyword rule: `add` (oddly named exposure rules), `remove` (keyword false positives), `surface` (surface-degrading categories — SSL/TLS family — exercisable iff the attached resource is public, joined from the same scan's exposure findings; unknown attachment → public, fail-safe).
+  - Keyword rule (normative default): the category identifier contains any of {PUBLIC, OPEN, ANONYMOUS, INTERNET, WORLD} as a **normalized token** (uppercase, split on non-alphanumeric runs — `OPEN_SSH_PORT` matches, `OPENSSH_CONFIG` does not). EXTERNAL/UNRESTRICTED are demoted to collision-screen candidates at table-build time (too collision-prone to auto-match; carried by `add` entries instead). Match category identifiers only, never rule prose.
+  - A per-benchmark-version **exception table** refines the keyword rule: `add` (oddly named exposure rules), `remove` (keyword false positives), `surface` (categories exercisable only when the attached resource is public, joined from the same scan's exposure findings; unknown attachment → public, fail-safe), `vocabulary` (the version's full category list; scanned categories absent from it fail loud to LEV+IRV pending review). Canonical tables are published per (benchmark, version, scanner) and content-hashed; provider deltas are enumerated per-entry with rationale; removing a token-matching category is a hard assessor-review trigger.
   - Untagged, non-matching categories are identity/operations-plane → not exercisable. Justification: the finding fails the unauthenticated test at its precondition (e.g., a user-managed SA key requires possessing the secret; the public control plane alone gives an internet actor nothing).
-- **Overrides (evidence-backed, audited, expected to be uncommon):** LEV+NIRV when evidence shows a likely tenant/internal/adjacent/local actor can exercise the condition (worked example: MFA-not-enforced-class findings); LEV+IRV when evidence shows public usability (e.g., known-leaked key — at which point incident response applies).
+- **Overrides (evidence-backed, audited, expected to be uncommon):** LEV+NIRV when evidence shows a likely tenant/internal/adjacent/local actor can exercise the condition (worked example: MFA-not-enforced-class findings); LEV+IRV when evidence shows public usability (e.g., known-leaked key — at which point incident response applies); LEV+IRV also available on transitive-reachability evidence (indirect internet payload paths, mirroring the CVE companion) — the baseline test is sound but incomplete with respect to IRV: exercisable implies IRV, never the converse. A data-plane grant to allUsers or allAuthenticatedUsers is exposure-class regardless of category name (allAuthenticatedUsers satisfies the unauthenticated test).
 
 Column selection:
 
@@ -138,11 +142,11 @@ Reference outcome (the anchor case from design review): CAT II on a medium-value
 
 ## A8. Minimum audit record
 
-benchmark + version; rule/category identifier and scanner result; disposition + evidence (if not an unqualified Fail); affected asset + resolved archetype; **affected-resource substitution + rationale (if applied)**; CR/IR/AR + derived band; agency scope (+ "defaulted" marker if unknown); severity + provenance (grade + why governed/unscored); customer effect + PAIN; exercisability determination + **rule-set/exception-table version**; column + override evidence reference; Certification Class, evaluation completion time, deadline.
+benchmark + version; rule/category identifier and scanner result; disposition + evidence (if not an unqualified Fail); affected asset + resolved archetype; **affected-resource substitution + rationale (if applied)**; CR/IR/AR + derived band; agency scope (+ "defaulted" marker if unknown); tenancy basis (agencies served + evidence) for any single-agency assertion on a shared-service archetype; severity + provenance (grade + why governed/unscored); customer effect + PAIN; exercisability determination + **rule-set/exception-table content hash + provider delta list**; enforced-state evidence pointer for any affirmative not-exercisable determination; substitution decision and basis, recorded when applied AND when declined; column + override evidence reference; Certification Class, evaluation completion time, deadline.
 
 ## A9. Worked examples (constrain review and addendum)
 
-1. **User-managed SA key (GCP, `USER_MANAGED_SERVICE_ACCOUNT_KEY`):** ops-plane (no keyword match) → NLEV. The public GCP API plane is not the finding's exposure; the actor lacks the secret. NIRV override on evidence of broad internal availability + harmful permissions; IRV only on known public disclosure.
+1. **User-managed SA key (GCP, `USER_MANAGED_SERVICE_ACCOUNT_KEY`):** ops-plane (no keyword match) → NLEV. The public GCP API plane is not the finding's exposure; the actor lacks the secret. NIRV override on evidence of broad internal availability + harmful permissions; IRV only on known public disclosure. Contrast: API keys (`API_KEY_APPS_UNRESTRICTED`) do NOT take this reasoning — client-embedded API keys are public by design, so the unknown-distribution default is exercisable, with a down-override only on evidence the key is server-side-only (decision log C-1).
 2. **Public bucket (`PUBLIC_BUCKET_ACL`):** exposure-class by keyword → LEV+IRV. Governed SCC High → Major; on a High-value multi-agency data archetype → N5 → 12 hours in Class D. Correct: that is an incident.
 3. **`SSL_NOT_ENFORCED` on Cloud SQL where `SQL_PUBLIC_IP` is Compliant:** surface-class, attached resource not public → NLEV.
 4. **CAT II on public web VM (admin ports closed):** OS-level finding → not exercisable via 443 → NLEV. Medium asset → N2 → 192 days Class D.
@@ -154,13 +158,15 @@ benchmark + version; rule/category identifier and scanner result; disposition + 
 2. No baseline input requires metadata ordinary scanners/inventory don't provide; the only governed artifacts are the severity mappings and per-benchmark exception tables (~dozen rows each).
 3. PAIN always matches FedRAMP effect/scope semantics; N5 only Debilitating multi-agency.
 4. Exercisability changes columns only, never PAIN; Certification Class changes deadlines only, never PAIN.
-5. Provider-controlled unknowns fail safe loud; the Moderate prior is disclosed as a calibrated structural default, with the provider-controlled/structural distinction stated.
-6. Back-test on real scans (Task 3) shows: no systematic N4/N5 flood in Class D; exposure-class findings land on fast clocks; overrides required for well under 1% of findings.
+5. Provider-controlled unknowns fail safe loud; the Moderate prior is disclosed as a calibrated structural default, with the provider-controlled/structural distinction stated (the Moderate prior is gated on the source registry's structurally-unscored marker; vocabulary-absent categories fail loud).
+6. Back-test on real scans shows no systematic N4/N5 flood in Class D; exposure-class findings land on fast clocks; per-finding surprise overrides stay well under 1%, with standing category-level overrides (MFA-class, tenant-isolation families) counted separately as family rules.
 7. Two independent reviewers given the same findings, pinned rule set, and evidence produce identical results (determinism), including on affected-resource substitution cases.
 
 ---
 
 # Part B — Tasks
+
+> **Note:** Task 2/3 code blocks show the pre-review implementation; the adjudicated changes of 2026-07-17 (decision log `2026-07-16-compliance-pain-review-findings.md`) supersede them where they differ — `tools/` is authoritative.
 
 ### Task 1: Mark the prior plan superseded
 
