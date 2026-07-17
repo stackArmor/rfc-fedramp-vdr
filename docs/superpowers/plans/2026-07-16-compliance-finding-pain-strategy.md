@@ -127,6 +127,10 @@ column = NLEV     otherwise
 
 Exercisability never changes PAIN.
 
+Baseline LEV=IRV collapse: the single exercisability determination sets both letters at once — a misconfiguration *is* the exploitable state, so no separate exploit-likelihood analysis exists in the baseline; LEV without IRV arises only via the evidence-backed override.
+
+Alternative exploitability sources (permitted, governed): a provider may adopt an EPSS-equivalent for compliance findings or a scanner-native metric (e.g., SCC attack exposure) in place of the baseline collapse, iff it is evidence-backed and its logic aligning the metric to LEV/NLEV columns is documented, versioned, and disclosed for assessor review. The metric value emitted at evaluation time plus the alignment version are recorded in the audit record, keeping the column reproducible from the record even when the metric is recomputed upstream. Absent a documented alignment, the baseline default governs. Rationale: no EPSS exists for misconfigurations, and requiring each company to build its own exploitability-evaluation framework does not scale.
+
 ## A7. Deadline
 
 `deadline = M[Certification Class][PAIN][column]` using the pinned `VDR-TFR-PVR` matrix (`vdr-pain-cvss.tex`, Appendix `app:matrix`; days, 0.5 = 12 hours; Classes A and B share a schedule; N1 has no deadline):
