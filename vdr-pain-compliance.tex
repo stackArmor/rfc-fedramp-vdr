@@ -532,6 +532,16 @@ therefore \emph{sound but incomplete} with respect to IRV --- it can only ever
 overrides below exist to catch the cases it misses.
 \end{definitionbox}
 
+\paragraph{One test sets both letters (LEV${}={}$IRV).} For benchmark findings this
+single determination is the whole column story. A failed configuration needs no
+separate exploit-likelihood analysis, because the misconfiguration \emph{is} the
+exploitable state --- there is no exploit to develop, no payload to craft; the
+weakness is standing open the moment the scanner observes it. Exercisable therefore
+means likely exploitable \emph{and} internet-reachable at once, and the finding rides
+LEV+IRV. Not exercisable means NLEV. LEV without IRV --- the internal-actor column
+--- arises only through the evidence-backed overrides at the end of this section,
+never from the baseline.
+
 \paragraph{Per-family operational rules.} The test is evaluated by benchmark family,
 each family using only data ordinary scanners and inventory provide:
 
@@ -657,14 +667,9 @@ baseline misses, and each is evidence-backed, audited, and expected to be uncomm
   a home in the IRV direction.
 \end{itemize}
 
-The column then selects itself: LEV+IRV if internet-exercisable or so overridden;
-LEV+NIRV on an evidence-backed internal-exploitability override; NLEV otherwise. Note
-what this means for the baseline: the single exercisability determination sets both
-letters at once. A failed configuration needs no separate exploit-likelihood analysis
---- the misconfiguration \emph{is} the exploitable state, so exercisable means likely
-exploitable \emph{and} internet-reachable for prioritization purposes, and LEV
-without IRV arises only through the evidence-backed override, never from the
-baseline. The
+The column then selects itself, completing the LEV${}={}$IRV rule stated at the top
+of this section: LEV+IRV if internet-exercisable or so overridden; LEV+NIRV on an
+evidence-backed internal-exploitability override; NLEV otherwise. The
 determination is stated once more for emphasis: \textbf{exercisability changes the
 column only; it never changes PAIN.} An affirmative not-exercisable determination
 (any \code{False} on \code{admin\_plane\_open}, \code{service\_open}, or
