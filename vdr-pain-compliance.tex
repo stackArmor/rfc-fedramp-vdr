@@ -37,6 +37,17 @@
   title={DEFINITION}
 }
 
+% Non-normative aside: implementation guidance and related tooling that inform,
+% but are not part of, the normative method.
+\newtcolorbox{guidance}{
+  enhanced, breakable,
+  colback=low!5, colframe=low!45, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=low!45!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={IMPLEMENTATION GUIDANCE (NON-NORMATIVE)}
+}
+
 % --- palette ---
 \definecolor{crit}{HTML}{C0392B}
 \definecolor{high}{HTML}{E67E22}
@@ -67,6 +78,7 @@
 \newcommand{\verfactcite}{\href{\fedbase/providers/rev5/rules/vulnerability-evaluation-and-reporting.md\#evaluation-factors}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\vdrmitcite}{\href{\fedbase/providers/rev5/rules/vulnerability-detection-and-response.md\#mitigation-and-remediation-expectations}{FedRAMP/2026-markdown@2a75592}}
 \newcommand{\ciscite}{\href{https://www.cisecurity.org/cis-benchmarks/cis-benchmarks-faq}{cisecurity.org/cis-benchmarks-faq}}
+\newcommand{\scccite}{\href{https://docs.cloud.google.com/security-command-center/docs/attack-exposure-learn}{docs.cloud.google.com/security-command-center/docs/attack-exposure-learn}}
 
 \title{\bfseries A Deterministic PAIN and Remediation Method for\\
 FedRAMP Compliance and Security-Benchmark Findings}
@@ -264,6 +276,14 @@ Low and none is High; \textbf{Medium} in every other case. A single Low requirem
 demotes two Highs to Medium --- \code{HHL} is Medium, not High.
 \end{definitionbox}
 
+Mixed vectors like \code{HHL} are uncommon in practice. The three requirements tend
+to correlate --- an asset with genuinely High confidentiality and integrity but Low
+availability requirements is unusual --- so the demotion is a mathematical property of
+the mean rather than an expected operational case. Where a real asset is genuinely
+served poorly by the banding, direct CR/IR/AR assignment and affected-resource
+substitution (below) cover it: the band is a convenience for the common, correlated
+case, not the only path to a score.
+
 Missing or unresolved asset metadata resolves to \code{HHH}${}\rightarrow{}$High.
 Asset classification is provider-controlled, so its absence fails safe and loud: an
 unclassified asset scores at the top of the band and surfaces itself for
@@ -282,6 +302,20 @@ recorded \emph{both} when it is applied \emph{and} when it is declined
 (Section~\ref{sec:audit}). A full asset-adjacency graph would make substitution
 table-driven; it is noted as an optional refinement, not a baseline input, because
 the baseline may not assume metadata ordinary inventory does not provide.
+
+\begin{plain}
+\textbf{Substitution in one example.} A STIG finding lands on a bastion host. The
+bastion stores no customer data and is classified L/L/L --- Low on every dimension ---
+so on its own nameplate it would band Low. But the bastion is the sole administrative
+path to the production database, which is classified H/H/H. The finding is scored
+against the \emph{database's} High band, not the bastion's Low band, because what the
+weakness actually endangers is the database behind it. The audit record captures the
+substituted resource (the database) and why (the bastion is its only admin path). And
+if a reviewer looks at the same finding and \emph{declines} to substitute --- judging
+the weakness genuinely confined to the bastion --- that decision is recorded too, with
+its basis, so an assessor can challenge either call rather than only the ones that
+moved the score.
+\end{plain}
 
 \section{Finding grade and provenance}
 \label{sec:grade}
@@ -418,11 +452,23 @@ one band (exactly one, unless the effect is already Minimal), which keeps the ma
 monotone.
 
 \paragraph{Two observations the tables make plain.} First, \textbf{the multi-agency
-column has no N3.} Table~\ref{tab:paintbl} sends Narrow to N2 in both columns and
-Disruptive to N4 under multi-agency, so nothing lands on N3 when scope is
-multi-agency. The line between an incident (N4 and above) and maintenance (N2 and
-below) therefore sits exactly on the Disruptive boundary, and the effect matrix is
-calibrated with that boundary in view.
+column has no N3.} This is FedRAMP's own definition, not an artifact of this method:
+N3 is defined as an effect disruptive to a single agency, and disruption of more than
+one agency is N4 by definition. No classifier could put a genuinely multi-agency
+Disruptive effect on N3 and still be faithful to the rule. The line between an
+incident (N4 and above) and maintenance (N2 and below) therefore sits exactly on the
+Disruptive boundary, and the effect matrix is calibrated with that boundary in view.
+
+That said, N3 is not unreachable on shared infrastructure --- because the scope input
+is the agency scope of the finding's \emph{effect}, not the asset's nameplate tenancy.
+A finding on a shared component whose exploitation is demonstrably contained to a
+single agency's tenancy --- a per-tenant bucket-prefix policy error, a tenant-scoped
+IAM binding that leaks only within one tenant --- scores single-agency, so a Disruptive
+such finding lands on N3, not N4. That single-agency assertion on a shared asset is
+exactly the case the audit record already requires a tenancy basis for
+(Section~\ref{sec:audit}); the containment must be evidenced, not asserted. The
+fail-safe is unchanged: unknown scope, or a finding on a shared control plane whose
+blast radius is not demonstrably contained, resolves to multi-agency.
 
 Second, \textbf{the Moderate/High cell is a disclosed calibration knob.} It reads
 Narrow, not Disruptive. The alternative --- Disruptive --- would put every CAT~II and
@@ -504,14 +550,35 @@ token, while \cat{OPENSSH_CONFIG} does not, and an AWS Config identifier such as
 cousin. Because the rule reads scanner-emitted identifiers, the provider cannot game
 it by renaming.
 
+The rule also matches two literal patterns before tokenizing: an identifier
+containing the literal string \code{0.0.0.0} or \code{::/0} is exposure-class. The
+any-address CIDR is unambiguous exposure semantics, and it is caught by literal
+substring rather than by token matching precisely because normalization would split
+\code{0.0.0.0} into a bare \code{0} and lose the meaning. An identifier such as
+\code{sg-allow-ingress-from-0.0.0.0-0} therefore matches, while a plain numeric
+segment in a category like \cat{TLS_1_0_ENABLED} does not (it carries no any-address
+literal and no exposure token).
+
+The normative spec keeps only what a second implementer needs to reproduce a result:
+identifier-based matching (never prose), normalization, the token set and the
+\code{0.0.0.0}/\code{::/0} literal patterns, the vocabulary fail-loud rule, and the
+exception-table governance below. The reasoning behind which tokens made the set is
+implementation guidance:
+
+\begin{guidance}
 Two tokens that look tempting --- \code{EXTERNAL} and \code{UNRESTRICTED} --- are
 deliberately \emph{not} in the auto-match set. Their genuine true positives are
-already carried by \code{PUBLIC}/\code{OPEN}/\code{INTERNET} or by explicit table
-entries, while their false-positive rate is high (\cat{SQL_EXTERNAL_SCRIPTS_ENABLED}
-is not an internet exposure; \cat{API_KEY_APIS_UNRESTRICTED} scopes a key, not a
-surface). Keeping them out holds the auto-match vocabulary tight and moves the burden
-of proof onto a reviewed table entry. Screening every category list for token
-collisions is a normative table-build step, not an afterthought.
+already carried by \code{PUBLIC}/\code{OPEN}/\code{INTERNET} or by explicit
+\code{add} entries, while their false-positive rate is high
+(\cat{SQL_EXTERNAL_SCRIPTS_ENABLED} is not an internet exposure;
+\cat{API_KEY_APIS_UNRESTRICTED} scopes a key, not a surface). Keeping them out holds
+the auto-match vocabulary tight and moves the burden of proof onto a reviewed table
+entry. Screening a benchmark's full category list for token collisions when the table
+is built is a sound practice, not a normative requirement. So is richer analysis:
+automated or agentic analysis of a benchmark's category list to pre-classify exposure
+relevance for triage is permitted and useful, but it is not required --- token and
+literal-pattern matching against a reviewed table meets the bar.
+\end{guidance}
 
 \paragraph{The exception table and its governance.} The keyword rule is refined by a
 per-benchmark-version exception table with four kinds of entry: \code{add} (genuine
@@ -609,6 +676,21 @@ internet-exercisable host is Moderate${}\times{}$Medium${}\rightarrow{}$Narrow
 ${}\rightarrow{}$N2, LEV+IRV, which is \textbf{24 days in Class~D} (48 in Class~C, 96
 in Classes~A/B) --- and 192 days if it were not exercisable. Exercisability moved the
 clock by an order of magnitude and left the N-level untouched.
+
+\paragraph{Where these clocks are actually won.} A remediation clock is the wrong
+place to fight compliance-finding volume, and the deadline machinery should not be
+mistaken for the strategy. Compliance findings overwhelmingly open at build and deploy
+time, not part-way through operations and maintenance: a bucket is created public, a
+firewall is opened, a role is over-granted. The practical lever for N4/N5 volume is
+therefore \emph{pre-deployment} --- infrastructure-as-code and policy analysis that
+evaluates the same two inputs this method needs (asset archetype $\times$ finding
+category) before the resource exists. A public bucket is an acceptable pattern in some
+designs; a public bucket bound to a data-sensitive archetype is precisely the thing to
+block at deploy time rather than remediate on a 12-hour clock afterward. The timeframe
+matrix runs from completed evaluation and governs what escapes into production;
+prevention is what keeps the incident-class population near zero in the first place.
+The back-test that follows should be read in that light --- a small fast-clock count
+is the goal, and shifting the check left is how it stays small.
 
 \section{The minimum audit record}
 \label{sec:audit}
@@ -739,6 +821,35 @@ where they belong. Dropping the asset assumption to Medium shifts the incident-c
 findings from N5 to N4 (a slightly slower incident clock) and leaves the N2/N1 bulk
 untouched, which is the intended behavior: the asset band moves the row, never the
 column.
+
+\paragraph{A related signal: SCC attack exposure scores.} It is worth noting where a
+commercial tool overlaps this method, because the resemblance is close enough to
+mislead. Google Security Command Center's attack exposure
+scores\footnote{Google, \emph{Security Command Center: Learn about attack exposure
+scores}. \scccite{}; accessed 2026-07-17.} are built from structurally the same two
+ingredients this method uses: a resource-value configuration (HIGH${}=10$,
+MEDIUM${}=5$, LOW${}=1$, the analogue of the asset band) and an internet-origin
+attack-path simulation (the analogue of exercisability). The parallel is real, and it
+makes SCC a useful neighbor. It cannot, however, replace this method for FedRAMP, for
+four concrete reasons.
+
+\begin{guidance}
+SCC attack exposure \textbf{complements but cannot replace} the method here.
+\emph{Not reproducible from an audit record:} the scoring algorithm is only partially
+published and includes probabilistic attack-path simulation recalculated roughly every
+six hours, so the same finding can carry different scores on different days and a
+reviewer cannot re-derive a score from what is written down --- the determinism
+requirement fails. \emph{No FedRAMP semantics:} it emits neither the effect/scope
+words nor the N-levels nor the Class-keyed \code{VDR-TFR-PVR} deadlines the rule
+requires. \emph{No NIRV analogue:} its simulations model only internet-origin
+attackers, so there is no not-internet-reachable branch --- the internal-actor cases
+this method routes to LEV+NIRV have no home in it. \emph{Single-provider, gated:} it
+requires org-level Premium activation on one cloud. Its right role is as a strong
+\emph{evidence source} for the override lanes --- an attack-path result is exactly the
+kind of evidence that supports a LEV+NIRV or LEV+IRV override, or a down-override off
+the fast clock --- and as an independent \emph{calibration cross-check} against the
+back-test distribution.
+\end{guidance}
 
 \section{Known limitations}
 \label{sec:limits}

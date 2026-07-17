@@ -139,6 +139,15 @@ def test_dnssec_is_ops_plane_not_surface():
     assert remediation_column(f, CIS_GCP_20_EXCEPTIONS) == "NLEV"
 
 
+def test_any_address_cidr_literal_matches():
+    # 0.0.0.0 / ::/0 in an identifier are unambiguous exposure and survive
+    # normalization only via literal matching; a plain numeric segment does not.
+    exc = {"add": set(), "remove": set(), "surface": set()}
+    assert is_exposure_class("sg-allow-ingress-from-0.0.0.0-0", exc)
+    assert is_exposure_class("INGRESS_FROM_ANY_::/0", exc)
+    assert not is_exposure_class("TLS_1_0_ENABLED", exc)
+
+
 def test_dropped_tokens_no_longer_classify():
     # O-2/C-7: EXTERNAL and UNRESTRICTED are collision-prone; carried by
     # add-entries instead of auto-match

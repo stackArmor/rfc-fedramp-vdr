@@ -145,6 +145,10 @@ def is_exposure_class(category, exceptions):
         return False
     if category in exceptions["add"]:
         return True
+    # Any-address CIDR is unambiguous exposure; matched as a literal because
+    # normalization would split "0.0.0.0" into a bare "0" and lose the meaning.
+    if "0.0.0.0" in category or "::/0" in category:
+        return True
     tokens = set(re.split(r"[^A-Z0-9]+", category.upper())) - {""}
     return bool(tokens & EXPOSURE_TOKENS)
 
