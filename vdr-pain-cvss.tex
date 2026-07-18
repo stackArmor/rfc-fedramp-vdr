@@ -67,7 +67,7 @@
 \newcommand{\defcite}{\href{https://github.com/FedRAMP/2026-markdown/blob/2a75592f0e1f86a48b2888d29af6c570c419a7a5/definitions.md}{FedRAMP/2026-markdown@2a75592}}
 
 \title{\bfseries A Deterministic, CVSS--Environmental Method for\\
-FedRAMP Rev5 VDR/VER Vulnerability Prioritization}
+FedRAMP VDR/VER Vulnerability Prioritization}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
 \date{July 2026}
 
@@ -100,9 +100,8 @@ categorization. A reference architecture and a sample scan complete the memo.
 This document is informational. It does not itself define a FedRAMP requirement; it
 specifies a standardized \emph{method} for satisfying the existing VDR/VER
 requirements.\footnote{The VDR and VER rules launched on 2026-06-24 as part of the
-FedRAMP Consolidated Rules for 2026 and apply to both FedRAMP 20x and Rev5
-offerings. This memo retains its original Rev5-oriented title for link stability;
-the method applies unchanged under both.}
+FedRAMP Consolidated Rules for 2026 and apply to providers with FedRAMP
+certifications of any type.}
 
 The key words \rfckw{must}, \rfckw{must not}, \rfckw{should}, \rfckw{should not},
 and \rfckw{may} are to be interpreted as described in RFC~2119.
@@ -123,7 +122,7 @@ and \rfckw{may} are to be interpreted as described in RFC~2119.
 
 \section{Motivation: the gap between VDR/VER and the scanner}
 A vulnerability scanner emits, per finding, a CVE identifier, a qualitative
-severity, and (often) a CVSS Base vector. FedRAMP Rev5 VDR/VER, by contrast, asks
+severity, and (often) a CVSS Base vector. FedRAMP VDR/VER, by contrast, asks
 the provider to answer a different question: \emph{what is the potential impact on
 the agency if this vulnerability is exploited on this asset, and how quickly must
 it therefore be remediated?} The two are not the same. A ``Low''-rated CVE on a
@@ -938,7 +937,7 @@ A confidentiality leak on shared DNS (CVE-2026-yyy6) stays N2 and NIRV ---
 
 \section{Relationship to CISA BOD 26-04}
 \label{sec:bod}
-The Rev5 VDR/VER rule is FedRAMP's implementation of CISA Binding Operational
+The VDR/VER rule is FedRAMP's implementation of CISA Binding Operational
 Directive~26-04.\footnote{CISA, \emph{Binding Operational Directive 26-04}, 2026-06-10.
 The VDR rule lists it as the mandating authority, with optional adoption from
 2026-07-04, obtain/maintain from 2026-12-07, and grace ending 2027-03-07.} FedRAMP
@@ -1129,7 +1128,7 @@ does not detect vulnerabilities; it prioritizes the output of a scanner and inhe
 that scanner's coverage and accuracy.
 
 \section{Conclusion}
-FedRAMP Rev5 VDR/VER specifies the vocabulary and the axes of vulnerability
+FedRAMP VDR/VER specifies the vocabulary and the axes of vulnerability
 prioritization but leaves the classifier unspecified. That classifier need not be
 invented: the CVSS Environmental metric group already encodes ``re-weight impact by
 what is at stake,'' which is precisely the agency-impact question. By assigning each
@@ -1143,7 +1142,7 @@ A companion proposal, \emph{A Finer Exploitability Gradation (VLEV) for FedRAMP
 VDR/VER}, separately explores tightening the exploitability axis. It is kept out of
 this memo deliberately: this memo's scope is meeting FedRAMP's requirements as they
 stand today, not changing them. A second companion, \emph{A CycloneDX VEX Profile for
-FedRAMP Rev5 VDR/VER Disposition and Response}, specifies the machine-readable format
+FedRAMP VDR/VER Disposition and Response}, specifies the machine-readable format
 for the disposition step of Section~\ref{sec:vex}.
 
 \appendix
@@ -1213,7 +1212,7 @@ component sits on the provider's side of the shared-responsibility line.
 Days; $0.5 = 12$ hours. Columns in order LEV+IRV / LEV+NIRV / NLEV. PAIN-1 has no
 FedRAMP deadline (any class). The day counts below are reproduced \emph{verbatim}
 from FedRAMP's published \textbf{VDR-TFR-PVR} table;\footnote{FedRAMP,
-\emph{Vulnerability Detection and Response (VDR)}, Rev5 provider rule, requirement
+\emph{Vulnerability Detection and Response (VDR)}, provider rule, requirement
 \texttt{VDR-TFR-PVR}. Generated markdown pinned at \vdrcite{} (commit of 2026-06-24);
 accessed 2026-06-27. Mandated by CISA BOD~26-04; FedRAMP may revise the values.}
 Classes~A and~B share one schedule. The only provider-side choice here is which
@@ -1410,11 +1409,11 @@ various other team members at stackArmor who helped make it possible.
 \section*{Normative sources}
 \addcontentsline{toc}{section}{Normative sources}
 \begin{itemize}[leftmargin=3.4em]
-\item[{[VDR]}] FedRAMP, \emph{Vulnerability Detection and Response (VDR)}, Rev5.
+\item[{[VDR]}] FedRAMP, \emph{Vulnerability Detection and Response (VDR)}.
   Requirements cited: \texttt{VDR-TFR-PVR}, \texttt{VDR-TFR-KEV},
   \texttt{VDR-TFR-PDD/PCD/PSD}. Pinned permalink: \vdrcite{} (commit of 2026-06-24;
   generated from upstream \texttt{fedramp/rules}). Accessed 2026-06-27.
-\item[{[VER]}] FedRAMP, \emph{Vulnerability Evaluation and Reporting (VER)}, Rev5.
+\item[{[VER]}] FedRAMP, \emph{Vulnerability Evaluation and Reporting (VER)}.
   Requirements cited: \texttt{VER-EVA-EIR}, \texttt{VER-EVA-EFP},
   \texttt{VER-EVA-AIA}, \texttt{VER-RPT-VDT}, \texttt{VER-TFR-MAV},
   \texttt{VER-RPT-AVI}. Pinned permalink: \vercite{} (commit of 2026-06-24).
