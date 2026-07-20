@@ -88,9 +88,11 @@ Modified Impact Sub-Score were designed precisely to re-weight a vulnerability's
 impact by what is at stake in a given deployment. We present a closed-form,
 reproducible mapping from FedRAMP's requirements onto CVSS Environmental metrics,
 derive PAIN and the remediation deadline from it, and give fully worked
-calculations. We also present an \emph{example} mechanism --- ``asset archetypes''
---- for assigning CR/IR/AR systematically, while emphasizing that each Cloud Service
-Provider (CSP) \rfckw{should} derive its own assignment from its system
+calculations. We recommend role-based ``asset archetypes'' as the preferred way to
+assign CR/IR/AR systematically. An archetype records what a system does and derives
+its requirements through a governed mapping; that is easier to verify than asking
+an owner to declare the system High, Medium, or Low value. Each Cloud Service
+Provider (CSP) \rfckw{should} derive its own archetype mapping from its system
 categorization. A reference architecture and a sample scan complete the memo.
 \end{abstract}
 
@@ -981,35 +983,39 @@ mandated by the rule by name.
 \section{Assigning CR/IR/AR: archetypes (an example, not a standard)}
 \label{sec:archetypes}
 \begin{plain}
-Rather than hand-rate every server, we sort systems into a short list of
-\emph{archetypes} --- a database, a login service, a cache, a message bus, and so on
---- and each archetype comes with its criticality pre-filled. Tag a system with its
-archetype and the scoring is automatic. Our list is only an \emph{example}: every
-provider should tailor its own to the data it actually holds.
+Rather than ask an owner to rate every server High, Medium, or Low, we sort systems
+into a short list of \emph{archetypes} --- a database, a login service, a cache, a
+message bus, and so on. Each archetype comes with its security requirements
+pre-filled. Tag a system with its archetype and the scoring is automatic. Our list
+is only an \emph{example}: every provider should tailor its own to the roles its
+systems perform and the data they actually hold.
 \end{plain}
 The model in Section~\ref{sec:math} is only as good as the CR/IR/AR assignment that
-feeds it. Without an archetype approach, a provider would have to tag each asset
-with CR/IR/AR scores individually. While certainly justifiable and valid, this
-requires evaluating each asset in isolation. In doing so, we lose a systematic ``chain
-of thought'' --- for instance, why is a specific host scored CR:L, IR:H, AR:L?
+feeds it. A direct value label asks the asset owner to state the conclusion: how
+important is this system? That answer can be difficult to obtain and difficult to
+challenge, especially when a High designation brings more work, cost, or scrutiny.
+An archetype asks narrower questions about facts that architecture and inventory
+can help verify: does the asset control other systems, hold credentials,
+authenticate users, store sensitive data, or support several services?
 
-By assigning requirements to archetypes instead, the underlying rationale remains
-readily understandable and easily auditable. Tagging an asset with its archetype
-inherits that clear chain of thought. We propose the archetype taxonomy herein as
-a valid option, while recognizing that not every asset will fit cleanly. CSPs
-\rfckw{may} define custom archetypes or adjust the scoring of existing ones at
-their discretion to map their estate accurately. The goal is to identify the most
-critical assets as defined by FedRAMP and deprioritize less critical ones.
+The governed archetype mapping then turns those facts into CR/IR/AR. A reviewer can
+check both parts of the decision: whether the asset performs the stated role and
+whether that role maps to the right requirements. Archetypes do not remove human
+judgment, but they make the judgment visible and harder to manipulate. Tagging an
+asset with its archetype also avoids evaluating every asset in isolation and keeps
+the rationale for its CR/IR/AR readily understandable and auditable. Not every
+asset will fit cleanly, so CSPs \rfckw{may} define custom archetypes or adjust the
+scoring of existing ones to map their estate accurately.
 
-A simpler, equally valid implementation is to tag assets directly with an
-\code{asset-value} instead of an \code{asset-archetype}. Under that approach,
+A simpler but less informative conforming implementation is to tag assets directly
+with an \code{asset-value} instead of an \code{asset-archetype}. Under that approach,
 \code{H} or \code{High} maps to static \code{CR:H/IR:H/AR:H}; \code{M},
 \code{Medium}, or \code{Moderate} maps to \code{CR:M/IR:M/AR:M}; and \code{L} or
 \code{Low} maps to \code{CR:L/IR:L/AR:L}. This schema is easy to implement and
-audit, and it may be sufficient for smaller or more homogeneous estates. Its tradeoff
-is that it loses some granularity and the explanatory chain of thought that an
-archetype catalog provides: every security requirement moves together rather than
-separately modeling confidentiality, integrity, and availability needs.
+may be sufficient for smaller or more homogeneous estates. Its tradeoff is that it
+states the conclusion without recording why: every security requirement moves
+together, and the label does not separately explain the asset's confidentiality,
+integrity, and availability needs.
 
 
 \begin{quote}\itshape
@@ -1117,26 +1123,30 @@ suppression cannot outlive the condition that justified it.
 
 \section{Security Considerations}
 \label{sec:seccon}
-The method trusts the type-tags on each system: if someone mislabels a critical
+The method trusts the archetype tags on each system: if someone mislabels a critical
 system as trivial, its flaws will look smaller than they really are. Its integrity
 therefore depends on the trustworthiness of two inputs --- the asset archetype tags
 and the VER axes (EPSS / KEV membership / reachability). Tag spoofing that
 \emph{lowers} an archetype is a downgrade attack; the fail-safe default and governed
 calibration mitigate accidental under-classification, but tag assignment
-\rfckw{should} be controlled like any other security setting. Finally, the method
-does not detect vulnerabilities; it prioritizes the output of a scanner and inherits
-that scanner's coverage and accuracy.
+\rfckw{should} be controlled like any other security setting. Archetypes narrow but
+do not eliminate this risk: a claimed role can be compared with architecture, data
+flows, identity permissions, and inventory, while a direct value label provides
+less evidence to check. Finally, the method does not detect vulnerabilities; it
+prioritizes the output of a scanner and inherits that scanner's coverage and accuracy.
 
 \section{Conclusion}
 FedRAMP VDR/VER specifies the vocabulary and the axes of vulnerability
 prioritization but leaves the classifier unspecified. That classifier need not be
 invented: the CVSS Environmental metric group already encodes ``re-weight impact by
 what is at stake,'' which is precisely the agency-impact question. By assigning each
-asset its CR/IR/AR --- via archetypes or any other systematic scheme the CSP owns
---- and evaluating the two VER axes, a provider obtains a deterministic, auditable,
-and standards-grounded PAIN and remediation deadline for every finding. We offer the
-example archetype catalog not as a standard but as an existence proof; we encourage
-each CSP to publish its own.
+asset its CR/IR/AR and evaluating the two VER axes, a provider obtains a
+deterministic, auditable, and standards-grounded PAIN and remediation deadline for
+every finding. We recommend role-based archetypes as the starting point because
+they record what an asset does and expose how its requirements were derived. A
+direct asset-value label remains a conforming fallback, but it records the
+conclusion with less evidence behind it. We offer the example archetype catalog not
+as a standard but as an existence proof; we encourage each CSP to publish its own.
 
 A companion proposal, \emph{A Finer Exploitability Gradation (VLEV) for FedRAMP
 VDR/VER}, separately explores tightening the exploitability axis. It is kept out of
@@ -1317,17 +1327,17 @@ on. Each item below names the value we use, why, and the fact that an implementa
   asset itself, a containing boundary, or the provider default is tagged so
   (most-specific wins); there is no automatic per-archetype escalation. (The
   tempting shortcut --- auto-escalating ``shared-infrastructure'' archetypes to
-  multi-agency --- is rejected in favor of explicit, operator-controlled tagging.)
+  multi-agency --- is rejected in favor of explicit, operator-controlled tagging.)\par\smallskip
 \item \textbf{``Archetype'', not ``type'' --- and archetype is an
   implementation choice.} The formula ultimately requires only a per-asset
   Security Requirements vector (\code{CR/IR/AR}); it does not require
   \code{asset-archetype}, or any particular metadata key. Any governed metadata
   label or classification scheme can supply that vector if each supported value
-  maps deterministically to a documented security-requirements gradient. We chose
-  \code{asset-archetype} because classifying assets by their \emph{role/usage
-  pattern}, rather than their intrinsic kind, provides more granularity and a
-  clearer, auditable reasoning chain. The same software can therefore land in
-  different archetypes by how it is used (an in-memory store is \code{app-tier}
+  maps deterministically to a documented security-requirements gradient. We
+  recommend \code{asset-archetype} because classifying assets by their \emph{role/usage
+  pattern}, rather than asking an owner to state their value directly, provides
+  more granularity and a clearer, auditable reasoning chain. The same software can
+  therefore land in different archetypes by how it is used (an in-memory store is \code{app-tier}
   as a cache, \code{identity-secrets} as a session store, or
   \code{data-backbone} as a broker). ``Type'' would wrongly suggest an intrinsic
   property of the software and collides with overloaded terms (e.g.\ Kubernetes
@@ -1393,6 +1403,9 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
   now names the TLS-terminating L7 edge (CR:M/IR:M/AR:H); added
   \code{passthrough-edge} (CR:L/IR:L/AR:H) for edges that never terminate.
   Expanded the catalog commentary with the reasoning. \\
+1.7 & July 20, 2026 & M. Venne & Recommended role-based archetypes over direct
+  asset-value labels because they expose the factual and governed basis for
+  CR/IR/AR while retaining asset value as a conforming fallback. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}
