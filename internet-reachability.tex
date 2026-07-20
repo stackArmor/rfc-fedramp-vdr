@@ -349,6 +349,9 @@ and vulnerability tracking systems. The method recommended by this paper uses
 the following available, governed predicates and relationships:
 
 \begin{itemize}[leftmargin=1.5em,nosep]
+\item $(v,a)$ identifies the \emph{downstream finding being evaluated}: CVE
+  $v$ on deployed component $a$; $(u,x)$ identifies a candidate \emph{upstream
+  entry-point finding}: CVE $u$ on deployed component $x$.
 \item $J(v)$ is the CVE-level
   \code{indirect\_}\allowbreak\code{internet\_}\allowbreak\code{trigger}
   status: confirmed, ruled out, or unknown.
@@ -368,7 +371,11 @@ the following available, governed predicates and relationships:
   cluster label, or unbound container image is not such a boundary by itself.
 \end{itemize}
 
-The chained-access branch for downstream finding $(v,a)$ is
+$G_0(v,a)$ is the binary, chain-based promotion indicator for downstream
+finding $(v,a)$ under the current operational profile. It is 1 when the finding
+is promoted into IRV through a qualifying upstream entry point and 0 otherwise;
+it is not a CVSS score and does not alter the downstream vector. The precise
+test is
 
 \begin{equation}
 G_0(v,a)=
@@ -381,8 +388,26 @@ D(u,x)=1\land E_0(u)=\mathrm{high}
 \label{eq:chain}
 \end{equation}
 
-Thus, an active upstream finding must itself match a public network surface,
-not merely carry an \code{AV:N} vector. The downstream finding remains
+\begin{plain}
+\textbf{How to read Equation~\ref{eq:chain}.}
+Read $(v,a)$ as ``downstream CVE $v$ on component $a$'' and $(u,x)$ as
+``upstream CVE $u$ on component $x$.''
+$\mathcal F$ is simply the set, or list, of active findings;
+$\mathcal F(B(a))$ means the active findings inside the same local-execution
+boundary as component $a$. The symbol $\exists$ reads ``there exists at least
+one,'' $\in$ reads ``in,'' the colon reads ``such that,'' and $\land$ reads
+``and.'' Each $\ind[\text{condition}]$ is a yes-or-no indicator: 1 when its
+condition is true and 0 otherwise. Multiplication requires both indicators to
+be 1.
+
+In plain terms: set $G_0(v,a)=1$ when the downstream finding is \code{AV:L}
+\emph{and} at least one active finding in the same execution boundary is both
+directly internet-reachable and classified as a high-confidence chainable
+entry point. Otherwise set $G_0(v,a)=0$.
+\end{plain}
+
+An active upstream finding must itself match a public network surface, not
+merely carry an \code{AV:N} vector. The downstream finding remains
 \code{AV:L}; $G_0$ changes its deployment-specific IRV value and records every
 qualifying upstream CVE and reason. When the last qualifying entry point is
 resolved, loses direct exposure, or leaves the execution boundary, $G_0$ is
