@@ -471,14 +471,15 @@ source on the public internet'' --- explicitly including resources with \emph{no
 direct internet route} that process payloads received indirectly;
 \code{VER-EVA-EIR}'s canonical example is SQL injection reaching a database on a
 private network through the application tier. The companion paper distinguishes
-the directly computable network branch from the transitive content branch. Its
-current operational profile is:
+the directly computable network branch from the transitive content and chained
+local-access branches. Its current operational profile is:
 \[
 \mathrm{IRV}_0(v,a)=
 \ind\!\left[N(a)\cap X_N(v)\neq\varnothing\right]
 \;\lor\;
 \left(\ind[J(v)=\mathrm{confirmed}]\cdot C_0(a)
-\cdot\left(1-P_0(v,a)\right)\right),
+\cdot\left(1-P_0(v,a)\right)\right)
+\;\lor\;G_0(v,a),
 \]
 where $N(a)$ is the directly exposed network surface, $X_N(v)$ is the direct
 network surface required by the vulnerability, $J(v)$ is the reusable CVE-level
@@ -487,11 +488,16 @@ component receives internet-derived content. $P_0(v,a)$ is a current,
 assessment- and ConMon-backed assertion that the relevant trigger or input-control
 class is prevented before vulnerable processing. Recurring DAST and remediation
 refresh that assertion; stale, out-of-scope, failed, or contradicted evidence sets
-$P_0$ to zero. CVSS \code{AV:L/A/P} excludes a
-finding from the direct branch but does not prevent promotion into the indirect
-branch. The paper recommends this operational profile under today's metadata
-conditions, under which reachability converges operationally toward direct
-accessibility plus known uncovered indirect triggers. A separate, non-normative
+$P_0$ to zero. $G_0(v,a)$ promotes an active \code{AV:L} finding when its
+canonical execution boundary contains an active, directly reachable upstream
+finding classified as a high-confidence chainable entry point; the downstream
+CVSS vector is unchanged and the upstream CVE and reason remain provenance.
+CVSS \code{AV:L/A/P} excludes a finding from the direct branch but does not
+prevent promotion into the applicable indirect or chained branch. The paper
+recommends this operational profile under today's metadata conditions, under
+which reachability converges operationally toward direct accessibility plus
+known uncovered indirect triggers and governed chained-access promotions. A
+separate, non-normative
 full-information form shows how structured
 content trigger profiles and optional application-edge evidence can refine the
 result when publishers or provider-selected tools supply them. A separate,
