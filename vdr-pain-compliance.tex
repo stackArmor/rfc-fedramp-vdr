@@ -204,26 +204,32 @@ Expectations}): \vdrmitcite{}.} and the LEV definition,\footnote{FedRAMP,
 \emph{Definitions} (\emph{Likely Exploitable Vulnerability}): \deflevcite{}.} each
 pinned at commit 2a75592 (2026-06-24).
 
-\section{The disposition gate}
+\section{Disposition is an overlay, not a gate}
 \label{sec:gate}
 \begin{plain}
-Before a finding is scored, it has to be real. A scanner's hit can be a false alarm,
-a check that does not apply to this system's role, or a weakness already neutralized
-by something else. Sorting those out is the disposition step, and it happens
-per-finding with evidence --- not by quietly softening the scoring formula to
-tolerate noise. The scoring engine assumes what it is handed is a genuine failure;
-this gate is what makes that assumption safe.
+A scanner finding can receive a PAIN score as soon as it is detected. Internal
+analysis may later show that the result is a false positive, does not apply to the
+asset's role, or is already neutralized by another control. That later decision is
+the disposition. PAIN says how consequential the reported condition would be if it
+applies; disposition says whether and how it applies in the running environment.
+They are separate decisions, and disposition is not a precondition for scoring.
 \end{plain}
 
-Only a confirmed failed condition enters the PAIN calculation. Every other outcome
-is a disposition, recorded with its evidence:
+A scanner-reported \code{Fail} may therefore enter the PAIN calculation before
+internal analysis is complete. Its computed PAIN and derivation remain on the audit
+record even if a later disposition moves the finding out of the active remediation
+queue. Keeping the score makes the decision auditable and reversible, and it allows
+PAIN to help prioritize which findings receive analysis first. The possible outcomes
+remain distinct:
 
 \begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
 \item A \code{Pass} is not a finding.
-\item A result that does not match the effective state is a \textbf{false positive}.
+\item A result that does not match the effective state is a \textbf{false positive};
+  its disposition and evidence are recorded alongside the computed PAIN.
 \item A recommendation that does not apply to the asset's actual role is
   \textbf{not applicable}. An N/A disposition is an auditable out-of-scope decision
-  and carries a mandatory reportable rationale --- it is not a silent drop.
+  and carries a mandatory reportable rationale --- it is not a silent drop, and it
+  does not erase the original score.
 \item A failed configuration neutralized by an effective control is
   \textbf{fully mitigated}; the evidence and the retained PAIN are recorded, exactly
   as in the CVE memo's disposition overlay.
@@ -237,8 +243,11 @@ is a disposition, recorded with its evidence:
 \end{itemize}
 
 The scoring algorithm is never weakened to compensate globally for scanner noise.
-Noise is resolved here, one finding at a time, against evidence. That discipline is
-what lets the rest of the method stay deterministic.
+Disposition changes the finding's status, not its original arithmetic. When partial
+mitigation changes the underlying condition, the residual PAIN is a second
+calculation against that changed condition; it does not rewrite the pre-mitigation
+score. Noise and exceptions are resolved one finding at a time against evidence,
+while the scoring method remains deterministic.
 
 \section{The asset-value band}
 \label{sec:band}
@@ -764,8 +773,7 @@ every input and every judgment call, including the ones where the method chose
 \end{plain}
 
 Every output is reproducible from a single record. It captures: the benchmark and
-version; the rule or category identifier and the scanner result; the disposition and
-its evidence (for anything other than an unqualified \code{Fail}); the affected asset
+version; the rule or category identifier and the scanner result; the affected asset
 and its resolved archetype; the affected-resource substitution and rationale when
 applied, \emph{and} the substitution decision and basis when declined; the CR/IR/AR
 and derived band; the agency scope, with a ``defaulted'' marker if it was unknown; a
@@ -777,7 +785,11 @@ provider delta; an enforced-state evidence pointer for any affirmative
 not-exercisable determination; the column and any override evidence reference ---
 plus, when an alternative exploitability source is used, the metric value emitted at
 evaluation time and the version of its documented column alignment; and the
-Certification Class, the evaluation completion time, and the resulting deadline.
+Certification Class, the evaluation completion time, and the resulting deadline. It
+also records the current disposition and its evidence when analysis has been
+completed. The original PAIN remains in the record for every scored finding; when a
+residual condition is re-scored after partial mitigation, both the pre- and
+post-mitigation PAIN are retained.
 
 \section{Worked examples}
 \label{sec:examples}
