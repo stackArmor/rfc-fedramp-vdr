@@ -55,12 +55,18 @@ The paper recommends a current triage rule:
 A finding is internet-reachable when its vulnerable network service can be
 triggered directly, or when a known indirect trigger reaches the component and
 current assessment and continuous-monitoring evidence does not show that the
-relevant trigger class is prevented before vulnerable processing.
+relevant trigger class is prevented before vulnerable processing. An active
+\code{AV:L} finding is also promoted when the same verified execution boundary
+contains an active, directly reachable, high-confidence entry point that can
+plausibly supply its local-execution prerequisite.
 \end{plain}
 
 That rule is intentionally practical. It uses information providers already
-have, promotes exceptional indirect triggers once per CVE, and keeps a more
-detailed application-wide data-flow model optional.
+have, promotes exceptional indirect triggers and execution-capable entry points
+through reusable CVE-level enrichment, and keeps a more detailed
+application-wide exploit-path model optional. A chained promotion changes only
+the finding's deployment-specific IRV status: its \code{AV:L} vector remains
+\code{AV:L}, and the record names the upstream CVE that caused the promotion.
 
 \section*{Why the scanner cannot finish the job}
 A scanner can usually identify the affected package, CVE, version, and CVSS
@@ -77,10 +83,12 @@ trigger to it.
 This is primarily an upstream metadata problem. Vendors, CNAs, vulnerability
 publishers, and scanner feeds should distribute a reusable field such as
 \code{indirect\_internet\_trigger}, with provenance and enough trigger detail to
-support review. Today they generally do not.
+support review. They should also publish whether exploitation establishes local
+code or command execution, the supporting evidence, and the server, client, or
+other context in which that execution occurs. Today they generally do not.
 
-\section*{Three checks, in order}
-The operational method asks three questions.
+\section*{Four checks, in order}
+The operational method asks four questions.
 
 \begin{enumerate}[leftmargin=1.8em]
 \item \textbf{Can the internet directly deliver what this flaw requires?}
@@ -99,12 +107,47 @@ The operational method asks three questions.
   A coarse component archetype can answer the first half. Current assessment,
   DAST, remediation, and retest evidence can support the second half for the
   trigger or input-control classes they actually cover.
+
+\item \textbf{Can a reachable entry point supply local execution?}
+  For an active \code{AV:L} finding, look within the same verified execution
+  boundary---ordinarily a host and its kernel---for another active finding that
+  is directly reachable and classified as a high-confidence chainable entry
+  point. If one exists, promote the local finding to IRV and retain the upstream
+  CVE and classification reason. Mere co-residency with an \code{AV:N} finding
+  is not enough.
 \end{enumerate}
 
-The paper calls that last prevention assertion $P_0$. If $P_0$ is current and
-in scope, a known downstream trigger can be classified NIRV. If the evidence is
-missing, stale, contradicted, or unrelated to the trigger, $P_0$ is zero and the
-finding remains IRV.
+The paper calls the prevention fact in check 3 the $P_0$ assertion. If $P_0$ is
+current and in scope, a known downstream trigger can be classified NIRV. If the
+evidence is missing, stale, contradicted, or unrelated to the trigger, $P_0$ is
+zero and the finding remains IRV.
+
+\section*{What counts as a high-confidence entry point}
+The strongest reason is authoritative or reproducible CVE-level evidence that
+exploitation supplies local code or command execution. When that evidence is
+absent, the operational policy uses narrow, governed signals rather than
+assuming that every severe network vulnerability is an entry point.
+
+An \code{AV:N} CVE is classified high confidence when it maps to a strict
+execution-semantics seed: \code{CWE-78}, \code{CWE-94}, \code{CWE-95},
+\code{CWE-96}, \code{CWE-98}, \code{CWE-553}, \code{CWE-624}, or
+\code{CWE-917}. A second rule requires two signals together: full vulnerable-
+system impact---\code{C:H/I:H/A:H} in CVSS v3 or its CVSS v4 equivalent---plus
+\code{CWE-97} or \code{CWE-494}. The same full-impact combination may use
+\code{CWE-1336} or \code{CWE-829} only when governed evidence confirms that
+execution occurs in the affected server or runtime, not in a client.
+
+Full impact by itself is only a possible entry point. So is an \code{AV:N}
+mapping to \code{CWE-97}, \code{CWE-1336}, \code{CWE-494}, \code{CWE-829}, or
+\code{CWE-470} without the required corroboration. Full impact plus
+\code{CWE-470} also remains possible. Possible candidates stay visible for
+filtering and review, but they do not automatically promote local findings.
+
+These are versioned triage rules, not declarations that every matching CVE is
+proven remote code execution. A CWE describes a weakness family; it does not by
+itself establish the exact result of exploiting a particular CVE. Stronger
+vendor, CNA, exploit, Vulnrichment, or approved analyst evidence can replace
+the heuristic classification.
 
 \section*{The evidence already exists, but it has limits}
 For services following the Continuous Monitoring Playbook, the
@@ -140,7 +183,7 @@ The practical line is straightforward:
 \end{itemize}
 
 \section*{Why reachability converges toward accessibility}
-The model makes two explicit triage presumptions.
+The model makes three explicit triage presumptions.
 
 First, a CVE whose indirect-trigger status is unknown is not automatically
 promoted across every component that ever handles internet-derived data. Doing
@@ -152,18 +195,26 @@ Second, a current $P_0$ assertion is trusted within its validated scope until
 contrary evidence or a material change revokes it. This reuses the assessment and
 ConMon work providers already perform.
 
+Third, an active \code{AV:L} finding is promoted only when a directly reachable,
+high-confidence entry point exists in the same verified execution boundary.
+Full impact alone and possible-only entry points do not cause automatic
+promotion. When the last qualifying entry point is resolved, loses direct
+exposure, or leaves the boundary, the chained promotion is withdrawn.
+
 The resulting operational IRV list therefore converges toward the directly
-internet-accessible surface, plus known indirect triggers that are not covered by
-current prevention evidence. Reachability and accessibility do not mean the same
-thing. They produce similar operational lists because tested prevention closes
-many downstream trigger paths, while the exceptional paths are promoted
-explicitly.
+internet-accessible surface, plus known indirect triggers that are not covered
+by current prevention evidence, plus boundary-scoped local findings promoted
+through high-confidence entry points. Reachability and accessibility do not mean
+the same thing. They produce similar operational lists because tested prevention
+closes many downstream trigger paths, while the exceptional content and chained
+paths are promoted explicitly.
 
 That is a conditional convergence, not a promise that downstream content is
 always safe. Its residual risks are equally explicit: missing upstream trigger
-metadata and incomplete or stale prevention evidence.
+or exploit-outcome metadata, an imperfect entry-point heuristic, an incorrect
+execution-boundary assignment, and incomplete or stale prevention evidence.
 
-\section*{Three examples}
+\section*{Four examples}
 \begin{itemize}[leftmargin=1.5em]
 \item \textbf{SQL construction behind an application tier.}
   Internet-derived values reach a private database. The validated DAST program
@@ -185,6 +236,16 @@ metadata and incomplete or stale prevention evidence.
   does not do the same thing because the request has already reached the
   component; application authentication instead informs exploitability or an
   attested mitigation.
+
+\item \textbf{A network entry point chained to a local kernel finding.}
+  A public web service has an active, directly reachable \code{AV:N} CVE. The
+  CVE has full vulnerable-system impact and maps to \code{CWE-97}, so the
+  combined-signal rule classifies it as a high-confidence entry point. An active
+  \code{AV:L} kernel finding exists in the same host/kernel execution boundary.
+  The kernel finding becomes IRV, keeps its \code{AV:L} vector, and records the
+  web-service CVE as the reason. Full impact without the corroborating execution
+  signal, an unexposed upstream finding, or a finding in another boundary does
+  not cause that automatic promotion.
 \end{itemize}
 
 \section*{What happens when a new trigger appears}
@@ -196,10 +257,12 @@ archetype that received attacker-controlled log content.
 
 That promotion is why trigger metadata belongs upstream. Research it once,
 publish it with provenance, and let every scanner and vulnerability-management
-platform reuse it. Agentic analysis can propose missing profiles, but it should
-cite sources, preserve unknowns, and require stronger review before concluding
-that no indirect trigger exists. An agent cannot recover a technical fact that
-no authoritative source disclosed.
+platform reuse it. Exploit-outcome and execution-context metadata should work
+the same way for chainable entry points. Agentic analysis can propose missing
+profiles, but it should cite sources, preserve unknowns and possible-only
+statuses, and require stronger review before concluding that no indirect
+trigger or execution outcome exists. An agent cannot recover a technical fact
+that no authoritative source disclosed.
 
 When new intelligence shows that an existing prevention assertion does not cover
 the trigger, $P_0$ is revoked and the affected findings are re-evaluated. The
@@ -208,8 +271,9 @@ control is not allowed to remain true merely because last month's scan was clean
 \section*{The optional future state is not today's requirement}
 A richer system could import or derive a deployment graph, record how content
 moves between components, attach transformations such as parameterized queries
-to each path, and bind tests to the deployed artifact. That would improve
-precision and make stronger NIRV claims portable between tools.
+to each path, represent local execution boundaries and exploit outcomes, and
+bind tests to the deployed artifact. That would improve precision and make
+stronger IRV and NIRV claims portable between tools.
 
 The industry does not yet have a broadly adopted way to combine those artifacts
 into an independently verifiable, vulnerability-specific reachability record
@@ -235,22 +299,20 @@ is fully mitigated.
   runtime evidence.
 \item Exceptional indirect triggers should be enriched once per CVE and reused
   across the fleet; today's scanners rarely provide that metadata.
+\item Active \code{AV:L} findings are promoted only through a directly reachable,
+  high-confidence entry point in the same verified execution boundary, with the
+  upstream CVE and reason preserved.
 \item Existing assessment, DAST, remediation, and retest evidence supports a
   scoped, revocable prevention assertion without requiring a complete data-flow
   graph.
 \item Under those declared presumptions, the operational IRV list converges
-  toward direct accessibility plus known uncovered indirect triggers.
+  toward direct accessibility plus known uncovered indirect triggers and
+  narrowly governed chained-access cases.
 \end{enumerate}
 
-The method is not exhaustive exploit-path proof. It is a scalable triage model
-that states exactly what it assumes, preserves the unknowns, and identifies the
-upstream metadata improvement that would make the result more precise.
-
-\smallskip
-\noindent\textcolor{rule}{\rule{\textwidth}{0.4pt}}
-\smallskip
-
-\noindent\small\emph{Read the
+This is a scalable triage model, not exhaustive exploit-path proof. It states
+its presumptions, preserves unknowns, and identifies the metadata needed for
+greater precision. \emph{Read the
 \href{https://stackarmor.github.io/rfc-fedramp-vdr/internet-reachability.pdf}{full
 technical paper}.}
 
