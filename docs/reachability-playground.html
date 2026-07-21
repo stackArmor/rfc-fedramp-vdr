@@ -291,7 +291,7 @@
       <h2><span class="gn">3</span> Other findings on this host</h2>
       <p class="lead">The chain branch looks at the <i>other</i> active findings sharing the evaluated finding&rsquo;s host boundary &mdash; automatically. This readout is derived, not entered.</p>
       <div class="entryread" id="entryRead"></div>
-      <p class="ehint">Each candidate must be directly reachable on its own before it can serve as an entry point, and its confidence is derived from its facts by a governed, versioned triage rule &mdash; not proof of RCE. Only a high-confidence one auto-promotes; the downstream CVSS vector never changes. <span style="font-family:var(--mono);font-size:10px">memo: E&#8320; over &#8497;(B(a))</span></p>
+      <p class="ehint">Each candidate must be directly reachable on its own before it can serve as an entry point, and its confidence is derived from its facts by a governed, versioned triage rule &mdash; not proof of RCE. Full CIA impact alone is possible-only; automatic promotion requires execution evidence, a strict execution CWE, or full impact corroborated by a qualifying conditional CWE. Only a high-confidence candidate auto-promotes, and the downstream CVSS vector never changes. <span style="font-family:var(--mono);font-size:10px">memo: E&#8320; over &#8497;(B(a))</span></p>
     </div>
 
   </div>
@@ -443,18 +443,19 @@ const TOGGLES = [
 
 /* ---- finding-shape library: the intrinsic CVE facts a finding carries ---- */
 const SHAPES = {
-  log4shell:  {label:'Deserialization / injection (Log4Shell-shape)', short:'Log4Shell-shape', av:'N', proto:'na',   impact:'C:H/I:H/A:H', cwe:'CWE-502', full:true,  rce:false},
+  log4shell:  {label:'Deserialization / injection (Log4Shell-shape)', short:'Log4Shell-shape', av:'N', proto:'na',   impact:'C:H/I:H/A:H', cwe:'CWE-502', full:true,  rce:true},
   h2flaw:     {label:'HTTP/2 protocol flaw',            short:'HTTP/2 flaw',   av:'N', proto:'h2',   impact:'C:H/I:H/A:H', cwe:'CWE-400', full:true,  rce:false},
   sqli:       {label:'SQL injection',                   short:'SQL injection', av:'N', proto:'pg',   impact:'C:H/I:L/A:N', cwe:'CWE-89',  full:false, rce:false},
   cmdi:       {label:'OS command injection',            short:'OS cmd inj',    av:'N', proto:'http', impact:'C:H/I:H/A:N', cwe:'CWE-78',  full:false, rce:false},
-  tmpl:       {label:'Template/expression injection',   short:'Template inj',  av:'N', proto:'http', impact:'C:H/I:L/A:N', cwe:'CWE-1336',full:false, rce:false},
-  takeover:   {label:'Full system takeover',            short:'full takeover', av:'N', proto:'http', impact:'C:H/I:H/A:H', cwe:'CWE-787', full:true,  rce:false},
+  tmpl:       {label:'Template/expression injection',   short:'Template inj',  av:'N', proto:'http', impact:'C:H/I:L/A:N', cwe:'CWE-1336',full:false, rce:false, execContext:'unknown'},
+  ssi:        {label:'Full-impact server-side include injection', short:'SSI + full CIA', av:'N', proto:'http', impact:'C:H/I:H/A:H', cwe:'CWE-97', full:true, rce:false, execContext:'server_runtime'},
+  takeover:   {label:'Full CIA impact (mechanism unknown)', short:'full CIA only', av:'N', proto:'http', impact:'C:H/I:H/A:H', cwe:'CWE-787', full:true,  rce:false},
   vendorrce:  {label:'Vendor-confirmed RCE',            short:'vendor RCE',    av:'N', proto:'http', impact:'C:H/I:H/A:H', cwe:'—',  full:true,  rce:true},
   infoleak:   {label:'Information leak',                 short:'info leak',     av:'N', proto:'http', impact:'C:H/I:N/A:N', cwe:'CWE-200', full:false, rce:false},
   localkernel:{label:'Local kernel / priv-esc flaw',    short:'local kernel',  av:'L', proto:'na',   impact:'C:H/I:H/A:H', cwe:'CWE-416', full:true,  rce:false},
   localparser:{label:'Local parser flaw',               short:'local parser',  av:'L', proto:'na',   impact:'C:H/I:N/A:N', cwe:'CWE-611', full:false, rce:false},
 };
-const SHAPE_ORDER = ['log4shell','h2flaw','sqli','cmdi','tmpl','takeover','vendorrce','infoleak','localkernel','localparser'];
+const SHAPE_ORDER = ['log4shell','h2flaw','sqli','cmdi','tmpl','ssi','takeover','vendorrce','infoleak','localkernel','localparser'];
 const NODE_DEFAULT_SHAPE = {
   lb:'takeover', iap:'takeover', api:'takeover', kernel:'localkernel',
   admin:'cmdi', queue:'localparser', db:'sqli', log:'log4shell', worker:'localparser',
@@ -463,18 +464,28 @@ const NODE_DEFAULT_SHAPE = {
 /* strict execution-semantics CWE seeds -> high; review-list seeds -> possible */
 const EXEC_SEED = new Set(['CWE-78','CWE-94','CWE-95','CWE-96','CWE-98','CWE-553','CWE-624','CWE-917']);
 const POSS_SEED = new Set(['CWE-97','CWE-1336','CWE-494','CWE-829','CWE-470']);
+const FULL_PAIR = new Set(['CWE-97','CWE-494']);
+const CONTEXT_PAIR = new Set(['CWE-1336','CWE-829']);
 
 /* class an upstream finding purely from its facts (independent of reachability) */
 function factClass(sh){
   if (sh.rce)               return {level:'high',     rule:'vendor-confirmed / reproducible RCE evidence', tag:'vendor RCE'};
-  if (sh.full)              return {level:'high',     rule:'full-impact (C:H/I:H/A:H)', tag:'full impact'};
   if (EXEC_SEED.has(sh.cwe))return {level:'high',     rule:'execution-class weakness ('+sh.cwe+')', tag:sh.cwe};
+  if (sh.full && FULL_PAIR.has(sh.cwe))
+    return {level:'high', rule:'full CIA impact + conditional weakness ('+sh.cwe+')', tag:'full CIA + '+sh.cwe};
+  if (sh.full && CONTEXT_PAIR.has(sh.cwe) && sh.execContext==='server_runtime')
+    return {level:'high', rule:'full CIA impact + '+sh.cwe+' + server/runtime execution context', tag:'corroborated '+sh.cwe};
+  if (sh.full && CONTEXT_PAIR.has(sh.cwe) && sh.execContext==='client')
+    return {level:'none', rule:'confirmed client-side execution context does not establish host-local execution', tag:''};
+  if (sh.full)              return {level:'possible', rule:'full CIA impact without a corroborating execution signal', tag:'full CIA review'};
   if (POSS_SEED.has(sh.cwe))return {level:'possible', rule:'review-list weakness ('+sh.cwe+')', tag:sh.cwe};
   return {level:'none', rule:null, tag:''};
 }
 function noneReason(sh){
+  const fc=factClass(sh);
+  if (fc.level==='none' && fc.rule) return fc.rule;
   if (sh===SHAPES.infoleak) return 'an information leak can&rsquo;t hand an attacker code execution on this host';
-  return 'a '+sh.label.toLowerCase()+' that isn&rsquo;t full-impact and isn&rsquo;t an execution-class weakness can&rsquo;t establish code execution here';
+  return 'a '+sh.label.toLowerCase()+' without execution evidence, a strict execution CWE, or a qualifying combined signal can&rsquo;t establish code execution here';
 }
 
 const PRESETS = [
@@ -484,8 +495,8 @@ const PRESETS = [
   {n:'P2', label:'HTTP/2 behind termination',
    s:{findings:{api:{shape:'h2flaw',av:'N',proto:'h2',j:'ruled_out'}}, evalNode:'api',
       lbTermH2:true,iapSole:false,paramQueries:false,schemaValid:false}},
-  {n:'P3', label:'Kernel flaw behind public RCE',
-   s:{findings:{api:{shape:'takeover',av:'N',proto:'http',j:'ruled_out'}, kernel:{shape:'localkernel',av:'L',proto:'na',j:'unknown'}}, evalNode:'kernel',
+  {n:'P3', label:'Kernel flaw behind corroborated entry point',
+   s:{findings:{api:{shape:'ssi',av:'N',proto:'http',j:'ruled_out'}, kernel:{shape:'localkernel',av:'L',proto:'na',j:'unknown'}}, evalNode:'kernel',
       lbTermH2:false,iapSole:false,paramQueries:false,schemaValid:false}},
   {n:'P4', label:'Database behind parameterized queries',
    s:{findings:{db:{shape:'sqli',av:'N',proto:'pg',j:'confirmed'}}, evalNode:'db',
@@ -635,7 +646,7 @@ function sentence(e){
   if (e.indCut==='api_queue') return 'Schema validation on the API&#8594;queue path restricts the relayed message to the enforced shape, and that control class is currently evidenced &mdash; the payload class is blocked before the '+nm+' ever processes it.';
   if (e.av==='L' && !e.C0 && e.coEntry==='possible'){
     const b=e.entry;
-    return 'This flaw needs local access. The co-resident '+b.sh.label.toLowerCase()+' on '+NODES[b.node].label+' classifies as a <b>review-list weakness</b> ('+b.sh.cwe+') &mdash; possible, not high-confidence &mdash; so it is held for chain review rather than promoted. A high-confidence, directly reachable entry point is required to auto-promote.';
+    return 'This flaw needs local access. The co-resident '+b.sh.label.toLowerCase()+' on '+NODES[b.node].label+' classifies as <b>possible</b> ('+b.rule+') rather than high-confidence, so it is held for chain review instead of promoting this finding. A high-confidence, directly reachable entry point is required to auto-promote.';
   }
   if (e.av==='L' && !e.C0){   /* local flaw, no promotion */
     if (!e.scan.list.length) return 'This flaw needs local access, but no other active finding shares its host boundary right now &mdash; so it has nothing to chain from. Being co-resident is not, by itself, a promotion.';
@@ -678,7 +689,7 @@ function branchesHtml(e){
   let cCls='no', cMark='&#10007;', cWhy;
   const b=e.entry;
   if (e.G0){ cCls='yes'; cMark='&#10003;'; cWhy='The co-resident <b>'+b.sh.label+'</b> on '+NODES[b.node].label+' is directly reachable and classifies as a high-confidence entry point ('+b.rule+'), supplying local code execution.'; }
-  else if (e.av==='L' && e.coEntry==='possible'){ cCls='rev'; cMark='&#9888;'; cWhy='The co-resident <b>'+b.sh.label+'</b> classifies as a review-list weakness ('+b.sh.cwe+') &mdash; possible, not high-confidence; held for review, no auto-promotion.'; }
+  else if (e.av==='L' && e.coEntry==='possible'){ cCls='rev'; cMark='&#9888;'; cWhy='The co-resident <b>'+b.sh.label+'</b> classifies as possible ('+b.rule+'), not high-confidence; held for review, no auto-promotion.'; }
   else if (e.av==='L' && !e.C0){
     if (!e.scan.list.length) cWhy='No other active finding shares this host boundary &mdash; nothing to chain from.';
     else if (b && !b.reachable && b.factLevel!=='none') cWhy='A co-resident '+b.sh.label+' would qualify on its facts, but it is not itself directly reachable in this deployment &mdash; an entry point must be reachable to promote anything.';

@@ -253,12 +253,14 @@ An upstream CVE can be useful as a chainable entry point only when its finding
 is directly reachable and exploitation plausibly establishes a local execution
 context. The preferred input is authoritative technical-impact or exploit
 evidence. Where that metadata is absent, the operational profile below uses a
-governed, versioned high-recall classifier over CVSS attack vector,
-vulnerable-system impact, and a narrow CWE seed set. The record must retain the
-status (high confidence, possible, or none), exact reason codes, source facts,
-policy version, and any analyst override. It is a triage classification, not a
-change to the CVSS vector or an assertion that every matching CVE is proven
-remote code execution.
+governed, versioned classifier over CVSS attack vector, vulnerable-system
+impact, and narrow CWE seed sets. The record must retain the status (high
+confidence, possible, or none), exact reason codes, source facts, policy
+version, and any analyst override. Where a rule depends on where code executes,
+it must also retain a governed execution context (server/runtime, client, or
+unknown) and its provenance. This is a triage classification, not a change to
+the CVSS vector or an assertion that every matching CVE is proven remote code
+execution.
 
 \subsection{Deployment applicability and prevention evidence}
 The current profile needs governed assertions about which component archetypes
@@ -440,30 +442,47 @@ can promote $J(v)$ once and apply the result across every affected finding.
 The preferred high-confidence reason is authoritative or reproducible evidence
 that exploitation of $u$ supplies local code or command execution. When that
 evidence is absent, the current operational policy requires \code{AV:N} and
-automatically assigns high confidence when either (1) CVSS v3 reports
-\code{C:H/I:H/A:H}, or CVSS v4 reports the vulnerable-system equivalent
-\code{VC:H/VI:H/VA:H}; or (2) the CVE maps to one of the strict execution
-semantics seeds \code{CWE-78}, \code{CWE-94}, \code{CWE-95}, \code{CWE-96},
-\code{CWE-98}, \code{CWE-553}, \code{CWE-624}, or \code{CWE-917}. The reason
-record distinguishes the full-impact rule from the matched CWE.\cite{cwe-catalog}
+automatically assigns high confidence when the CVE maps to one of the strict
+execution-semantics seeds \code{CWE-78}, \code{CWE-94}, \code{CWE-95},
+\code{CWE-96}, \code{CWE-98}, \code{CWE-553}, \code{CWE-624}, or
+\code{CWE-917}.\cite{cwe-catalog}
 
-The full-impact rule is a deliberate high-recall presumption, not proof of
-remote code execution; full confidentiality, integrity, and availability
-impact can arise by another mechanism. A second, non-promoting \emph{possible}
-set routes \code{AV:N} findings mapped to \code{CWE-97}, \code{CWE-1336},
-\code{CWE-494}, \code{CWE-829}, or \code{CWE-470} for review because execution
-depends on server-side use or other CVE-specific conditions. Broad command
-languages, argument injection, dangerous upload, deserialization, exposed
-dangerous functions, and memory-corruption families likewise require explicit
-CVE-level execution evidence; their CWE alone does not establish a chainable
-entry point. MITRE itself cautions that code execution is a consequence of many
-root-cause weaknesses and is not, by itself, a reason to map a CVE to
-\code{CWE-94}.\cite{cwe-catalog}
+Full vulnerable-system impact is corroborating evidence, not a standalone
+high-confidence reason. Let \emph{full impact} mean CVSS v3
+\code{C:H/I:H/A:H} or the CVSS v4 vulnerable-system equivalent
+\code{VC:H/VI:H/VA:H}. In addition to the strict set, the policy assigns high
+confidence when \code{AV:N} and full impact occur together with either
+\code{CWE-97} (server-side include injection) or \code{CWE-494} (download and
+execution of code without an integrity check). It also permits the combination
+with \code{CWE-1336} or \code{CWE-829} only when governed evidence establishes
+that the template directives or included functionality execute in the affected
+server/runtime context rather than in a client. The reason record preserves
+both signals and, where applicable, the execution-context evidence.
 
-Both seed sets are governed routing policy, not semantic definitions of remote
-code execution. They must be versioned, auditable, and replaceable by stronger
-CNA, vendor, Vulnrichment, exploit, or approved analyst evidence. A possible
-entry point remains visible for filtering and review but does not set $G_0=1$.
+Without those combinations, full impact by itself and an \code{AV:N} mapping to
+\code{CWE-97}, \code{CWE-1336}, \code{CWE-494}, \code{CWE-829}, or
+\code{CWE-470} each produce a non-promoting \emph{possible} status for review.
+Full impact plus \code{CWE-470} remains possible because unsafe reflection can
+select unexpected existing code without necessarily supplying arbitrary local
+execution. Full impact plus \code{CWE-1336} or \code{CWE-829} also remains
+possible while execution context is unknown; a confirmed client-side context
+does not qualify as a server/runtime entry point. Full confidentiality,
+integrity, and availability impact can arise through authentication bypass,
+complete data compromise, destructive denial of service, or another mechanism
+that supplies no local execution prerequisite.
+
+Broad command languages, argument injection, dangerous upload,
+deserialization, exposed dangerous functions, and memory-corruption families
+likewise require explicit CVE-level execution evidence; their CWE alone does
+not establish a chainable entry point. MITRE itself cautions that code
+execution is a consequence of many root-cause weaknesses and is not, by itself,
+a reason to map a CVE to \code{CWE-94}.\cite{cwe-catalog}
+
+The seed sets, combination rules, and execution-context determinations are
+governed routing policy, not semantic definitions of remote code execution.
+They must be versioned, auditable, and replaceable by stronger CNA, vendor,
+Vulnrichment, exploit, or approved analyst evidence. A possible entry point
+remains visible for filtering and review but does not set $G_0=1$.
 
 \paragraph{CWE-seeded mandatory review.}
 A CWE is a routing signal, not proof of $J(v)$, but selected CWE mappings should
@@ -988,15 +1007,16 @@ point exists.
 
 \item \textbf{Network entry point chained to a local kernel finding.}
 The public web service has an active CVE whose finding satisfies $D(u,x)=1$.
-Its vector is \code{AV:N/C:H/I:H/A:H}, so the governed full-impact rule assigns
-$E_0(u)=\mathrm{high}$ and retains that exact reason. The same host/kernel
-boundary has an active \code{AV:L} kernel finding. Equation~\ref{eq:chain}
-sets $G_0(v,a)=1$, making the kernel finding IRV without changing its
-\code{AV:L} vector. The record identifies the upstream CVE that caused the
-promotion. A possible-only entry point, an unexposed \code{AV:N} package, a
-resolved upstream finding, or a finding in a different runtime boundary does
-not produce the automatic promotion. Removal of the last qualifying upstream
-finding triggers recomputation.
+Its vector is \code{AV:N/C:H/I:H/A:H} and it maps to \code{CWE-97}, so the
+governed combined-signal rule assigns $E_0(u)=\mathrm{high}$ and retains both
+facts as its reason. The same host/kernel boundary has an active \code{AV:L}
+kernel finding. Equation~\ref{eq:chain} sets $G_0(v,a)=1$, making the kernel
+finding IRV without changing its \code{AV:L} vector. The record identifies the
+upstream CVE that caused the promotion. The same full-impact vector without a
+corroborating execution signal is possible-only. A possible-only entry point,
+an unexposed \code{AV:N} package, a resolved upstream finding, or a finding in a
+different runtime boundary does not produce the automatic promotion. Removal
+of the last qualifying upstream finding triggers recomputation.
 
 \item \textbf{SSH CVE on a public web host.}
 The host exposes HTTPS publicly, but SSH is reachable only through a path that
@@ -1081,12 +1101,15 @@ remain outside $R_{\mathrm{operational}}$. The method trades exhaustive recall
 for operational scale and makes that trade visible through the \code{unknown}
 state. Its second limitation is that $P_0$ is only as reliable as the validated
 scope, currency, coverage, remediation, and change-invalidation discipline of
-the assessment and ConMon program. Its third is the deliberately high-recall
-chain classifier: neither full vulnerable-system H/H/H impact nor a CWE seed
-proves that an upstream CVE supplies compatible local execution, and $G_0$
-presumes compatibility for active \code{AV:L} findings inside the verified
-boundary. This can over-classify until stronger exploit-outcome and local
-precondition metadata populate the full-information $Q\cap X_Q$ comparison.
+the assessment and ConMon program. Its third is the chain classifier: pairing
+full vulnerable-system H/H/H impact with a corroborating CWE reduces the noise
+of either signal alone, but the conjunction still does not prove that an
+upstream CVE supplies compatible local execution. Server/runtime context can
+also be absent or wrong, and $G_0$ presumes compatibility for active
+\code{AV:L} findings inside the verified boundary. This can over-classify until
+stronger exploit-outcome and local-precondition metadata populate the
+full-information $Q\cap X_Q$ comparison; conversely, requiring corroboration
+can miss real execution reached through another root-cause CWE.
 
 The claim that undocumented indirect-trigger vulnerabilities are exceptional
 should be measured rather than asserted. A reference implementation should be
@@ -1099,7 +1122,8 @@ should report:
 \item false-negative and false-positive rates for indirect-trigger promotion;
 \item precision and recall of high-confidence and possible entry-point status;
 \item false-positive and false-negative rates for boundary-scoped $G_0$
-  promotion, broken out by full-impact, CWE, and evidence-confirmed reasons;
+  promotion, broken out by strict-CWE, combined-signal, execution-context, and
+  evidence-confirmed reasons;
 \item the proportion of CVEs left unknown;
 \item agreement across analysts, agents, model versions, and repeated runs;
 \item provenance coverage and the authority of cited sources;
