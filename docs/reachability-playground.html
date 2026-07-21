@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payload Path Explorer — FedRAMP Internet Reachability</title>
+<style>
+  :root{
+    --bg:#0E1116; --panel:#151A21; --panel2:#1B222C; --line:#2A313C;
+    --ink:#E6EAF0; --muted:#8B95A5; --faint:#5C6675;
+    --accent:#D9A441; --accent-dim:#8a6a2e;
+    --crit:#C0392B; --high:#E67E22; --med:#F1C40F; --low:#27AE60;
+    --info:#5B87B7; --chain:#B07CE8;
+    --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --serif:'Iowan Old Style',Palatino,'Palatino Linotype',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+  button{font-family:inherit}
+
+  header{padding:18px 24px 12px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+  header h1{font-size:20px;font-weight:650;margin-top:3px}
+  header p.sub{color:var(--muted);margin-top:2px;max-width:82ch;font-size:13px}
+  .presets{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+  .preset{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:99px;
+    padding:4px 11px;font-size:12px;cursor:pointer}
+  .preset:hover{border-color:var(--accent-dim)}
+  .preset.cur{border-color:var(--accent);background:rgba(217,164,65,.12)}
+  .preset .pn{color:var(--accent);font-family:var(--mono);font-size:10px;margin-right:4px}
+
+  .layout{display:grid;grid-template-columns:370px minmax(0,1fr);align-items:start}
+  @media(max-width:1080px){.layout{grid-template-columns:1fr}}
+
+  /* ---------- left: controls ---------- */
+  .controls{border-right:1px solid var(--line);padding:18px 20px 26px;min-width:0}
+  @media(max-width:1080px){.controls{border-right:none;border-bottom:1px solid var(--line)}}
+  .grp{padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+  .grp:last-child{border-bottom:none;margin-bottom:0}
+  .grp>h2{font-size:13.5px;font-weight:650;display:flex;align-items:baseline;gap:8px}
+  .grp>h2 .gn{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.06em}
+  .grp>p.lead{color:var(--muted);font-size:12px;margin-top:2px;margin-bottom:6px}
+
+  .fld{font-size:12px;color:var(--muted);display:block;margin-bottom:5px;margin-top:14px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .seg button{flex:1;background:var(--panel);border:none;color:var(--muted);padding:8px 4px;
+    font-size:12.5px;cursor:pointer;font-family:var(--mono);white-space:nowrap}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--accent);color:#14100a;font-weight:700}
+  .seg.dis{opacity:.4;pointer-events:none}
+  select{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:12.5px;
+    padding:8px 9px;border-radius:6px;width:100%}
+  select:disabled{opacity:.4}
+  select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+  .switch{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:9px 0;font-size:13px}
+  .switch input{appearance:none;width:34px;height:19px;border-radius:99px;background:var(--line);
+    position:relative;cursor:pointer;flex:none;margin-top:1px;transition:background .15s}
+  .switch input:checked{background:var(--accent)}
+  .switch input::after{content:'';position:absolute;top:2.5px;left:3px;width:14px;height:14px;
+    border-radius:50%;background:var(--ink);transition:left .15s}
+  .switch input:checked::after{left:17px;background:#14100a}
+  @media(prefers-reduced-motion:reduce){.switch input,.switch input::after{transition:none}}
+  .switch .hint{color:var(--faint);font-size:11.5px;display:block;line-height:1.45;margin-top:2px}
+  .ehint{color:var(--faint);font-size:11.5px;line-height:1.45;margin-top:10px}
+
+  .evalhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted)}
+  .evalhead .en{font-family:var(--mono);color:var(--accent);font-weight:600}
+  .evalhead .rm{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:5px;
+    padding:3px 9px;font-size:11px;cursor:pointer;margin-left:auto}
+  .evalhead .rm:hover{border-color:var(--crit);color:#f39288}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:5px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--muted)}
+
+  .entryread{margin-top:4px}
+  .entryread .ei{padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:var(--panel);margin-top:7px}
+  .entryread .ei.high{border-color:rgba(192,57,43,.5);background:rgba(192,57,43,.07)}
+  .entryread .ei.possible{border-color:rgba(241,196,15,.45);background:rgba(241,196,15,.06)}
+  .entryread .ename{font-family:var(--mono);font-size:11px;color:var(--ink)}
+  .entryread .ecls{display:block;margin-top:3px;font-size:11.5px;line-height:1.45}
+  .entryread .ecls.high{color:#f39288} .entryread .ecls.possible{color:#f7e07a} .entryread .ecls.none{color:var(--muted)}
+  .entryread .none0{color:var(--faint);font-size:12px;padding:8px 0}
+
+  .tipicon{cursor:help;position:relative;display:inline-flex;align-items:center;justify-content:center;
+    width:15px;height:15px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);
+    font-size:10px;font-family:var(--mono);vertical-align:1px}
+  .tipicon:hover::after,.tipicon:focus::after{
+    content:attr(data-tip);position:absolute;left:0;transform:none;bottom:calc(100% + 7px);
+    z-index:50;background:#242c37;color:var(--ink);border:1px solid var(--line);border-radius:7px;
+    padding:9px 11px;width:280px;max-width:74vw;font-size:12px;line-height:1.45;font-family:var(--sans);
+    white-space:normal;font-weight:400;text-align:left;box-shadow:0 6px 22px rgba(0,0,0,.5)}
+
+  /* ---------- right column: diagram then verdict ---------- */
+  .rightcol{min-width:0}
+  .stage{padding:16px 22px 12px;border-bottom:1px solid var(--line)}
+  .stagehint{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .stagehint b{color:var(--ink);font-weight:600}
+  .diagramwrap{overflow-x:auto}
+  /* top/bottom padding gives headroom for out-of-box elements (finding chip, host label chip)
+     so overflow-y (forced to auto by overflow-x:auto) can't clip them */
+  .diagram{position:relative;width:100%;min-width:660px;padding:20px 4px 26px}
+  .diagram svg{position:absolute;inset:0;z-index:1;overflow:visible;pointer-events:none}
+
+  .cols{display:grid;grid-template-columns:0.8fr 1fr 1.5fr 1.1fr 0.85fr;gap:14px;
+    min-height:400px;position:relative;z-index:2}
+  .col{display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-width:0}
+  .col-internet{justify-content:center}
+  .col-worker{justify-content:flex-start;padding-top:4px}
+
+  .edge{stroke:var(--line);stroke-width:2;fill:none;transition:stroke .2s,opacity .2s}
+  .edge.inactive{stroke:var(--line);opacity:.4}
+  .edge.flow{stroke:var(--low);stroke-width:2.6;stroke-dasharray:7 6;animation:dash 1s linear infinite}
+  .edge.cut{stroke:var(--crit);stroke-width:2.6;opacity:.92}
+  .edge.unknown{stroke:var(--med);stroke-width:2.4;stroke-dasharray:3 6;opacity:.85}
+  .edge.chainlink{stroke:var(--chain);stroke-width:3;stroke-dasharray:2 5;stroke-linecap:round;
+    animation:dash 0.9s linear infinite;opacity:.95}
+  .edge.chainlink.review{stroke:var(--med)}
+  @keyframes dash{to{stroke-dashoffset:-26}}
+  @media(prefers-reduced-motion:reduce){.edge.flow,.edge.chainlink{animation:none}}
+  .cutdot{fill:var(--bg);stroke:var(--crit);stroke-width:1.5}
+  .cutx{fill:#f39288;font-size:11px;font-family:var(--mono)}
+
+  .node{position:relative;border:1px solid var(--line);background:var(--panel2);border-radius:9px;
+    padding:7px 9px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;
+    min-height:44px;transition:border-color .15s,box-shadow .15s}
+  .node .nl{font-size:12px;font-weight:600;color:var(--ink);line-height:1.15}
+  .node .ns{font-size:9px;color:var(--faint);margin-top:2px;font-family:var(--mono)}
+  .node .statetag{display:block;margin-top:3px;font-size:8.5px;font-family:var(--mono);color:#8fe0b0;line-height:1.2}
+  .node .statetag:empty{display:none}
+  .node .fchip{margin-top:4px;font-size:8.5px;font-family:var(--mono);color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 3px 1px 5px;
+    display:flex;align-items:center;justify-content:space-between;gap:3px;line-height:1.3}
+  .node .fchip:empty{display:none}
+  .node .fchip .frm{background:none;border:none;color:var(--faint);cursor:pointer;font-size:12px;
+    padding:0 2px;line-height:1}
+  .node .fchip .frm:hover{color:#f39288}
+  .node.hasfinding{border-color:var(--accent-dim)}
+  .node:hover{border-color:var(--accent)}
+  .node:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .node.evaluating{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .node.evaluating .fchip{color:var(--accent);border-color:var(--accent-dim);background:rgba(217,164,65,.1)}
+  .node.evaluating::after{content:'evaluating';position:absolute;top:-8px;right:8px;font-size:8.5px;
+    font-family:var(--mono);letter-spacing:.06em;background:var(--accent);color:#14100a;
+    padding:0 5px;border-radius:99px;font-weight:700;z-index:4}
+  .node.evaluating.irv{border-color:var(--crit);animation:pulseR 1.7s ease-in-out infinite}
+  .node.evaluating.nirv{border-color:var(--low);box-shadow:0 0 0 1px var(--low)}
+  .node.evaluating.unknownv{border-color:var(--med);box-shadow:0 0 0 1px var(--med)}
+  .node.entrypoint{border-color:var(--crit);box-shadow:0 0 0 2px var(--crit),0 0 16px rgba(192,57,43,.5)}
+  .node.entrypoint.poss{border-color:var(--med);box-shadow:0 0 0 2px var(--med)}
+  .node.source{background:var(--panel);cursor:default;border-style:dashed;align-items:center;text-align:center}
+  .node.source .nl{color:var(--muted)}
+  @keyframes pulseR{0%,100%{box-shadow:0 0 0 2px var(--crit),0 0 5px rgba(192,57,43,.3)}
+    50%{box-shadow:0 0 0 2px var(--crit),0 0 22px rgba(192,57,43,.7)}}
+  @media(prefers-reduced-motion:reduce){.node.evaluating.irv{animation:none;box-shadow:0 0 0 2px var(--crit)}}
+
+  .apitag{display:none;font-size:9px;font-family:var(--mono);margin-top:4px;color:#f39288;font-weight:700}
+  .node.entrypoint .apitag{display:block}
+  .node.entrypoint.poss .apitag{color:#f7e07a}
+
+  /* host box holds API + kernel; label sits on a solid chip so the dashed border never strikes through it */
+  .hostbox{border:1px dashed var(--faint);border-radius:12px;background:rgba(139,149,165,.05);
+    padding:20px 11px 11px;position:relative;display:flex;flex-direction:column}
+  .hostlab{position:absolute;top:-10px;left:12px;background:var(--panel);border:1px solid var(--line);
+    padding:2px 8px;border-radius:5px;font-size:9px;font-family:var(--mono);letter-spacing:.04em;color:var(--muted)}
+  .chainzone{height:30px;display:flex;align-items:center;justify-content:center;text-align:center;margin:2px 0}
+  .chainlabel{font-size:9px;font-family:var(--mono);color:var(--faint);opacity:0;transition:opacity .2s;line-height:1.3}
+  .chainlabel.show{opacity:1}
+  .chainlabel.fire{color:#d9b3f5}
+  .chainlabel.review{color:#f7e07a}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:18px;height:0;border-top-width:3px;border-top-style:solid;display:inline-block}
+  .lg-flow{border-color:var(--low)} .lg-cut{border-color:var(--crit)}
+  .lg-chain{border-color:var(--chain);border-top-style:dashed}
+  .lg-unk{border-color:var(--med);border-top-style:dashed} .lg-na{border-color:var(--line)}
+
+  .instate{margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.7}
+  .instate .il{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--faint);
+    text-transform:uppercase;display:block;margin-bottom:3px}
+
+  /* ---------- verdict ---------- */
+  .verdict{padding:14px 22px 20px}
+  .vcard{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+  .vcard .vhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;
+    border-bottom:1px solid var(--line);background:var(--panel2)}
+  .vcard .vhead .lab{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--faint);
+    text-transform:uppercase;width:100%}
+  .vbadge{font-family:var(--mono);font-weight:700;padding:4px 12px;border-radius:6px;font-size:13px}
+  .v-on{background:rgba(192,57,43,.2);color:#f39288;border:1px solid var(--crit)}
+  .v-off{background:rgba(39,174,96,.16);color:#8fe0b0;border:1px solid var(--low)}
+  .statusbadge{font-family:var(--mono);font-size:12px;padding:3px 10px;border-radius:6px;
+    border:1px solid var(--line);color:var(--muted)}
+  .statusbadge.irv{border-color:rgba(192,57,43,.5);color:#f39288}
+  .statusbadge.nirv{border-color:rgba(39,174,96,.45);color:#8fe0b0}
+  .statusbadge.unknown{border-color:rgba(241,196,15,.45);color:#f7e07a}
+  .reportwrap{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--faint)}
+
+  .plainbox{font-family:var(--serif);font-size:14.5px;line-height:1.55;color:#e8ddc4;
+    background:rgba(217,164,65,.07);border-left:3px solid var(--accent);
+    padding:12px 16px;margin:14px 18px}
+  .recompute{margin:0 18px;font-size:12.5px;color:#f7e07a;background:rgba(241,196,15,.08);
+    border:1px solid rgba(241,196,15,.35);border-radius:7px;padding:10px 14px;display:none;line-height:1.5}
+  .recompute.show{display:block}
+  .vbody{padding:2px 18px 16px}
+
+  .disj{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .disj:last-child{border-bottom:none}
+  .disj .mark{font-family:var(--mono);font-weight:700;width:18px;flex:none;text-align:center;font-size:14px}
+  .disj.yes .mark{color:var(--low)} .disj.no .mark{color:var(--faint)} .disj.rev .mark{color:var(--med)}
+  .disj.yes .dt{color:var(--ink)} .disj.no .dt{color:var(--muted)} .disj.rev .dt{color:#f7e07a}
+  .disj .dd{font-size:11.5px;color:var(--faint);display:block;line-height:1.45;margin-top:1px}
+  .disj .sym{font-family:var(--mono);font-size:10px;color:var(--faint)}
+
+  .symfoot{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin:10px 18px 0;line-height:1.7}
+  .symfoot b{color:var(--muted);font-weight:600}
+
+  details.math{border:1px solid var(--line);border-radius:8px;margin:14px 18px 4px;background:var(--bg)}
+  details.math summary{cursor:pointer;padding:9px 13px;font-size:12.5px;color:var(--muted)}
+  details.math[open] summary{border-bottom:1px solid var(--line);color:var(--ink)}
+  details.math .inner{padding:12px 15px}
+  .eq{font-family:var(--mono);font-size:12.5px;line-height:2.05;overflow-x:auto;white-space:nowrap}
+  .eq .lbl{display:inline-block;min-width:70px;color:var(--muted)}
+  .eq .res{color:var(--ink);font-weight:700}
+  .eq .on1{color:#8fe0b0} .eq .off0{color:var(--faint)}
+
+  footer{border-top:1px solid var(--line);padding:14px 24px 26px;color:var(--faint);font-size:11.5px;max-width:104ch}
+  footer b{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">FedRAMP VDR/VER &middot; Internet-reachability method</div>
+  <h1>Payload Path Explorer</h1>
+  <p class="sub">A scenario is a <b>set of findings</b> living on real components. Place findings, pick one to evaluate, and the diagram shows where its trigger can &mdash; and can&rsquo;t &mdash; arrive. A finding is internet-reachable if <b>any</b> of three branches fires: a direct network path, a confirmed second-hand trigger, or a chain off <i>another</i> reachable finding sharing its host.</p>
+  <div class="presets" id="presets"></div>
+</header>
+
+<div class="layout">
+  <!-- ============================ CONTROLS ============================ -->
+  <div class="controls">
+
+    <div class="grp">
+      <h2><span class="gn">1</span> The findings</h2>
+      <p class="lead">Each component can hold one finding. Click a box to add or select one; the gold-ringed box is the one being evaluated now.</p>
+
+      <label class="fld" for="placeSel">Add or select a finding on</label>
+      <select id="placeSel"></select>
+      <div class="evalhead" id="evalHead"></div>
+
+      <label class="fld">Kind of flaw (shape)
+        <span class="tipicon" tabindex="0" data-tip="The CVE&rsquo;s intrinsic facts — attack vector, protocol, impact triple, and weakness type. These are what a governed rule reads to decide whether this finding could serve as a chain entry point for a co-resident local flaw.">?</span></label>
+      <select id="shapeSel"></select>
+      <div class="chips" id="shapeChips"></div>
+
+      <label class="fld">Attack vector
+        <span class="tipicon" tabindex="0" data-tip="AV:N means the flaw can be triggered over a network path — the only vector that can fire the direct branch. AV:L (local) can never be reached directly, but may still ride in second-hand or be chained off a co-resident entry point.">?</span></label>
+      <div class="seg" id="avSeg">
+        <button data-av="N">AV:N &mdash; network</button><button data-av="L">AV:L &mdash; local</button>
+      </div>
+
+      <label class="fld" id="protoLbl">Protocol the trigger needs</label>
+      <select id="protoSel">
+        <option value="h2">HTTP/2 &mdash; needs h2 end-to-end</option>
+        <option value="http">HTTP/1.1</option>
+        <option value="pg">PostgreSQL wire</option>
+        <option value="ssh">SSH</option>
+        <option value="na">not a network trigger</option>
+      </select>
+
+      <label class="fld">Confirmed to work second-hand?
+        <span class="tipicon" tabindex="0" data-tip="Decided once per CVE: does the trigger still fire when it arrives inside a relayed string, file, message, record, or log entry — with the attacker no longer the connection peer? Unknown is treated as &lsquo;no&rsquo; by presumption, not proof. This is the memo&rsquo;s J(v).">?</span></label>
+      <select id="jSel">
+        <option value="unknown">Unknown &mdash; not reviewed (presumed no)</option>
+        <option value="confirmed">Confirmed &mdash; fires from relayed content</option>
+        <option value="ruled_out">Ruled out &mdash; reviewed, needs a live peer</option>
+      </select>
+    </div>
+
+    <div class="grp">
+      <h2><span class="gn">2</span> The environment</h2>
+      <p class="lead">Standing controls on the paths between components. Each one can cut a route the payload would otherwise take.</p>
+      <div id="switches"></div>
+    </div>
+
+    <div class="grp">
+      <h2><span class="gn">3</span> Other findings on this host</h2>
+      <p class="lead">The chain branch looks at the <i>other</i> active findings sharing the evaluated finding&rsquo;s host boundary &mdash; automatically. This readout is derived, not entered.</p>
+      <div class="entryread" id="entryRead"></div>
+      <p class="ehint">Each candidate must be directly reachable on its own before it can serve as an entry point, and its confidence is derived from its facts by a governed, versioned triage rule &mdash; not proof of RCE. Only a high-confidence one auto-promotes; the downstream CVSS vector never changes. <span style="font-family:var(--mono);font-size:10px">memo: E&#8320; over &#8497;(B(a))</span></p>
+    </div>
+
+  </div>
+
+  <!-- ============================ DIAGRAM + VERDICT ============================ -->
+  <div class="rightcol">
+    <div class="stage">
+      <p class="stagehint">Read-only view. Boxes with a finding show a chip; the <b>gold-ringed</b> box is the one being evaluated. Green edges carry the payload, red marks where it&rsquo;s cut, and the purple hop is a chained-execution promotion off another finding.</p>
+      <div class="diagramwrap">
+        <div class="diagram" id="diagram">
+          <svg id="edges" aria-hidden="true"></svg>
+          <div class="cols" id="cols"></div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="lg-flow"></i> payload reaches</span>
+        <span><i class="lg-chain"></i> chained execution</span>
+        <span><i class="lg-cut"></i> blocked here</span>
+        <span><i class="lg-unk"></i> unreviewed</span>
+        <span><i class="lg-na"></i> path doesn&rsquo;t apply</span>
+      </div>
+      <div class="instate"><span class="il">Active in this scenario</span><span id="toggleSummary"></span></div>
+    </div>
+
+    <div class="verdict">
+      <div class="vcard">
+        <div class="vhead">
+          <span class="lab">Verdict &mdash; updates live</span>
+          <span class="statusbadge" id="statusBadge">&mdash;</span>
+          <span style="color:var(--faint);font-size:12px">internal status</span>
+          <span class="reportwrap">
+            Reported to FedRAMP
+            <span class="vbadge" id="reportBadge">&mdash;</span>
+          </span>
+        </div>
+
+        <div class="plainbox" id="sentence"></div>
+        <div class="recompute" id="recomputeNote"></div>
+
+        <div class="vbody">
+          <div id="branches"></div>
+        </div>
+
+        <div class="symfoot">
+          <b>Symbols (memo):</b>
+          J(v) second-hand trigger status &nbsp;&middot;&nbsp; C&#8320; component receives internet content &nbsp;&middot;&nbsp;
+          P&#8320; tested defense blocks the payload class &nbsp;&middot;&nbsp; E&#8320; entry-point confidence &nbsp;&middot;&nbsp;
+          G&#8320; chained-access promotion &nbsp;&middot;&nbsp; D direct network branch &nbsp;&middot;&nbsp; &#8497;(B(a)) findings in the host boundary
+        </div>
+
+        <details class="math">
+          <summary>Show the math (Equation&nbsp;4, the recommended operational classifier)</summary>
+          <div class="inner">
+            <div class="eq" id="mathEq"></div>
+            <p style="font-size:11.5px;color:var(--faint);margin-top:10px;white-space:normal">
+              Each bracket is a yes-or-no indicator (1 or 0); the whole thing is an OR &mdash; any &ldquo;1&rdquo; makes the finding IRV.
+              The downstream CVSS vector never changes; G&#8320; only records that a co-resident, directly reachable entry point promoted this finding,
+              and only a <b>high-confidence</b> entry point (E&#8320;=high) sets it.
+            </p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  This diagram is an <b>illustrative teaching topology</b>, not a required artifact. The internet-reachability paper is explicit
+  that providers are <b>not</b> required to build an application-wide data-flow graph &mdash; the recommended method uses coarse
+  component archetypes, a once-per-CVE second-hand-trigger status, and standing assessment/ConMon prevention evidence, not a
+  proven per-edge taint proof. Every control here stands in for one of those coarse facts. Built on <i>Internet Reachability at
+  Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026); IRV determinations are internal state, and only
+  a binary IRV/NIRV value is reported under <span style="font-family:var(--mono)">VER-RPT-VDT</span>.
+</footer>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+/* ============================== topology ============================== */
+const NODES = {
+  internet:{label:'Internet',    sub:'public source'},
+  lb:      {label:'Load balancer',sub:'TLS edge'},
+  iap:     {label:'Identity-aware proxy',sub:'edge auth'},
+  api:     {label:'Public API',  sub:'app tier'},
+  kernel:  {label:'OS kernel',   sub:'co-resident on API host'},
+  admin:   {label:'Admin service',sub:'behind the IAP'},
+  queue:   {label:'Queue',       sub:'message broker'},
+  db:      {label:'Database',    sub:'system of record'},
+  log:     {label:'Log service', sub:'log pipeline'},
+  worker:  {label:'Worker',      sub:'parses queue msgs'},
+};
+const PLACEABLE = ['lb','iap','api','kernel','admin','queue','db','log','worker'];
+
+const COLUMNS = [
+  {cls:'col-internet', items:['internet']},
+  {cls:'col-edge',     items:['lb','iap']},
+  {cls:'col-hosts',    items:['__apihost__','admin']},
+  {cls:'col-down',     items:['queue','db','log']},
+  {cls:'col-worker',   items:['worker']},
+];
+
+const EDGES = {
+  int_lb:      {a:'internet',s:'right', b:'lb',    t:'left'},
+  int_iap:     {a:'internet',s:'right', b:'iap',   t:'left'},
+  lb_api:      {a:'lb',      s:'right', b:'api',   t:'left'},
+  iap_admin:   {a:'iap',     s:'right', b:'admin', t:'left'},
+  api_queue:   {a:'apihost', s:'right', b:'queue', t:'left', ay:'api'},
+  api_db:      {a:'apihost', s:'right', b:'db',    t:'left', ay:'api'},
+  api_log:     {a:'apihost', s:'right', b:'log',   t:'left', ay:'api'},
+  queue_worker:{a:'queue',   s:'right', b:'worker',t:'left'},
+  chain:       {a:'api',     s:'bottom',b:'kernel',t:'top'},
+};
+
+/* full candidate route from the internet to each component */
+const PATHS = {
+  lb:['int_lb'], iap:['int_iap'],
+  api:['int_lb','lb_api'], admin:['int_iap','iap_admin'],
+  queue:['int_lb','lb_api','api_queue'],
+  worker:['int_lb','lb_api','api_queue','queue_worker'],
+  db:['int_lb','lb_api','api_db'],
+  log:['int_lb','lb_api','api_log'],
+  kernel:['int_lb','lb_api'],
+};
+
+const C0_SET = new Set(['api','queue','worker','db','log','admin']);
+const DIRECT_SET = new Set(['lb','iap','api','admin']);
+
+/* which components share one canonical execution boundary */
+function boundary(node){ return (node==='api'||node==='kernel') ? 'apihost' : node; }
+function boundaryLabel(b){ return b==='apihost' ? 'the API host' : NODES[b].label; }
+
+/* environment controls (plain switches; a tiny static tag lands on the affected node) */
+const TOGGLES = [
+  {key:'lbTermH2',    node:'lb', tag:'h2 &rarr; http/1.1',
+   label:'Load balancer terminates HTTP/2',
+   hint:'The LB speaks only HTTP/1.1 to the API, so an h2-only trigger is stripped before it arrives &mdash; cutting the direct path for an HTTP/2 flaw on the API.'},
+  {key:'iapSole',     node:'iap', tag:'sole ingress',
+   label:'Admin service reachable only through the identity-aware proxy',
+   hint:'A bypass-free proxy that authorizes before any traffic arrives removes the admin service&rsquo;s direct path. An app login screen would not &mdash; by then the request has already arrived.'},
+  {key:'schemaValid', node:'queue', tag:'schema-checked',
+   label:'API&#8594;queue messages are schema-validated',
+   hint:'The relayed message is held to an enforced shape, blocking the payload class before the worker ever parses it.'},
+  {key:'paramQueries',node:'db', tag:'parameterized',
+   label:'API&#8594;database queries are parameterized',
+   hint:'The injected string becomes inert data before it reaches SQL &mdash; the second-hand trigger can&rsquo;t fire on the database.'},
+];
+
+/* ---- finding-shape library: the intrinsic CVE facts a finding carries ---- */
+const SHAPES = {
+  log4shell:  {label:'Deserialization / injection (Log4Shell-shape)', short:'Log4Shell-shape', av:'N', proto:'na',   impact:'C:H/I:H/A:H', cwe:'CWE-502', full:true,  rce:false},
+  h2flaw:     {label:'HTTP/2 protocol flaw',            short:'HTTP/2 flaw',   av:'N', proto:'h2',   impact:'C:H/I:H/A:H', cwe:'CWE-400', full:true,  rce:false},
+  sqli:       {label:'SQL injection',                   short:'SQL injection', av:'N', proto:'pg',   impact:'C:H/I:L/A:N', cwe:'CWE-89',  full:false, rce:false},
+  cmdi:       {label:'OS command injection',            short:'OS cmd inj',    av:'N', proto:'http', impact:'C:H/I:H/A:N', cwe:'CWE-78',  full:false, rce:false},
+  tmpl:       {label:'Template/expression injection',   short:'Template inj',  av:'N', proto:'http', impact:'C:H/I:L/A:N', cwe:'CWE-1336',full:false, rce:false},
+  takeover:   {label:'Full system takeover',            short:'full takeover', av:'N', proto:'http', impact:'C:H/I:H/A:H', cwe:'CWE-787', full:true,  rce:false},
+  vendorrce:  {label:'Vendor-confirmed RCE',            short:'vendor RCE',    av:'N', proto:'http', impact:'C:H/I:H/A:H', cwe:'—',  full:true,  rce:true},
+  infoleak:   {label:'Information leak',                 short:'info leak',     av:'N', proto:'http', impact:'C:H/I:N/A:N', cwe:'CWE-200', full:false, rce:false},
+  localkernel:{label:'Local kernel / priv-esc flaw',    short:'local kernel',  av:'L', proto:'na',   impact:'C:H/I:H/A:H', cwe:'CWE-416', full:true,  rce:false},
+  localparser:{label:'Local parser flaw',               short:'local parser',  av:'L', proto:'na',   impact:'C:H/I:N/A:N', cwe:'CWE-611', full:false, rce:false},
+};
+const SHAPE_ORDER = ['log4shell','h2flaw','sqli','cmdi','tmpl','takeover','vendorrce','infoleak','localkernel','localparser'];
+const NODE_DEFAULT_SHAPE = {
+  lb:'takeover', iap:'takeover', api:'takeover', kernel:'localkernel',
+  admin:'cmdi', queue:'localparser', db:'sqli', log:'log4shell', worker:'localparser',
+};
+
+/* strict execution-semantics CWE seeds -> high; review-list seeds -> possible */
+const EXEC_SEED = new Set(['CWE-78','CWE-94','CWE-95','CWE-96','CWE-98','CWE-553','CWE-624','CWE-917']);
+const POSS_SEED = new Set(['CWE-97','CWE-1336','CWE-494','CWE-829','CWE-470']);
+
+/* class an upstream finding purely from its facts (independent of reachability) */
+function factClass(sh){
+  if (sh.rce)               return {level:'high',     rule:'vendor-confirmed / reproducible RCE evidence', tag:'vendor RCE'};
+  if (sh.full)              return {level:'high',     rule:'full-impact (C:H/I:H/A:H)', tag:'full impact'};
+  if (EXEC_SEED.has(sh.cwe))return {level:'high',     rule:'execution-class weakness ('+sh.cwe+')', tag:sh.cwe};
+  if (POSS_SEED.has(sh.cwe))return {level:'possible', rule:'review-list weakness ('+sh.cwe+')', tag:sh.cwe};
+  return {level:'none', rule:null, tag:''};
+}
+function noneReason(sh){
+  if (sh===SHAPES.infoleak) return 'an information leak can&rsquo;t hand an attacker code execution on this host';
+  return 'a '+sh.label.toLowerCase()+' that isn&rsquo;t full-impact and isn&rsquo;t an execution-class weakness can&rsquo;t establish code execution here';
+}
+
+const PRESETS = [
+  {n:'P1', label:'Log4Shell shape',
+   s:{findings:{log:{shape:'log4shell',av:'N',proto:'na',j:'confirmed'}}, evalNode:'log',
+      lbTermH2:false,iapSole:false,paramQueries:false,schemaValid:false}},
+  {n:'P2', label:'HTTP/2 behind termination',
+   s:{findings:{api:{shape:'h2flaw',av:'N',proto:'h2',j:'ruled_out'}}, evalNode:'api',
+      lbTermH2:true,iapSole:false,paramQueries:false,schemaValid:false}},
+  {n:'P3', label:'Kernel flaw behind public RCE',
+   s:{findings:{api:{shape:'takeover',av:'N',proto:'http',j:'ruled_out'}, kernel:{shape:'localkernel',av:'L',proto:'na',j:'unknown'}}, evalNode:'kernel',
+      lbTermH2:false,iapSole:false,paramQueries:false,schemaValid:false}},
+  {n:'P4', label:'Database behind parameterized queries',
+   s:{findings:{db:{shape:'sqli',av:'N',proto:'pg',j:'confirmed'}}, evalNode:'db',
+      lbTermH2:false,iapSole:false,paramQueries:true,schemaValid:false}},
+  {n:'P5', label:'Admin service behind IAP',
+   s:{findings:{admin:{shape:'cmdi',av:'N',proto:'http',j:'unknown'}}, evalNode:'admin',
+      lbTermH2:false,iapSole:true,paramQueries:false,schemaValid:false}},
+  {n:'P6', label:'Unreviewed parser on the worker',
+   s:{findings:{worker:{shape:'localparser',av:'L',proto:'na',j:'unknown'}}, evalNode:'worker',
+      lbTermH2:false,iapSole:false,paramQueries:false,schemaValid:false}},
+];
+
+/* ============================== state ============================== */
+const state = {
+  findings:{},           /* nodeId -> {shape, av, proto, j} */
+  evalNode:null,         /* the finding under evaluation */
+  lbTermH2:false, iapSole:false, paramQueries:false, schemaValid:false,
+  curPreset:null,
+};
+let lastEval = null;
+let prev = {evalNode:null, chainFired:false};
+
+/* ============================== reusable branch helpers ============================== */
+/* the direct branch for ANY finding at a node, given the environment */
+function directBranch(node, av, proto){
+  if (av!=='N') return {D:false, cut:null};
+  if (node==='lb' || node==='iap') return {D:true, cut:null};
+  if (node==='api'){
+    if (proto==='h2' && state.lbTermH2) return {D:false, cut:'lb_api'};
+    return {D:true, cut:null};
+  }
+  if (node==='admin'){
+    if (state.iapSole) return {D:false, cut:'iap_admin'};
+    return {D:true, cut:null};
+  }
+  return {D:false, cut:null};   /* queue/db/log/worker/kernel: no public listener */
+}
+
+/* classify a co-resident finding as a chain entry point: reachable AND derived class */
+function entryClassOf(node, f){
+  const sh = SHAPES[f.shape];
+  const dir = directBranch(node, f.av, f.proto);
+  const fc = factClass(sh);
+  const reachable = dir.D;
+  return {node, sh, reachable, cut:dir.cut,
+          factLevel:fc.level, rule:fc.rule, tag:fc.tag,
+          level: reachable ? fc.level : 'none'};
+}
+
+/* scan OTHER active findings in the evaluated finding's boundary */
+function scanEntries(a){
+  const B = boundary(a), list=[];
+  for (const n of PLACEABLE){
+    if (n===a) continue;
+    if (!state.findings[n]) continue;
+    if (boundary(n)!==B) continue;
+    list.push(entryClassOf(n, state.findings[n]));
+  }
+  const rank = ec => (ec.level==='high'?300:ec.level==='possible'?200:0)
+                    + (ec.reachable?10:0)
+                    + (ec.factLevel==='high'?3:ec.factLevel==='possible'?2:0);
+  let best=null;
+  for (const ec of list){ if (!best || rank(ec)>rank(best)) best=ec; }
+  return {list, best};
+}
+
+/* ============================== evaluation ============================== */
+function evaluate(){
+  const a = state.evalNode;
+  if (!a || !state.findings[a]) return {empty:true};
+  const f = state.findings[a];
+  const av=f.av, j=f.j, proto=f.proto;
+  const C0 = C0_SET.has(a);
+
+  /* --- direct branch D --- */
+  const dir = directBranch(a, av, proto);
+  const D = dir.D; let directCut = dir.cut;
+
+  /* --- indirect (carried-content) branch --- */
+  let P0=false, indCut=null;
+  if (a==='db' && state.paramQueries) P0=true;
+  if ((a==='queue'||a==='worker') && state.schemaValid) P0=true;
+  let indirect=false;
+  if (C0 && j==='confirmed'){
+    if (P0){ indCut = (a==='db') ? 'api_db' : 'api_queue'; }
+    else indirect=true;
+  }
+
+  /* --- chained-access branch G0: scan other reachable findings in this boundary --- */
+  const scan = scanEntries(a);
+  const entry = scan.best;
+  const coEntry = (av==='L' && entry) ? entry.level : 'none';
+  const G0 = (av==='L' && coEntry==='high');
+
+  const irv = D || indirect || G0;
+
+  /* --- internal status --- */
+  let status, kind;
+  if (irv){ status='Confirmed IRV'; kind='irv'; }
+  else if (av==='L' && coEntry==='possible'){ status='Chain review'; kind='unknown'; }
+  else if (directCut || P0 || j==='ruled_out'){ status='Evidenced NIRV'; kind='nirv'; }
+  else if (av==='L' && !C0){ status='Evidenced NIRV'; kind='nirv'; }
+  else if (j==='unknown' && C0 && !D){ status='Indirect unknown'; kind='unknown'; }
+  else { status='Evidenced NIRV'; kind='nirv'; }
+
+  /* --- edge rendering plan --- */
+  const path = PATHS[a] || [];
+  let flow=[], unknown=[], cut=null, chain=false;   /* chain: false|'fire'|'review' */
+  if (irv){
+    if (G0){ flow = (PATHS[entry.node]||[]).slice(); chain='fire'; }
+    else flow = path.slice();
+  } else if (av==='L' && coEntry==='possible'){
+    unknown = (PATHS[entry.node]||[]).slice(); chain='review';
+  } else if (directCut){
+    cut = directCut; flow = path.slice(0, path.indexOf(directCut));
+  } else if (indCut){
+    cut = indCut; flow = path.slice(0, path.indexOf(indCut));
+  } else if (kind==='unknown'){
+    unknown = path.slice();
+  }
+
+  return {empty:false, a, f, av, j, D, indirect, G0, P0, C0, irv, status, kind,
+          directCut, indCut, coEntry, entry, scan,
+          flow, unknown, cut, chain,
+          branch:(G0?'chain':D?'direct':indirect?'indirect':null)};
+}
+
+/* ============================== sentence ============================== */
+function sentence(e){
+  if (e.empty) return 'Add a finding to a component and select it to evaluate.';
+  const nm = NODES[e.a].label.toLowerCase();
+  const relay = e.a==='log' ? 'log entry' : e.a==='db' ? 'database record' : e.a==='queue' ? 'queued message' : 'relayed message';
+  if (e.G0){
+    const b=e.entry;
+    return 'This flaw needs <b>local</b> access &mdash; and the co-resident, internet-reachable '+b.sh.label.toLowerCase()+' on '+NODES[b.node].label+' can supply it (high-confidence entry point, '+b.rule+'). This finding is promoted to internet-reachable, and that upstream finding is recorded as the reason. Its AV:L vector does not change; only its deployment-specific reachability does.';
+  }
+  if (e.D){
+    if (e.a==='lb') return 'The load balancer faces the internet directly, and the flaw triggers over its live listener &mdash; the payload arrives first-hand.';
+    if (e.a==='iap') return 'The proxy itself faces the internet, and the flaw triggers over its own live listener.';
+    if (e.a==='api') return 'A public request reaches the API&rsquo;s live listener speaking the protocol the flaw needs &mdash; the payload arrives first-hand, so no second branch is needed.';
+    if (e.a==='admin') return 'With no bypass-free proxy standing in front, a public request reaches the admin service&rsquo;s listener directly.';
+  }
+  if (e.indirect) return 'The '+nm+' processes internet-derived content, the trigger is <b>confirmed</b> to fire from a relayed '+relay+' with the attacker long gone, and no currently-evidenced defense covers that payload class &mdash; so the payload arrives second-hand even though nothing is listening on the public network.';
+  if (e.directCut==='lb_api') return 'The load balancer terminates HTTP/2 and speaks only HTTP/1.1 to the API, and no other path carries the <b>h2</b> trigger &mdash; the flaw&rsquo;s trigger can&rsquo;t arrive. The same flaw on a self-managed load balancer would stay reachable.';
+  if (e.directCut==='iap_admin') return 'The identity-aware proxy is the admin service&rsquo;s <b>sole ingress</b> and authorizes before any traffic arrives, removing the direct path. An application login would not do this &mdash; by then the request has already reached the component.';
+  if (e.indCut==='api_db') return 'Parameterized queries on the API&#8594;database path turn the injected string into inert data before it reaches SQL, and current DAST evidence covers SQL injection &mdash; the trigger can&rsquo;t fire. A new SQLi finding or an unparameterized alternate path would reset that.';
+  if (e.indCut==='api_queue') return 'Schema validation on the API&#8594;queue path restricts the relayed message to the enforced shape, and that control class is currently evidenced &mdash; the payload class is blocked before the '+nm+' ever processes it.';
+  if (e.av==='L' && !e.C0 && e.coEntry==='possible'){
+    const b=e.entry;
+    return 'This flaw needs local access. The co-resident '+b.sh.label.toLowerCase()+' on '+NODES[b.node].label+' classifies as a <b>review-list weakness</b> ('+b.sh.cwe+') &mdash; possible, not high-confidence &mdash; so it is held for chain review rather than promoted. A high-confidence, directly reachable entry point is required to auto-promote.';
+  }
+  if (e.av==='L' && !e.C0){   /* local flaw, no promotion */
+    if (!e.scan.list.length) return 'This flaw needs local access, but no other active finding shares its host boundary right now &mdash; so it has nothing to chain from. Being co-resident is not, by itself, a promotion.';
+    const b=e.entry;
+    if (b && !b.reachable && b.factLevel!=='none') return 'This flaw needs local access. A co-resident '+b.sh.label.toLowerCase()+' on '+NODES[b.node].label+' would classify as a '+b.factLevel+'-confidence entry point on its facts, but it is <b>not itself directly reachable</b> in this deployment (its path is cut) &mdash; and an entry point must be reachable to promote anything. No promotion.';
+    return 'This flaw needs local access. The co-resident finding on '+NODES[b.node].label+' is directly reachable but classifies as &ldquo;not an entry point&rdquo; &mdash; '+noneReason(b.sh)+' &mdash; so there is nothing to chain from.';
+  }
+  if (e.status==='Indirect unknown') return 'Internet-derived content can reach the '+nm+', but whether this flaw triggers <i>second-hand</i> has never been reviewed &mdash; so the baseline does not promote it. That is a deliberate scalability presumption, not proof it is safe; the status stays queued for enrichment.';
+  if (e.j==='ruled_out') return 'The second-hand trigger has been reviewed and ruled out (it needs a live connection peer), and there is no direct path &mdash; nothing delivers the payload to this flaw.';
+  return 'No direct network path, no confirmed second-hand trigger, and no qualifying chain &mdash; nothing delivers the payload to this flaw.';
+}
+
+/* ============================== branch disjunction ============================== */
+function disj(cls, mark, title, why, sym){
+  return '<div class="disj '+cls+'"><span class="mark">'+mark+'</span>'+
+    '<span><span class="dt">'+title+'</span> <span class="sym">'+sym+'</span><span class="dd">'+why+'</span></span></div>';
+}
+function branchesHtml(e){
+  if (e.empty) return '<div class="disj no"><span class="mark">&mdash;</span><span><span class="dt">No finding selected</span></span></div>';
+
+  /* Direct */
+  let dWhy;
+  if (e.D) dWhy='A live public listener speaks the protocol the flaw needs.';
+  else if (e.av==='L') dWhy='AV:L &mdash; the flaw can&rsquo;t be triggered over a network path at all.';
+  else if (e.directCut==='lb_api') dWhy='A public path exists, but protocol termination strips the h2 trigger.';
+  else if (e.directCut==='iap_admin') dWhy='A public path exists, but the sole-ingress proxy authorizes before traffic arrives.';
+  else if (!DIRECT_SET.has(e.a)) dWhy='This component has no public listener &mdash; it sits on a private path.';
+  else dWhy='No qualifying public network path reaches the flaw.';
+
+  /* Indirect */
+  const subs = [
+    [e.j==='confirmed', 'trigger confirmed second-hand'],
+    [e.C0, 'component receives internet content'],
+    [!e.P0, 'no tested defense blocks the payload'],
+  ];
+  const indWhy = subs.map(([ok,t])=>'<span style="color:'+(ok?'var(--muted)':'var(--faint)')+'">'+(ok?'&#10003;':'&#10007;')+' '+t+'</span>').join(' &nbsp;&middot;&nbsp; ')
+    + (e.j==='unknown' && e.C0 ? '<br>Not yet reviewed for second-hand delivery &mdash; presumed &ldquo;no.&rdquo;' : '');
+
+  /* Chain */
+  let cCls='no', cMark='&#10007;', cWhy;
+  const b=e.entry;
+  if (e.G0){ cCls='yes'; cMark='&#10003;'; cWhy='The co-resident <b>'+b.sh.label+'</b> on '+NODES[b.node].label+' is directly reachable and classifies as a high-confidence entry point ('+b.rule+'), supplying local code execution.'; }
+  else if (e.av==='L' && e.coEntry==='possible'){ cCls='rev'; cMark='&#9888;'; cWhy='The co-resident <b>'+b.sh.label+'</b> classifies as a review-list weakness ('+b.sh.cwe+') &mdash; possible, not high-confidence; held for review, no auto-promotion.'; }
+  else if (e.av==='L' && !e.C0){
+    if (!e.scan.list.length) cWhy='No other active finding shares this host boundary &mdash; nothing to chain from.';
+    else if (b && !b.reachable && b.factLevel!=='none') cWhy='A co-resident '+b.sh.label+' would qualify on its facts, but it is not itself directly reachable in this deployment &mdash; an entry point must be reachable to promote anything.';
+    else cWhy='The co-resident finding on '+NODES[b.node].label+' doesn&rsquo;t establish code execution here ('+noneReason(b.sh)+'), so it can&rsquo;t promote a local-access flaw.';
+  }
+  else if (e.av==='L'){ cWhy='This AV:L finding sits on a host boundary with no reachable entry point to chain from.'; }
+  else { cWhy='Only AV:L findings use this branch; this one is AV:N.'; }
+
+  return disj(e.D?'yes':'no', e.D?'&#10003;':'&#10007;', 'Direct &mdash; the flaw itself faces a public listener', dWhy, 'D')
+       + disj(e.indirect?'yes':'no', e.indirect?'&#10003;':'&#10007;', 'Second-hand &mdash; the payload rides in through other systems', indWhy, 'J&middot;C&#8320;&middot;(1&minus;P&#8320;)')
+       + disj(cCls, cMark, 'Chained &mdash; a co-resident reachable finding supplies local execution', cWhy, 'G&#8320;');
+}
+
+/* ============================== math ============================== */
+function bit(v){ return v ? '<span class="on1">1</span>' : '<span class="off0">0</span>'; }
+function mathHtml(e){
+  if (e.empty) return '<div><span class="lbl">IRV&#8320;</span> = &mdash;</div>';
+  const jc=e.j==='confirmed'?1:0, c0=e.C0?1:0, p0=e.P0?1:0;
+  const ind=(jc&&c0&&!p0)?1:0;
+  return '<div><span class="lbl">IRV&#8320;</span> = D &nbsp;&or;&nbsp; ( [J=confirmed]&middot;C&#8320;&middot;(1&minus;P&#8320;) ) &nbsp;&or;&nbsp; G&#8320;</div>'
+    + '<div><span class="lbl">D</span> = '+bit(e.D)+'</div>'
+    + '<div><span class="lbl">indirect</span> = ['+bit(jc)+']&middot;'+bit(c0)+'&middot;(1&minus;'+bit(p0)+') = '+bit(ind)+'</div>'
+    + '<div><span class="lbl">G&#8320;</span> = [AV:L]&middot;[&#8707; reachable E&#8320;=high in &#8497;(B(a))] = '+bit(e.G0)+'</div>'
+    + '<div><span class="lbl">IRV&#8320;</span> = '+bit(e.D)+' &or; '+bit(ind)+' &or; '+bit(e.G0)+' = <span class="res">'+(e.irv?'1 &rarr; IRV':'0 &rarr; NIRV')+'</span></div>';
+}
+
+/* ============================== build diagram ============================== */
+const diagram = $('diagram');
+
+function nodeInner(id){
+  const n=NODES[id];
+  let extra = (id==='api') ? '<span class="apitag" id="apiTag"></span>' : '';
+  return '<span class="nl">'+n.label+'</span><span class="ns">'+n.sub+'</span>'+extra+
+    '<span class="statetag" id="stag-'+id+'"></span>'+
+    (id==='internet' ? '' : '<span class="fchip" id="fchip-'+id+'"></span>');
+}
+function makeNode(id){
+  const el=document.createElement('div');
+  el.id='node-'+id;
+  el.className='node'+(id==='internet'?' source':'');
+  el.innerHTML=nodeInner(id);
+  if (id!=='internet'){
+    el.tabIndex=0; el.setAttribute('role','button');
+    el.addEventListener('click',()=>selectOrCreate(id));
+    el.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();selectOrCreate(id);} });
+  }
+  return el;
+}
+function buildDiagram(){
+  const cols=$('cols');
+  COLUMNS.forEach(c=>{
+    const col=document.createElement('div');
+    col.className='col '+c.cls;
+    c.items.forEach(item=>{
+      if (item==='__apihost__'){
+        const host=document.createElement('div');
+        host.className='hostbox'; host.id='apihost';
+        host.innerHTML='<span class="hostlab">API host &mdash; one execution boundary</span>';
+        host.appendChild(makeNode('api'));
+        const cz=document.createElement('div');
+        cz.className='chainzone';
+        cz.innerHTML='<span class="chainlabel" id="chainLabel"></span>';
+        host.appendChild(cz);
+        host.appendChild(makeNode('kernel'));
+        col.appendChild(host);
+      } else {
+        col.appendChild(makeNode(item));
+      }
+    });
+    cols.appendChild(col);
+  });
+
+  const svg=$('edges');
+  Object.keys(EDGES).forEach(k=>{
+    const ln=document.createElementNS(SVGNS,'line');
+    ln.setAttribute('class','edge inactive'); ln.id='edge-'+k;
+    svg.appendChild(ln);
+  });
+  const cdot=document.createElementNS(SVGNS,'circle');
+  cdot.setAttribute('r','9'); cdot.setAttribute('class','cutdot'); cdot.id='cutdot'; cdot.style.display='none';
+  const ctx=document.createElementNS(SVGNS,'text');
+  ctx.setAttribute('class','cutx'); ctx.id='cutx'; ctx.setAttribute('text-anchor','middle');
+  ctx.setAttribute('dy','3.5'); ctx.textContent='✂'; ctx.style.display='none';
+  svg.appendChild(cdot); svg.appendChild(ctx);
+}
+
+/* ============================== controls (left panel) ============================== */
+function buildControls(){
+  const ps=$('placeSel');
+  PLACEABLE.forEach(id=>{
+    const o=document.createElement('option');
+    o.value=id; o.textContent=NODES[id].label+' — '+NODES[id].sub;
+    ps.appendChild(o);
+  });
+  ps.addEventListener('change',()=>selectOrCreate(ps.value));
+
+  const ash=$('shapeSel');
+  SHAPE_ORDER.forEach(id=>{
+    const sh=SHAPES[id];
+    const o=document.createElement('option');
+    o.value=id; o.textContent=sh.label+' ('+(sh.cwe==='—'?'vendor-confirmed':sh.cwe)+')';
+    ash.appendChild(o);
+  });
+  ash.addEventListener('change',()=>{
+    const f=cur(); if(!f) return;
+    const sh=SHAPES[ash.value];
+    f.shape=ash.value; f.av=sh.av; f.proto=sh.proto;
+    state.curPreset=null; render();
+  });
+
+  const wrap=$('switches');
+  TOGGLES.forEach(t=>{
+    const lab=document.createElement('label');
+    lab.className='switch';
+    lab.innerHTML='<input type="checkbox" id="sw-'+t.key+'">'+
+      '<span>'+t.label+'<span class="hint">'+t.hint+'</span></span>';
+    lab.querySelector('input').addEventListener('change',ev=>{
+      state[t.key]=ev.target.checked; state.curPreset=null; render();
+    });
+    wrap.appendChild(lab);
+  });
+
+  document.querySelectorAll('#avSeg button').forEach(bt=>bt.addEventListener('click',()=>{
+    const f=cur(); if(!f) return;
+    f.av=bt.dataset.av;
+    if (f.av==='L') f.proto='na';
+    else if (f.proto==='na') f.proto='http';
+    state.curPreset=null; render();
+  }));
+  $('protoSel').addEventListener('change',ev=>{ const f=cur(); if(!f) return; f.proto=ev.target.value; state.curPreset=null; render(); });
+  $('jSel').addEventListener('change',ev=>{ const f=cur(); if(!f) return; f.j=ev.target.value; state.curPreset=null; render(); });
+
+  PRESETS.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='preset'; btn.dataset.n=p.n;
+    btn.innerHTML='<span class="pn">'+p.n+'</span>'+p.label;
+    btn.addEventListener('click',()=>applyPreset(p));
+    $('presets').appendChild(btn);
+  });
+}
+function cur(){ return state.evalNode ? state.findings[state.evalNode] : null; }
+
+/* ============================== geometry (measured from real layout) ============================== */
+function elFor(id){ return id==='apihost' ? $('apihost') : $('node-'+id); }
+function pt(id, side, yRefId){
+  const dg=diagram.getBoundingClientRect();
+  const r=elFor(id).getBoundingClientRect();
+  const cx=r.left+r.width/2-dg.left, cy=r.top+r.height/2-dg.top;
+  let x=cx,y=cy;
+  if (side==='right') x=r.right-dg.left;
+  else if (side==='left') x=r.left-dg.left;
+  else if (side==='top') y=r.top-dg.top;
+  else if (side==='bottom') y=r.bottom-dg.top;
+  if (yRefId){ const rr=elFor(yRefId).getBoundingClientRect(); y=rr.top+rr.height/2-dg.top; }
+  return {x,y};
+}
+function layout(){
+  const W=diagram.clientWidth, H=diagram.clientHeight;
+  const svg=$('edges');
+  svg.setAttribute('width',W); svg.setAttribute('height',H);
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  Object.entries(EDGES).forEach(([k,ed])=>{
+    const p1=pt(ed.a,ed.s,ed.ay), p2=pt(ed.b,ed.t);
+    const ln=$('edge-'+k);
+    ln.setAttribute('x1',p1.x); ln.setAttribute('y1',p1.y);
+    ln.setAttribute('x2',p2.x); ln.setAttribute('y2',p2.y);
+    ed._mid=[(p1.x+p2.x)/2,(p1.y+p2.y)/2];
+  });
+  const cdot=$('cutdot'), ctx=$('cutx');
+  if (lastEval && lastEval.cut && EDGES[lastEval.cut]._mid){
+    const m=EDGES[lastEval.cut]._mid;
+    cdot.setAttribute('cx',m[0]); cdot.setAttribute('cy',m[1]); cdot.style.display='block';
+    ctx.setAttribute('x',m[0]); ctx.setAttribute('y',m[1]); ctx.style.display='block';
+  } else { cdot.style.display='none'; ctx.style.display='none'; }
+}
+
+/* ============================== render ============================== */
+function render(){
+  const e=evaluate(); lastEval=e;
+
+  /* edges */
+  document.querySelectorAll('.edge').forEach(ln=>ln.setAttribute('class','edge inactive'));
+  e.flow && e.flow.forEach(k=>{ const ln=$('edge-'+k); if(ln) ln.setAttribute('class','edge flow'); });
+  e.unknown && e.unknown.forEach(k=>{ const ln=$('edge-'+k); if(ln) ln.setAttribute('class','edge unknown'); });
+  if (e.cut){ const ln=$('edge-'+e.cut); if(ln) ln.setAttribute('class','edge cut'); }
+  const chainLn=$('edge-chain');
+  if (e.chain==='fire') chainLn.setAttribute('class','edge chainlink');
+  else if (e.chain==='review') chainLn.setAttribute('class','edge chainlink review');
+
+  /* chain label inside host box */
+  const cl=$('chainLabel');
+  cl.className='chainlabel';
+  if (e.chain==='fire'){ cl.classList.add('show','fire'); cl.textContent='attacker code now runs on this host'; }
+  else if (e.chain==='review'){ cl.classList.add('show','review'); cl.textContent='possible entry point — held for review'; }
+  else cl.textContent='';
+
+  /* nodes: persistent finding chips + evaluating ring + entry-point highlight */
+  const tagFor={};
+  TOGGLES.forEach(t=>{ if (state[t.key]) tagFor[t.node]=t.tag; });
+  Object.keys(NODES).forEach(k=>{
+    const el=$('node-'+k); if(!el) return;
+    el.classList.remove('evaluating','irv','nirv','unknownv','entrypoint','poss','hasfinding');
+    const st=$('stag-'+k); if(st) st.innerHTML = tagFor[k] || '';
+    const fc=$('fchip-'+k);
+    if (fc){
+      const f=state.findings[k];
+      if (f){
+        el.classList.add('hasfinding');
+        fc.innerHTML='<span>'+SHAPES[f.shape].short+' &middot; AV:'+f.av+'</span>'+
+          '<button class="frm" title="remove finding">&times;</button>';
+        const rm=fc.querySelector('.frm');
+        rm.addEventListener('click',ev=>{ ev.stopPropagation(); removeFinding(k); });
+      } else fc.innerHTML='';
+    }
+  });
+  if (!e.empty){
+    const el=$('node-'+e.a);
+    el.classList.add('evaluating', e.kind==='irv'?'irv':e.kind==='unknown'?'unknownv':'nirv');
+  }
+  const apiTag=$('apiTag');
+  if (!e.empty && e.entry && (e.chain==='fire'||e.chain==='review')){
+    const en=$('node-'+e.entry.node);
+    if (e.chain==='fire') en.classList.add('entrypoint');
+    else en.classList.add('entrypoint','poss');
+    if (e.entry.node==='api' && apiTag) apiTag.textContent=(e.chain==='fire'?'⚡ entry point (':'possible entry point (')+e.entry.tag+')';
+    else if (apiTag) apiTag.textContent='';
+  } else if (apiTag) apiTag.textContent='';
+
+  /* left panel: group 1 */
+  const f = e.empty ? null : e.f;
+  $('placeSel').value = e.empty ? PLACEABLE[0] : e.a;
+  const eh=$('evalHead');
+  if (e.empty){
+    eh.innerHTML='<span style="color:var(--faint)">No finding selected &mdash; click a component to add one.</span>';
+  } else {
+    eh.innerHTML='Now evaluating: <span class="en">'+NODES[e.a].label+'</span>'+
+      '<button class="rm" id="rmEval">Remove this finding</button>';
+    $('rmEval').addEventListener('click',()=>removeFinding(e.a));
+  }
+  const dis = e.empty;
+  $('shapeSel').disabled=dis; $('protoSel').disabled=dis || (f && f.av==='L'); $('jSel').disabled=dis;
+  $('avSeg').classList.toggle('dis', dis);
+  if (f){
+    $('shapeSel').value=f.shape;
+    $('shapeChips').innerHTML=['AV:'+f.av, SHAPES[f.shape].impact, SHAPES[f.shape].cwe==='—'?'reproducible RCE evidence':SHAPES[f.shape].cwe]
+      .map(c=>'<span class="chip">'+c+'</span>').join('');
+    document.querySelectorAll('#avSeg button').forEach(bt=>bt.classList.toggle('on', bt.dataset.av===f.av));
+    $('protoSel').value=f.proto;
+    $('protoLbl').style.opacity=f.av==='L'?.45:1;
+    $('jSel').value=f.j;
+  } else {
+    $('shapeChips').innerHTML='';
+    document.querySelectorAll('#avSeg button').forEach(bt=>bt.classList.remove('on'));
+  }
+
+  /* left panel: group 2 switches */
+  TOGGLES.forEach(t=>{ const c=$('sw-'+t.key); if(c) c.checked=!!state[t.key]; });
+
+  /* left panel: group 3 — other-findings readout */
+  renderEntryRead(e);
+
+  /* "active in this scenario" summary */
+  const active=[];
+  const nf=Object.keys(state.findings).length;
+  active.push(nf+' finding'+(nf===1?'':'s')+' placed'+(e.empty?'':'; evaluating the one on '+NODES[e.a].label));
+  if (state.lbTermH2) active.push('LB terminates HTTP/2 (h2 trigger stripped before the API)');
+  if (state.iapSole) active.push('IAP is the admin service&rsquo;s sole ingress');
+  if (state.schemaValid) active.push('schema validation on the API&#8594;queue path');
+  if (state.paramQueries) active.push('parameterized queries on the API&#8594;database path');
+  $('toggleSummary').innerHTML=active.map(a=>'&#8226; '+a).join('<br>');
+
+  /* verdict */
+  const sb=$('statusBadge'), rb=$('reportBadge');
+  if (e.empty){
+    sb.textContent='—'; sb.className='statusbadge';
+    rb.textContent='—'; rb.className='vbadge';
+  } else {
+    sb.textContent=e.status; sb.className='statusbadge '+e.kind;
+    if (e.irv){ rb.textContent='Internet-reachable'; rb.className='vbadge v-on'; }
+    else { rb.textContent='Not internet-reachable'; rb.className='vbadge v-off'; }
+  }
+  $('sentence').innerHTML=sentence(e);
+  $('branches').innerHTML=branchesHtml(e);
+  $('mathEq').innerHTML=mathHtml(e);
+
+  /* recompute-on-resolution note: chain was firing on this finding last render, now withdrawn */
+  const note=$('recomputeNote');
+  if (!e.empty && prev.evalNode===e.a && prev.chainFired && e.chain!=='fire' && e.av==='L' && !e.irv){
+    note.className='recompute show';
+    note.innerHTML='The upstream entry point on this host was resolved or removed. This finding&rsquo;s chained promotion is <b>withdrawn</b> and its status recomputes to not-internet-reachable &mdash; the paper&rsquo;s recompute-on-resolution behavior.';
+  } else { note.className='recompute'; note.innerHTML=''; }
+  prev = {evalNode:e.empty?null:e.a, chainFired:(e.chain==='fire')};
+
+  document.querySelectorAll('.preset').forEach(p=>p.classList.toggle('cur', p.dataset.n===state.curPreset));
+
+  layout();
+}
+
+function renderEntryRead(e){
+  const el=$('entryRead');
+  if (e.empty){ el.innerHTML='<div class="none0">No finding selected.</div>'; return; }
+  const list=e.scan.list;
+  if (!list.length){
+    el.innerHTML='<div class="none0">None &mdash; this finding sits alone on '+boundaryLabel(boundary(e.a))+'.</div>'; return;
+  }
+  el.innerHTML=list.map(ec=>{
+    let verdict;
+    if (ec.level==='high') verdict='<span class="ecls high">classified high-confidence entry point &mdash; '+ec.rule+'</span>';
+    else if (ec.level==='possible') verdict='<span class="ecls possible">classified possible &mdash; held for review ('+ec.rule+')</span>';
+    else if (!ec.reachable) verdict='<span class="ecls none">present but not directly reachable (its own path is cut) &mdash; can&rsquo;t serve as an entry point'+(ec.factLevel!=='none'?'; would be '+ec.factLevel+'-confidence if reachable':'')+'</span>';
+    else verdict='<span class="ecls none">not an entry point &mdash; '+noneReason(ec.sh)+'</span>';
+    return '<div class="ei '+ec.level+'"><span class="ename">'+NODES[ec.node].label+' &mdash; AV:'+state.findings[ec.node].av+' '+ec.sh.short+'</span>'+verdict+'</div>';
+  }).join('');
+}
+
+/* ============================== interactions ============================== */
+function defaultFinding(node){
+  const shape=NODE_DEFAULT_SHAPE[node]||'takeover';
+  const sh=SHAPES[shape];
+  return {shape, av:sh.av, proto:sh.proto, j:'unknown'};
+}
+function selectOrCreate(node){
+  if (!state.findings[node]) state.findings[node]=defaultFinding(node);
+  state.evalNode=node; state.curPreset=null; render();
+}
+function removeFinding(node){
+  delete state.findings[node];
+  if (state.evalNode===node){
+    const rest=PLACEABLE.filter(n=>state.findings[n]);
+    state.evalNode=rest.length?rest[0]:null;
+  }
+  state.curPreset=null; render();
+}
+function applyPreset(p){
+  state.findings={};
+  for (const k in p.s.findings) state.findings[k]=Object.assign({}, p.s.findings[k]);
+  state.evalNode=p.s.evalNode;
+  state.lbTermH2=p.s.lbTermH2; state.iapSole=p.s.iapSole;
+  state.paramQueries=p.s.paramQueries; state.schemaValid=p.s.schemaValid;
+  state.curPreset=p.n;
+  prev={evalNode:null, chainFired:false};   /* preset load isn't a resolution event */
+  render();
+}
+
+/* redraw edges on resize (debounced to a frame) */
+let rafId=null;
+window.addEventListener('resize',()=>{ if(rafId) cancelAnimationFrame(rafId); rafId=requestAnimationFrame(layout); });
+
+/* ============================== boot ============================== */
+buildDiagram();
+buildControls();
+applyPreset(PRESETS[0]);
+requestAnimationFrame(layout);
+window.addEventListener('load', layout);
+</script>
+</body>
+</html>
