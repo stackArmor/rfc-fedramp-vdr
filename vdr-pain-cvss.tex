@@ -84,8 +84,10 @@ for likely exploitability and internet reachability. FedRAMP deliberately does
 a specific asset. This memo argues that the missing classifier already exists, in
 standardized form, as the \textbf{Environmental metric group of CVSS}: the
 Confidentiality, Integrity and Availability \emph{Requirements} (CR/IR/AR) and the
-Modified Impact Sub-Score were designed precisely to re-weight a vulnerability's
-impact by what is at stake in a given deployment. We present a closed-form,
+Modified Impact Sub-Score inputs were designed precisely to re-weight a
+vulnerability's impact by what is at stake in a given deployment. We preserve
+those impact values, Security Requirement multipliers, and aggregation form in a
+PAIN-specific normalization. We present a closed-form,
 reproducible mapping from FedRAMP's requirements onto CVSS Environmental metrics,
 derive PAIN and the remediation deadline from it, and give fully worked
 calculations. We recommend role-based ``asset archetypes'' as the preferred way to
@@ -112,7 +114,9 @@ and \rfckw{may} are to be interpreted as described in RFC~2119.
 \item[PAIN] Potential Agency Impact, the FedRAMP N1--N5 rating of a finding.
 \item[CR/IR/AR] The CVSS Environmental Confidentiality / Integrity / Availability
   \emph{Requirements} of an asset.
-\item[ISC] Impact Sub-Score (here, the CVSS \emph{Modified} Impact Sub-Score).
+\item[$U$] The pre-cap complement-product aggregate derived from CVSS v3.1 impact
+  values and Security Requirement multipliers.
+\item[MISS] The CVSS v3.1 Modified Impact Sub-Score, $\min(U,0.915)$.
 \item[LEV / NLEV] Likely Exploitable Vulnerability / Not Likely Exploitable
   Vulnerability (a VER axis).
 \item[IRV / NIRV] Internet-Reachable Vulnerability / Not Internet-reachable
@@ -153,7 +157,7 @@ according to the criticality of the affected asset in \emph{its} environment.
 \midrule
 Asset data sensitivity / FIPS-199 C-I-A categorization & Security Requirements
 \code{CR}, \code{IR}, \code{AR} \\
-Magnitude of potential agency impact & Modified Impact Sub-Score (\code{ISC}) \\
+Magnitude of potential agency impact & CVSS-derived pre-cap impact aggregate ($U$) \\
 Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog membership /
 direct-IRV CVSS floor \\
 Internet reachable (VER) & \code{IRV}: per-finding payload reachability (companion method) \\
@@ -167,7 +171,9 @@ Provider Certification Class & selector of the remediation deadline table \\
 The consequence is that a conforming implementation need not invent a bespoke
 risk algebra. It need only (a) assign each asset its CR/IR/AR, and (b) evaluate the
 two VER axes. The arithmetic that turns those inputs into a defensible impact
-magnitude is the published CVSS Environmental formula.
+magnitude retains the published CVSS Environmental weights, Security Requirement
+multipliers, and complement-product aggregation form. PAIN then applies its own
+normalization and classification boundaries, as defined below.
 
 \section{The model}
 We define PAIN as a function of a \emph{severity} term and a \emph{scope} term:
@@ -238,10 +244,11 @@ impact scalar $S$ from CVSS impact values and the asset's CR/IR/AR; translate
 $S$ into a customer-effect word (Minimal, Narrow, Disruptive, or Debilitating);
 then combine that word with the multi-agency flag to select N1--N5.
 
-The numerical weights and cap in Eq.~\eqref{eq:isc} are taken from the CVSS v3.1
-specification. The normalization, word thresholds, and multi-agency mapping are
-this method's additions; Section~\ref{sec:cvss-divergence} delineates that boundary
-precisely.
+The numerical impact weights, Security Requirement multipliers, and aggregation
+form in Eq.~\eqref{eq:u} are taken from the CVSS v3.1 specification. Retaining the
+pre-cap aggregate, the High-centered normalization, the word thresholds, and the
+multi-agency mapping are this method's additions;
+Section~\ref{sec:cvss-divergence} delineates that boundary precisely.
 
 \begin{notation}
 \begin{itemize}[leftmargin=1.3em,nosep,topsep=2pt]
@@ -250,8 +257,11 @@ precisely.
 \item $\mathrm{CR},\mathrm{IR},\mathrm{AR}$ --- how much \emph{this system} needs
   secrecy, correctness, and uptime (from its archetype, asset value, or other governed
   asset metadata). Low / Medium / High become $0.5$ / $1.0$ / $1.5$.
-\item $\mathrm{ISC}$ --- the three combined into one ``damage to this system'' number.
-\item $S$ --- that damage rescaled to a clean $0$--$1$ range.
+\item $U$ --- the three dimensions combined into one pre-cap ``damage to this
+  system'' aggregate.
+\item $D_H$ --- the maximum value of $U$, reached by all-High impacts at all-High
+  requirements: $0.995904$.
+\item $S$ --- $U$ rescaled to a clean $0$--$1$ range by $D_H$.
 \item $W$ --- the plain English word $S$ maps to.
 \item $m$ --- does the system serve one agency ($0$) or many ($1$)? Resolved
   hierarchically from governed asset metadata.
@@ -274,23 +284,30 @@ Each asset's Requirement (CR, IR, AR) takes a multiplier:
 \mathrm{CR},\mathrm{IR},\mathrm{AR} \in \{\,\text{Low}=0.5,\quad \text{Medium}=1.0,\quad \text{High}=1.5\,\}.
 \]
 
-\paragraph{Modified Impact Sub-Score.}
+\paragraph{Pre-cap impact aggregate.}
 The per-dimension impacts and requirements combine in CVSS's bounded
 complement-product form: multiply the arithmetic complement on each dimension,
 then take the complement of that product:
 \begin{equation}
-\mathrm{ISC} \;=\; \min\!\Big[\,1 - \big(1 - C\!\cdot\!\mathrm{CR}\big)\big(1 - I\!\cdot\!\mathrm{IR}\big)\big(1 - A\!\cdot\!\mathrm{AR}\big),\ \ 0.915\,\Big].
-\label{eq:isc}
+U \;=\; 1 - \big(1 - C\!\cdot\!\mathrm{CR}\big)
+               \big(1 - I\!\cdot\!\mathrm{IR}\big)
+               \big(1 - A\!\cdot\!\mathrm{AR}\big).
+\label{eq:u}
 \end{equation}
-The cap $0.915 = 1-(1-0.56)^3$ is the CVSS ceiling (all-High impact at Medium
-requirements). We then normalize to a unit scalar:
+The PAIN denominator is the maximum value of that aggregate: all-High impacts at
+all-High requirements,
 \begin{equation}
-S \;=\; \frac{\mathrm{ISC}}{0.915} \ \in\ [0,1].
+D_H \;=\; 1-(1-0.56\!\cdot\!1.5)^3 \;=\; 0.995904.
+\label{eq:dh}
+\end{equation}
+We normalize to a unit scalar:
+\begin{equation}
+S \;=\; \frac{U}{D_H} \;=\; \frac{U}{0.995904} \ \in\ [0,1].
 \label{eq:s}
 \end{equation}
 
 \begin{plain}
-\textbf{Reading Eqs.~\eqref{eq:isc}--\eqref{eq:s} step by step.}
+\textbf{Reading Eqs.~\eqref{eq:u}--\eqref{eq:s} step by step.}
 Each of the three products --- $C\!\cdot\!\mathrm{CR}$,
 $I\!\cdot\!\mathrm{IR}$, and $A\!\cdot\!\mathrm{AR}$ --- multiplies two facts:
 how badly the flaw damages one property (from the CVE's vector) and how much this
@@ -308,18 +325,19 @@ and the method makes no statistical-independence claim. Unlike simply adding the
 three products, which could exceed 1, this construction stays bounded and gives
 each additional affected dimension diminishing marginal weight.
 
-The $\min(\ldots,0.915)$ cap is CVSS's, not ours. The largest unweighted impact
-combination is all-High:
-$1-(1-0.56)^3=0.915$. High requirements multiply each dimension by $1.5$, so an
-individual product can reach $0.84$, and the three-dimension combination reaches
-approximately $0.996$. The cap prevents that adjusted result from exceeding
-CVSS's global maximum MISS. The CVE determines which dimensions are affected and
-their baseline magnitude; the asset requirements determine how strongly those
-dimensions count. Asset criticality can move a finding toward the scale's worst
-case, but not beyond its fixed ceiling. That fixed, specification-defined maximum
-also gives Eq.~\eqref{eq:s} a stable denominator: $S=1.0$ means ``maximum
-attainable MISS,'' and the word thresholds retain the same meaning across assets
-with different requirement profiles.
+CVSS v3.1 turns this pre-cap value into MISS by applying
+$\mathrm{MISS}=\min(U,0.915)$. The value $0.915$ is reached by all-High impacts at
+\emph{Medium} requirements. High requirements multiply each affected dimension
+by $1.5$, so one dimension can reach $0.84$ and all three can reach $0.995904$.
+
+The original PAIN calibration also divided by $0.915$. That created a methodology
+gap: assets with High requirements were measured against a Medium-requirement
+reference point, which artificially inflated their normalized PAIN scores relative
+to their position on the full attainable scale. Applying the CVSS cap also collapsed many
+distinct High-requirement states to the same value. The revised method retains
+$U$ for PAIN and divides by the true all-High/all-High maximum, $D_H=0.995904$.
+Now $S=1.0$ means the maximum attainable PAIN impact aggregate. Published CVSS
+vectors and scores are never changed; this is a PAIN-specific classification path.
 \end{plain}
 
 \paragraph{Severity word.}
@@ -334,13 +352,28 @@ W(S) \;=\;
 \text{Disruptive} & \theta_2 \le S < \theta_3 \\
 \text{Debilitating} & S \ge \theta_3
 \end{cases}
-\qquad (\theta_1,\theta_2,\theta_3) = (0.25,\ 0.55,\ 0.80).
+\qquad
+\begin{gathered}
+\theta_1=0.28115159694107,\\
+\theta_2=0.56230319388214,\\
+\theta_3=0.933.
+\end{gathered}
 \label{eq:word}
 \end{equation}
-The cut points are the model's \emph{one} calibratable judgment. They
-\rfckw{should} be documented and back-tested against analyst-rated findings, and an
-implementation \rfckw{must} treat them as governed configuration rather than an
-in-band, ad-hoc setting.
+The first two cut points are consequence anchors, not percentile targets:
+$\theta_1=0.28/D_H$ makes one High impact at a Low requirement Narrow, and
+$\theta_2=0.56/D_H$ makes one High impact at a Medium requirement Disruptive.
+The Debilitating threshold $\theta_3=0.933$ separates the strongest state without
+compound High-impact alignment ($S=0.931993\ldots$) from the weakest state with
+one High/High pair plus a second High impact at Medium-or-High requirement
+($S=0.933423\ldots$). Thus a single High/High pair remains Disruptive; a qualifying
+compound alignment is Debilitating. The companion paper
+\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-calibration.pdf}
+{\emph{Calibrating PAIN Without Abandoning CVSS}} derives these anchors by
+exhaustively examining all 729 discrete impact/requirement states and then validates
+the resulting policy against operational datasets. An
+implementation \rfckw{must} treat the thresholds as governed configuration rather
+than an in-band, ad-hoc setting.
 
 \paragraph{Scope and the N-level.}
 Let $m \in \{0,1\}$ be the asset's multi-agency flag, resolved from governed
@@ -363,22 +396,22 @@ from the word and scope:
 \clearpage
 \subsection{Where this departs from standard CVSS scoring}
 \label{sec:cvss-divergence}
-Equation~\eqref{eq:isc} is algebraically identical to the CVSS v3.1 Modified
-Impact Sub-Score (MISS), with $C/I/A$ denoting the effective Modified impact
-values $\mathrm{MC}/\mathrm{MI}/\mathrm{MA}$ --- or their inherited Base values
-when the Modified metrics are Not Defined. The metric weights, requirement
-multipliers, complement-product formula, and $0.915$ cap are standard CVSS; the
-abbreviated notation is ours. The departures begin after MISS, with what this
-method does --- and deliberately does not do --- with that intermediate.
+Equation~\eqref{eq:u} is the expression inside the CVSS v3.1 Modified Impact
+Sub-Score (MISS), before CVSS applies its cap. Here $C/I/A$ denote the effective
+Modified impact values $\mathrm{MC}/\mathrm{MI}/\mathrm{MA}$ --- or their inherited
+Base values when the Modified metrics are Not Defined. The metric weights,
+Security Requirement multipliers, and complement-product aggregation form are
+standard CVSS. A conformant CVSS calculation continues with
+$\mathrm{MISS}=\min(U,0.915)$; PAIN deliberately branches at $U$ instead.
 
-In the v3.1 specification, MISS feeds the full Environmental Score. For Modified
+In the v3.1 specification, capped MISS feeds the full Environmental Score. For Modified
 Scope Unchanged, the specification multiplies MISS by $6.42$; Modified Scope
 Changed uses a different impact expression. It then combines Modified Impact with
 Modified Exploitability, built from \code{MAV}/\code{MAC}/\code{MPR}/\code{MUI},
 applies the Temporal multipliers \code{E}/\code{RL}/\code{RC}, caps the score at
 10, and performs the prescribed rounding. MISS is not the specified final
-Environmental Score. We stop at MISS and do not carry any of that downstream
-machinery into the severity term. Three decisions follow, each with a reason.
+Environmental Score. PAIN does not carry that downstream machinery into its
+severity term. The decisions are explicit and separately governed.
 
 \paragraph{We drop the exploitability half of the score.}
 PAIN is Potential Agency Impact: the question is how badly the flaw lands if it
@@ -394,16 +427,17 @@ exploitability influence both the row and the column. The seam is clean by
 construction: impact picks the row; exploitability and reachability pick the
 column.
 
-\paragraph{We normalize instead of computing the 0--10 blend.}
-CVSS transforms MISS, together with its other inputs, into a standardized 0--10
-Environmental Score. Our deliverable is a classification --- four words and five
-N-levels --- so the scalar exists only to be bucketed. Equation~\eqref{eq:s}
-rescales MISS to the natural axis for drawing those lines: $S$ is the fraction of
-the maximum attainable MISS. A threshold of $\theta_3=0.80$ therefore means ``the
-cut point is 80\% of maximum MISS.'' It is not a claim that the vulnerability
-causes 80\% of some physically measurable damage; the CVSS coefficients are not a
-ratio-scale measurement of harm. The division changes no ordering --- it relabels
-the axis. The substantive choice is stopping at MISS.
+\paragraph{We retain the pre-cap aggregate and normalize it instead of computing
+the 0--10 blend.}
+Our deliverable is a classification --- four words and five N-levels --- so the
+scalar exists only to be bucketed. Equation~\eqref{eq:s} rescales $U$ to the
+natural axis for drawing those lines: $S$ is the fraction of the greatest value
+that the CVSS-derived aggregate can attain. This corrects the original method's
+Medium-centered denominator and preserves distinctions among High-requirement
+states that the CVSS MISS cap would otherwise collapse. A threshold is not a
+claim that a vulnerability causes a physically measurable percentage of damage;
+the CVSS coefficients are not a ratio-scale measurement of harm. The division
+changes no ordering --- it relabels the axis.
 
 \paragraph{We do not repurpose CVSS Scope.}
 The full Environmental formula branches on the Changed/Unchanged Modified Scope
@@ -416,12 +450,14 @@ The multi-agency flag in Eq.~\eqref{eq:pain} carries that concern directly. Beca
 the two concepts are not semantically interchangeable, the CVSS Scope machinery is
 omitted rather than renamed or repurposed.
 
-The result is not a conformant CVSS Environmental Score. It reuses the standard
-MISS intermediate, routes exploitability and reachability to FedRAMP's remediation
-columns, represents multi-agency blast radius explicitly, and normalizes only for
-classification. A reviewer verifying the CVSS provenance can compare
-Eq.~\eqref{eq:isc} with the published MISS formula; every choice after it is
-enumerated above and in Appendix~\ref{app:opinions}.
+The result is not a conformant CVSS Environmental Score. It preserves CVSS's
+impact values, requirement multipliers, and aggregation form, but retains the
+pre-cap $U$, routes exploitability and reachability to FedRAMP's remediation
+columns, represents multi-agency blast radius explicitly, and applies PAIN-specific
+normalization and thresholds. Published CVSS vectors and scores remain unchanged.
+A reviewer can compare Eq.~\eqref{eq:u} with the expression inside the published
+MISS formula; every departure is enumerated above and in
+Appendix~\ref{app:opinions}.
 
 \section{Fail-safe behavior}
 Missing metadata \rfckw{must not} \emph{lower} PAIN. If a system has not been
@@ -521,7 +557,7 @@ vulnerability land at very different N-levels depending only on which system it 
 on --- that is the entire point of the method.
 \end{plain}
 We use $C,I,A$ for impacts and CR/IR/AR for requirements; all arithmetic follows
-Eqs.~\eqref{eq:isc}--\eqref{eq:pain}.
+Eqs.~\eqref{eq:u}--\eqref{eq:pain}.
 
 For reference, the severity word used in each example is assigned by:
 \[
@@ -533,22 +569,26 @@ W(S) \;=\;
 \text{Debilitating} & S \ge \theta_3
 \end{cases}
 \qquad
-(\theta_1,\theta_2,\theta_3) = (0.25,\ 0.55,\ 0.80).
+\begin{gathered}
+\theta_1=0.28115159694107,\\
+\theta_2=0.56230319388214,\\
+\theta_3=0.933.
+\end{gathered}
 \]
 
 \paragraph{Example 1 --- RCE on a crown-jewel datastore, multi-agency.}
 $C\!=\!I\!=\!A\!=\!0.56$ (High), CR=IR=AR=$1.5$ (High), $m=1$.
 \begin{align*}
-\mathrm{ISC} &= \min\!\big[\,1-(1-0.84)^3,\ 0.915\,\big] = \min[\,0.9959,\ 0.915\,] = 0.915, \\
-S &= 0.915/0.915 = 1.000 \;\Rightarrow\; W=\text{Debilitating}, \\
+U &= 1-(1-0.84)^3 = 0.995904, \\
+S &= 0.995904/0.995904 = 1.000 \;\Rightarrow\; W=\text{Debilitating}, \\
 m=1 \;\Rightarrow\; \boxed{\text{N5}}.
 \end{align*}
 
 \paragraph{Example 2 --- the same CVE on a sandbox, single-agency.}
 $C\!=\!I\!=\!A\!=\!0.56$, CR=IR=AR=$0.5$ (Low), $m=0$.
 \begin{align*}
-\mathrm{ISC} &= 1-(1-0.28)^3 = 1-0.72^3 = 0.6268, \\
-S &= 0.6268/0.915 = 0.685 \;\Rightarrow\; \text{Disruptive} \;\Rightarrow\; \boxed{\text{N3}}.
+U &= 1-(1-0.28)^3 = 1-0.72^3 = 0.626752, \\
+S &= 0.626752/0.995904 = 0.629330 \;\Rightarrow\; \text{Disruptive} \;\Rightarrow\; \boxed{\text{N3}}.
 \end{align*}
 Identical vulnerability, opposite ends of the matrix --- the asset half of the
 score (CR/IR/AR) is doing the work.
@@ -560,19 +600,20 @@ inter-broker replication surface, which receives no internet-derived data, so th
 finding is not internet-reachable (surface-excluded under the companion model ---
 had the flaw been in \emph{message-payload} parsing it would be transitively IRV).
 \begin{align*}
-\mathrm{ISC} &= 1-(1-0)(1-0)(1-0.84) = 1-0.16 = 0.84, \\
-S &= 0.84/0.915 = 0.918 \;\Rightarrow\; W=\text{Debilitating},\ m=0 \;\Rightarrow\; \boxed{\text{N4}}.
+U &= 1-(1-0)(1-0)(1-0.84) = 1-0.16 = 0.84, \\
+S &= 0.84/0.995904 = 0.843455 \;\Rightarrow\; W=\text{Disruptive},\ m=0 \;\Rightarrow\; \boxed{\text{N3}}.
 \end{align*}
-The single dimension $A\!\cdot\!\mathrm{AR}=0.84$ alone clears the Debilitating bar.
+The single High/High pair $A\!\cdot\!\mathrm{AR}=0.84$ is serious but does not by
+itself clear the compound-impact Debilitating boundary.
 Remediation: LEV (EPSS $\ge 0.50$) $\land$ NIRV; at Class C this is
-$M[\text{C}][\text{N4}][\text{LEV+NIRV}] = 8$ days. Note this finding may carry a
+$M[\text{C}][\text{N3}][\text{LEV+NIRV}] = 32$ days. Note this finding may carry a
 \emph{Low} vendor severity --- PAIN is decoupled from the qualitative label.
 
 \paragraph{Example 4 --- information disclosure on a metadata-only service.}
 $C\!=\!0.56,\ I\!=\!0,\ A\!=\!0$, on an asset with CR=$0.5$ (Low), IR=AR=$1.5$.
 \begin{align*}
-\mathrm{ISC} &= 1-(1-0.28)(1)(1) = 0.28, \\
-S &= 0.28/0.915 = 0.306 \;\Rightarrow\; W=\text{Narrow} \;\Rightarrow\; \boxed{\text{N2}}.
+U &= 1-(1-0.28)(1)(1) = 0.28, \\
+S &= 0.28/0.995904 = 0.281152 \;\Rightarrow\; W=\text{Narrow} \;\Rightarrow\; \boxed{\text{N2}}.
 \end{align*}
 A confidentiality leak on a service that holds only operational metadata is
 reconnaissance, not a debilitating breach --- captured by the low CR.
@@ -614,7 +655,7 @@ own seam:
   mitigations land.
 \end{itemize}
 Recomputation runs through the same arithmetic --- substitute the modified values
-for $C,I,A$ in Eq.~\eqref{eq:isc} --- and the word, the N-level, and the deadline
+for $C,I,A$ in Eq.~\eqref{eq:u} --- and the word, the N-level, and the deadline
 follow exactly as before. No new formula, no side channel.
 
 \paragraph{Concrete row-movers.} These are ordinary hardening actions, not magic
@@ -640,7 +681,7 @@ zone anti-affinity (a \code{preferred} rule is a scheduling hint, not a guarante
 --- verify the actual pod spread), a PodDisruptionBudget, and health-checked
 automatic restart. Where those facts hold, the credit applies
 \emph{automatically}: \code{MA} High$\rightarrow$Low, recomputed through
-Eq.~\eqref{eq:isc}, with the detected facts as the recorded evidence. The one
+Eq.~\eqref{eq:u}, with the detected facts as the recorded evidence. The one
 carve-out is scoped by the companion reachability method: a finding that is
 \emph{internet-reachable} does not take the automatic step, because IRV is
 precisely the statement that an attacker can deliver the trigger --- and
@@ -667,20 +708,21 @@ second-stage fetch of the malicious class from the attacker's LDAP server, so
 blocking egress breaks the chain; but DNS-based exfiltration of environment
 variables (\code{\$\{env:AWS\_SECRET\_ACCESS\_KEY\}}) remained observed in the wild
 --- which is exactly why the Modified Confidentiality drops to Low and never to
-None. The arithmetic runs through Eqs.~\eqref{eq:isc}--\eqref{eq:pain} unchanged.
+None. The arithmetic runs through Eqs.~\eqref{eq:u}--\eqref{eq:pain} unchanged.
 Base, with $C\!=\!I\!=\!A\!=\!0.56$ (High) on a CR=IR=AR=$1.5$ (High) multi-agency
 asset:
 \begin{align*}
-\mathrm{ISC} &= \min\!\big[\,1-(1-0.84)^3,\ 0.915\,\big] = 0.915,\quad
+U &= 1-(1-0.84)^3 = 0.995904,\quad
 S = 1.000 \;\Rightarrow\; \text{Debilitating},\ m=1 \;\Rightarrow\; \text{N5},
 \end{align*}
 on the Class~C LEV+IRV clock of \textbf{2 days} (Log4Shell is LEV twice over:
 KEV-listed, and caught by the \code{FRD-LEV} floor). With the evidenced egress-deny,
 $\mathrm{MC}=\mathrm{MI}=\mathrm{MA}=0.22$ (Low):
 \begin{align*}
-\mathrm{ISC} &= 1-(1-0.33)^3 = 0.699,\quad
-S = 0.699/0.915 = 0.764 \;\Rightarrow\; \text{Disruptive},\ m=1 \;\Rightarrow\;
-\boxed{\text{N4}}.
+U &= 1-(1-0.33)^3 = 0.699237,\\
+S &= 0.699237/0.995904 = 0.702113
+   \;\Rightarrow\; \text{Disruptive},\\
+m &= 1 \;\Rightarrow\; \boxed{\text{N4}}.
 \end{align*}
 The N5 timeframe is satisfied by the reduction, the reduction is reported under
 \code{VER-RPT-VDT}, and work proceeds on the N4 clock. The evidence is the
@@ -842,7 +884,7 @@ make the decoupling explicit.
 CVE-2026-xxx1 & ingress \tagn{(public-edge)}        & \cellcolor{crit!25}CRITICAL & 0.97 & yes & \cellcolor{high!35}N4 & 4 days \\
 CVE-2026-xxx2 & payments-db \tagn{(data-sensitive)} & \cellcolor{crit!25}CRITICAL & 0.94 & yes\,(t) & \cellcolor{high!35}N4 & 4 days \\
 CVE-2026-xxx3 & redis \tagn{(identity-secrets)}     & \cellcolor{high!25}HIGH     & 0.50 & no  & \cellcolor{high!35}N4 & 8 days \\
-CVE-2026-xxx4 & kafka \tagn{(data-backbone)}        & \cellcolor{low!30}LOW       & 0.76 & no  & \cellcolor{high!35}N4 & 8 days \\
+CVE-2026-xxx4 & kafka \tagn{(data-backbone)}        & \cellcolor{low!30}LOW       & 0.76 & no  & \cellcolor{med!35}N3 & 32 days \\
 CVE-2026-xxx5 & web \tagn{(app-tier)}               & \cellcolor{med!35}MEDIUM    & 0.20 & yes & \cellcolor{med!35}N3 & 128 days \\
 CVE-2026-xxx6 & coredns \tagn{(platform-foundation)}& \cellcolor{med!35}MEDIUM    & 0.08 & no  & \cellcolor{low!30}N2 & 192 days \\
 \bottomrule
@@ -855,8 +897,8 @@ exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
 (SQL-injection-class) finding on a datastore that is not internet-accessible is
 still IRV because this sample assumes no current $P_0$ prevention assertion,
 tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
-vendor severity that still yields N4 (availability-High DoS on a
-High-availability-requirement asset; Example~3) --- stays NIRV because its
+vendor severity that yields N3 (a single availability High/High alignment;
+Example~3) --- stays NIRV because its
 vulnerable parser sits on the inter-broker replication surface, which receives no
 internet-derived data.}
 \label{tab:scan}
@@ -924,7 +966,7 @@ agencies and are tagged multi-agency.}
 \midrule
 CVE-2026-yyy1 & gateway \tagn{(public-edge)}         & \cellcolor{crit!25}CRITICAL & 0.90 & yes & \cellcolor{crit!30}N5 & 12 hours \\
 CVE-2026-yyy2 & shared-idp \tagn{(identity-secrets)} & \cellcolor{crit!25}CRITICAL & 0.95 & no  & \cellcolor{crit!30}N5 & 1 day \\
-CVE-2026-yyy3 & event-bus \tagn{(data-backbone)}     & \cellcolor{low!30}LOW       & 0.80 & yes\,(t) & \cellcolor{crit!30}N5 & 12 hours \\
+CVE-2026-yyy3 & event-bus \tagn{(data-backbone)}     & \cellcolor{low!30}LOW       & 0.80 & yes\,(t) & \cellcolor{high!35}N4 & 2 days \\
 CVE-2026-yyy4 & agency-db \tagn{(data-sensitive)}    & \cellcolor{high!25}HIGH     & 0.40 & no  & \cellcolor{crit!30}N5 & 8 days \\
 CVE-2026-yyy5 & tenant-pod \tagn{(app-tier)}         & \cellcolor{med!35}MEDIUM    & 0.10 & no  & \cellcolor{med!35}N3 & 64 days \\
 CVE-2026-yyy6 & shared-dns \tagn{(platform-foundation)} & \cellcolor{med!35}MEDIUM & 0.05 & no  & \cellcolor{low!30}N2 & 192 days \\
@@ -934,7 +976,7 @@ CVE-2026-yyy6 & shared-dns \tagn{(platform-foundation)} & \cellcolor{med!35}MEDI
 scope escalates Disruptive/Debilitating findings, and Class~D carries the tightest
 deadlines --- an internet-facing exploitable flaw on the shared edge remediates in
 \textbf{12 hours} (CVE-2026-yyy1). CVE-2026-yyy3 shows a \emph{Low} vendor severity
-at N5 also remediating in \textbf{12 hours}: a content-triggered DoS in
+at N4 remediating in \textbf{2 days}: a content-triggered DoS in
 message-payload parsing on the shared backbone is transitively internet-reachable
 (t) through the tenant pods, even though the bus itself is not internet-accessible;
 the sample assumes no current $P_0$ assertion covers that trigger.
@@ -1119,8 +1161,8 @@ suppression cannot outlive the condition that justified it.
   method yields the same PAIN and deadline on every run and for every analyst.
 \item \textbf{Two human inputs only.} An asset needs exactly two tags
   (\code{asset-archetype}, \code{multi-agency}); everything else is derived.
-\item \textbf{Governed calibration.} The word thresholds
-  (Eq.~\eqref{eq:word}) and the EPSS threshold are the only tunable knobs and
+\item \textbf{Governed calibration.} The High-centered PAIN normalization, word
+  thresholds (Eq.~\eqref{eq:word}), and EPSS threshold are governed parameters and
   \rfckw{must} live in governed configuration, not in ad-hoc cluster state.
 \item \textbf{Auditability.} Each finding can carry the full derivation: the
   resolved archetype and its source, CR/IR/AR, $S$, the word, the scope, and the
@@ -1207,9 +1249,10 @@ availability grades split deliberately between the edge and the application tier
 replica at once---redundancy defends against hardware failure, not against a flaw
 shared by the whole class---and an edge-class outage closes the front door for
 every user. \code{app-tier} sits at Medium because its blast radius is one service
-degrading. The same availability-High CVE therefore scores Debilitating on the
-edge and Disruptive on the application tier, which matches how an operations team
-actually experiences the two events. Third, the edge itself is split by what it
+degrading. An availability-only High CVE is Disruptive in both cases under the
+compound-impact boundary, but High AR gives the edge the larger scalar and can
+combine with a second affected dimension to cross into Debilitating. Third, the
+edge itself is split by what it
 does with traffic. \code{public-edge} names the TLS-terminating L7 edge --- in
 practice, almost every modern ingress, gateway, or public web front --- and
 carries CR and IR at Medium: a terminating edge holds private keys and session
@@ -1271,21 +1314,27 @@ on. Each item below names the value we use, why, and the fact that an implementa
 \rfckw{may} change it.
 
 \begin{enumerate}[leftmargin=1.7em]
-\item \textbf{PAIN word thresholds $(\theta_1,\theta_2,\theta_3) = (0.25,\,0.55,\,0.80)$.}
-  The cut points that turn the impact scalar $S$ into
-  Minimal/Narrow/Disruptive/Debilitating (Eq.~\ref{eq:word}). This is the single most
-  consequential opinion --- it sets where a finding crosses an N-level boundary. The
-  values should reproduce senior-analyst triage on a back-tested sample; an adopter
-  \rfckw{should} re-calibrate against its own rated findings and \rfckw{must} treat
-  the result as governed configuration. The companion paper
-  \href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-calibration.pdf}
-  {\emph{Calibrating PAIN Without Abandoning CVSS}} provides a more evidence-backed
-  calibration: it derives the boundaries from stated consequence scenarios,
-  exhaustively enumerates all 729 CVSS impact/requirement states, and validates the
-  result against anonymized operational datasets. Its revised governed calibration
-  set is $(0.2811515969,\,0.5623031939,\,0.933)$ with a High-centered PAIN
-  normalization denominator of $0.995904$; the values above remain the initial
-  publication baseline for historical reproducibility.
+\item \textbf{High-centered PAIN normalization, $D_H=0.995904$.}
+  PAIN retains the pre-cap aggregate $U$ and normalizes it by the maximum attainable
+  all-High-impact/all-High-requirement value (Eqs.~\ref{eq:dh}--\ref{eq:s}). The
+  initial publication used the CVSS MISS cap, $0.915$, as both cap and denominator.
+  Because $0.915$ represents all-High impacts at \emph{Medium} requirements, that
+  baseline overstated where High-requirement states sat on PAIN's full attainable
+  scale and erased distinctions above the cap. The High-centered denominator closes
+  that methodology gap without changing a published CVSS vector or score.
+\item \textbf{PAIN word thresholds $(\theta_1,\theta_2,\theta_3) =
+  (0.28115159694107,\,0.56230319388214,\,0.933)$.}
+  These cut points turn $S$ into Minimal/Narrow/Disruptive/Debilitating
+  (Eq.~\ref{eq:word}). The initial publication began with
+  $(0.25,\,0.55,\,0.80)$. We were willing to revise those policy values, but did not
+  want to choose replacements merely to fit a preferred histogram. The companion
+  paper \href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-calibration.pdf}
+  {\emph{Calibrating PAIN Without Abandoning CVSS}} documents the data-backed
+  method used instead: define consequence anchors, exhaustively enumerate all 729
+  discrete impact/requirement states, and validate the result against anonymized
+  operational datasets. An adopter \rfckw{should} revalidate the governed values
+  against its own rated findings rather than target a desired percentage in each
+  word bucket.
 \item \textbf{EPSS Likely-Exploitable threshold $\theta_{\text{epss}} = 0.50$.}
   The EPSS probability at or above which a finding is treated as LEV
   (Section~\ref{sec:remediation}). This memo recommends $0.50$ so vulnerabilities
@@ -1302,13 +1351,11 @@ on. Each item below names the value we use, why, and the fact that an implementa
   internet is a likely exploitable vulnerability.'' An \code{AC:H} finding does not
   enter LEV through this vector floor alone, but KEV membership or EPSS
   $\ge \theta_{\text{epss}}$ independently places it in LEV.
-\item \textbf{Impact-only severity, normalized by $0.915$.} We take CVSS's
-  \emph{Modified Impact Sub-Score} and rescale it to $[0,1]$ rather than computing
-  the full Environmental Score; Section~\ref{sec:cvss-divergence} enumerates this
-  choice and every downstream CVSS component the method omits. The calibration
-  companion linked above revises only PAIN's normalization path to retain the
-  pre-cap aggregate and normalize it by the High-requirement maximum; it does not
-  alter the published CVSS score or vector.
+\item \textbf{Impact-only severity.} We use the CVSS-derived impact aggregate rather
+  than computing the full Environmental Score; exploitability and reachability
+  select the remediation column instead of influencing the PAIN row.
+  Section~\ref{sec:cvss-divergence} enumerates this choice and every downstream CVSS
+  component the method omits.
 \item \textbf{CISA Vulnrichment is deliberately excluded.} Two CISA Vulnrichment
   SSVC values are natural candidate inputs: the exploitation state (as a
   LEV input) and the technical impact (as an impact floor). We adopt neither. The
@@ -1366,7 +1413,8 @@ on. Each item below names the value we use, why, and the fact that an implementa
   to CR/IR/AR all High so it scores loudly, rather than to a low default. ``Unknown''
   is treated as serious until classified.
 \item \textbf{CVSS v3.1, not v4.0.} We build on v3.1's closed-form environmental
-  formula because it provides a Modified Impact Sub-Score (Eq.~\ref{eq:isc}) with
+  formula because it provides a Modified Impact Sub-Score whose pre-cap expression
+  is Eq.~\ref{eq:u}, with
   explicit CR/IR/AR multipliers. CVSS v4.0 retains CR/IR/AR but feeds them into a
   lookup-based MacroVector rather than the v3.1 formula, and it splits impact into
   Vulnerable-System (\code{VC/VI/VA}) and Subsequent-System (\code{SC/SI/SA})
@@ -1406,7 +1454,7 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
 1.2 & July 9, 2026 & M. Venne & Added the optional \code{asset-value} assignment
   scheme as a simpler alternative to \code{asset-archetype}. \\
 1.3 & July 10, 2026 & M. Venne & Expanded the mathematical walkthrough of
-  Eqs.~\eqref{eq:isc}--\eqref{eq:s} and delineated departures from standard CVSS
+  Eqs.~\eqref{eq:u}--\eqref{eq:s} and delineated departures from standard CVSS
   v3.1 scoring. \\
 1.4 & July 13, 2026 & M. Venne & Changed the recommended EPSS
   Likely-Exploitable threshold from $0.70$ to $0.50$ and updated the worked
@@ -1423,9 +1471,10 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
 1.7 & July 20, 2026 & M. Venne & Recommended role-based archetypes over direct
   asset-value labels because they expose the factual and governed basis for
   CR/IR/AR while retaining asset value as a conforming fallback. \\
-1.8 & July 21, 2026 & M. Venne & Linked the evidence-backed PAIN calibration
-  companion and recorded its revised High-centered normalization and derived
-  word-threshold parameter set. \\
+1.8 & July 21, 2026 & M. Venne & Made the evidence-backed, High-centered PAIN
+  normalization and derived word thresholds operative throughout the method,
+  worked examples, and sample scans; linked the calibration companion and retained
+  the initial values as historical context. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}
