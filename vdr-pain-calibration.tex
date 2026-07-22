@@ -1,0 +1,954 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,left=1in,right=1in,top=0.75in,bottom=0.75in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{enumitem}
+\usepackage[most]{tcolorbox}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\emergencystretch=3em
+
+\definecolor{infoblue}{HTML}{2C3E50}
+\definecolor{rule}{HTML}{BDC3C7}
+\definecolor{decisiongreen}{HTML}{1B7F5A}
+\definecolor{rejectred}{HTML}{A33A2B}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\rfckw}[1]{\textsc{#1}}
+\newcommand{\origpaper}{\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}{the initial PAIN publication}}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\newtcolorbox{plain}{
+  enhanced, breakable,
+  colback=Sepia!7, colframe=Sepia!55, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=Sepia!72!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={IN PLAIN TERMS}
+}
+
+\newtcolorbox{decisionbox}{
+  enhanced, breakable,
+  colback=decisiongreen!5, colframe=decisiongreen!65, boxrule=0.5pt, arc=2pt,
+  left=7pt, right=7pt, top=5pt, bottom=5pt,
+  fontupper=\small,
+  coltitle=decisiongreen!75!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={FINAL CALIBRATION}
+}
+
+\newtcolorbox{cautionbox}{
+  enhanced, breakable,
+  colback=rejectred!4, colframe=rejectred!55, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=rejectred!75!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={IMPORTANT BOUNDARY}
+}
+
+\title{\bfseries Calibrating PAIN Without Abandoning CVSS:\\
+High-Centered Normalization and\\
+Standards-Anchored Thresholds}
+\author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
+\date{July 2026\\\small Version 1.0}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+The initial paper \emph{A Deterministic, CVSS--Environmental Method for FedRAMP
+VDR/VER Vulnerability Prioritization} introduced a reproducible method for deriving
+Potential Agency Impact (PAIN) from a vulnerability's confidentiality, integrity,
+and availability impacts and an asset's CVSS Environmental Security Requirements.
+Operational backtesting exposed a calibration defect: the method normalized against
+the CVSS v3.1 Medium-requirement impact ceiling while High requirements could produce
+a larger pre-cap aggregate. A single High technical impact on a High-requirement
+dimension therefore normalized to approximately $0.918$ and crossed directly into
+Debilitating. In one scan, approximately 40 percent of affected-resource observations
+were N4.
+
+This paper documents the alternatives evaluated and the resulting revision. More
+asset sub-profiles could reduce severity but would multiply tagging choices. Lowering
+the High requirement multiplier to $1.25$ approached the desired distribution but
+discarded a CVSS-defined constant. Boolean component gates expressed the intended
+compound-impact semantics but added a second classifier and discarded some continuous
+dimensional information. Raising a threshold alone treated the symptom while leaving
+the normalization axis centered on Medium requirements.
+
+The selected method retains the CVSS impact weights, Security Requirement weights,
+and complement-product aggregation. It replaces the saturated $0.915$ normalization
+with the maximum attainable pre-cap aggregate under High requirements,
+$D_H=0.995904$. Rather than carrying forward the original lower thresholds, Narrow
+begins at the first complete technical loss on a Low-requirement dimension and
+Disruptive begins at a High impact on a Moderate-requirement dimension. The
+Debilitating threshold is set to $0.933$, which lies
+strictly between the highest possible non-compound combination ($0.931993$) and the
+lowest possible compound catastrophic combination ($0.933423$). Exhaustive testing
+of all 729 discrete impact/requirement combinations and backtesting against two
+anonymized evaluation datasets support the result. All three boundaries are therefore
+anchored to stated consequence scenarios and empirically tested, not fitted to a
+desired histogram.
+\end{abstract}
+
+\tableofcontents
+
+\section{Status and relationship to the initial method}
+
+This document is an informational calibration companion to \origpaper{}. It does
+not define a FedRAMP requirement, change a CVSS score, or claim that the resulting
+scalar is a conformant CVSS Environmental Score. It revises the PAIN-specific step
+that transforms CVSS Environmental impact inputs into a unit scalar and then into
+the words Minimal, Narrow, Disruptive, and Debilitating.
+
+The initial method made three separations that remain intact:
+
+\begin{itemize}[leftmargin=1.5em]
+\item CVSS-derived impact and asset requirements determine the PAIN word.
+\item Agency scope maps the word to N1--N5.
+\item Exploitability and internet reachability select the remediation column; they
+  do not change potential impact.
+\end{itemize}
+
+This calibration changes only the first of those steps. Remediation matrices,
+likely-exploitable logic, internet-reachability logic, multi-agency handling, VEX
+dispositions, and evidence-gated Modified impact reductions remain outside its
+scope.
+
+The governed asset-archetype catalog is also an external input to this calibration.
+This paper does not define or revise archetype CR/IR/AR assignments; it holds the
+adopted catalog constant while comparing scoring methods.
+
+\begin{plain}
+The original model asked the right question but used the wrong ruler at the top of
+the scale. It measured High-requirement assets against a maximum created by Medium
+requirements. This paper replaces the ruler, preserves the CVSS inputs, and places
+the Debilitating line at the first combination that is both catastrophic and
+compound.
+\end{plain}
+
+\section{The calibration problem}
+\label{sec:problem}
+
+Let $C,I,A$ be the effective CVSS impact values for confidentiality, integrity,
+and availability:
+\[
+C,I,A \in \{\,0,\ 0.22,\ 0.56\,\},
+\]
+and let the corresponding asset requirements be
+\[
+\mathrm{CR},\mathrm{IR},\mathrm{AR}
+\in \{\,0.5,\ 1.0,\ 1.5\,\}.
+\]
+These are the CVSS v3.1 None/Low/High impact weights and Low/Medium/High Security
+Requirement weights. CVSS v3.1 defines the capped Modified Impact Sub-Score as
+\begin{equation}
+\mathrm{MISS}=\min\!\left(
+1-(1-C\mathrm{CR})(1-I\mathrm{IR})(1-A\mathrm{AR}),\ 0.915
+\right).
+\label{eq:miss}
+\end{equation}
+
+The initial PAIN method normalized this value:
+\begin{equation}
+S_M=\frac{\mathrm{MISS}}{0.915},
+\label{eq:oldscore}
+\end{equation}
+then used $(0.25,0.55,0.80)$ as the three word thresholds.
+
+The value $0.915$ is the rounded Medium-requirement all-High impact ceiling:
+\[
+1-(1-0.56)^3=0.914816\approx0.915.
+\]
+But one High impact on a High requirement contributes $0.56\times1.5=0.84$.
+Therefore a one-dimensional finding produces
+\[
+S_M=\frac{0.84}{0.915}=0.918033,
+\]
+which exceeds the original Debilitating threshold of $0.80$. This is the
+single-dimension cliff: a complete loss of one important security property becomes
+N4 on a single-agency asset before any second security property is affected.
+
+The effect is operational, not cosmetic. For a Class C provider, an N4-to-N3
+change moves the \code{LEV+NIRV} deadline from 8 days to 32 days and the
+\code{LEV+IRV} deadline from 4 days to 16 days. A large cluster at one arithmetic
+point can therefore create both remediation pressure and a foreseeable incentive
+to assign a genuinely High requirement as Moderate.
+
+\section{Design criteria}
+
+The review applied five criteria before accepting a change:
+
+\begin{enumerate}[leftmargin=1.7em]
+\item \textbf{Semantic first.} Each PAIN boundary must have a written meaning that
+  can be tested with scenarios. A target distribution is validation evidence, not
+  the definition.
+\item \textbf{Preserve CVSS-derived inputs.} The official $0.56/0.22/0$ impact
+  weights, $1.5/1.0/0.5$ Security Requirement weights, and complement-product form
+  should remain unless evidence demonstrates that a particular input is unsuitable.
+\item \textbf{Keep tagging usable.} A regular operator should select an asset's role
+  from a short governed catalog without navigating a cross-product of profiles,
+  lenses, deployment modes, and impact exceptions.
+\item \textbf{Preserve dimensional information.} Low impacts, Moderate requirements,
+  and accumulation across C/I/A should continue to affect the scalar rather than
+  disappear behind a boolean count.
+\item \textbf{Remain deterministic and auditable.} Given the same effective impact
+  vector and archetype, every implementation must produce the same result, retain
+  full-precision intermediate values, and expose the policy version.
+\end{enumerate}
+
+\section{Alternatives evaluated}
+\label{sec:alternatives}
+
+\subsection{Additional asset sub-profiles}
+
+One approach was to retain broad archetypes but add environment-specific variants,
+such as internal-only orchestration, administrator-only CI/CD, redundant control
+planes, or restricted security tooling. A primary archetype label could have been
+combined with a second profile label, or the catalog could have introduced parallel
+archetypes for each context.
+
+\paragraph{Illustrative profile model.}
+The two-label form would be straightforward at first:
+
+\begin{verbatim}
+asset-archetype: orchestrator
+asset-impact-profile: redundant-admin-only
+\end{verbatim}
+
+The second label would alter the requirement vector supplied by the first. Table~\ref{tab:profile-complexity}
+shows representative outcomes considered during the design discussion. They are
+illustrative rejected alternatives, not normative archetype assignments.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.14}
+\begin{tabularx}{\textwidth}{@{}P{0.19\textwidth}P{0.29\textwidth}cccY@{}}
+\toprule
+\textbf{Archetype} & \textbf{Impact profile} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Distinction encoded} \\
+\midrule
+\code{orchestrator} & service-critical control plane & M & M & H & Sustained loss stops service delivery. \\
+\code{orchestrator} & redundant, administrator-only & M & M & M & Failover limits the availability consequence. \\
+\code{cicd-pipeline} & production release/signing & H & H & M & Disclosure or corruption reaches production. \\
+\code{cicd-pipeline} & isolated internal test & M & M & L & Output is non-production and reproducible. \\
+\code{security-tooling} & inline preventive enforcement & M & H & H & Corruption or outage removes an active control. \\
+\code{security-tooling} & passive telemetry only & M & M & L & Loss reduces visibility but not service delivery. \\
+\code{identity-secrets} & durable credentials & H & M & M & Disclosure is catastrophic; loss is recoverable. \\
+\code{identity-secrets} & replicated ephemeral token cache & H & M & L & Replication and regeneration reduce availability need. \\
+\bottomrule
+\end{tabularx}
+\caption{Illustrative, non-normative sub-profile mappings considered and rejected.}
+\label{tab:profile-complexity}
+\end{table}
+
+Even this small example requires rules for whether every profile is valid for every
+archetype, what an omitted profile means, whether a profile replaces or modifies the
+base vector, and whether a direct CR/IR/AR override takes precedence. Eight
+archetypes and three profiles expose up to 24 apparent choices before exceptions;
+adding a fourth profile adds another eight combinations and their documentation,
+validation, tests, and migration behavior.
+
+This could produce the desired numerical result because it moves more dimensions
+from High to Moderate or Low before scoring. It was not selected for three reasons:
+
+\begin{itemize}[leftmargin=1.5em]
+\item Two independent metadata axes create a cross-product of valid and invalid
+  combinations and make precedence rules necessary.
+\item Parallel archetypes cause catalog growth, ambiguous choices, and drift as
+  teams interpret nearly identical labels differently.
+\item The approach moves calibration pressure into asset tagging. Operators can
+  obtain a more favorable deadline by choosing a less severe profile even when the
+  underlying system role is unchanged.
+\end{itemize}
+
+Environment-specific facts still matter, but they belong in evidence-backed CVSS
+Modified metrics or other governed control evidence, not in an unlimited taxonomy
+of scoring profiles.
+
+\subsection{Changing the High multiplier from 1.50 to 1.25}
+
+Reducing the High Security Requirement multiplier to $1.25$ directly removes the
+single-dimension cliff:
+\[
+\frac{0.56\times1.25}{0.915}=0.765027,
+\]
+which is Disruptive at the original thresholds. Two High impacts on two High
+requirements still produce
+\[
+\frac{1-(1-0.70)^2}{0.915}=0.994536,
+\]
+which remains Debilitating.
+
+The distribution moved close to the desired range, but the alternative was not
+selected. The $1.5$ value is the published CVSS v3.1 High requirement weight;
+$1.25$ would be a PAIN-specific replacement without an independent derivation.
+FIRST describes v3 calibration broadly as expert judgment checked against real
+vulnerabilities, not as a public parameter-specific derivation of $1.5$. Retaining
+it preserves a standardized input rather than claiming unique correctness for PAIN.
+It would also alter every boundary, not only Debilitating. Finally, multiplier
+reduction alone does not express the desired semantics: three High impacts on an
+all-Moderate asset still produce $S\approx1$ and therefore N4.
+
+\subsection{Raising the original Debilitating threshold}
+
+The review was not opposed in principle to changing the $\theta$ values. Unlike the
+CVSS metric weights, they are governed PAIN policy boundaries and should change when
+the intended meaning of a PAIN word changes. The review did, however, reject
+choosing thresholds primarily to manufacture a preferred distribution---for example,
+tuning until Minimal, Narrow, Disruptive, and Debilitating appeared near the 20th,
+40th, 60th, and 80th percentiles of the observed vulnerability population.
+
+That approach would produce a tidy histogram but make classification relative to
+the current dataset. The same impact and asset requirements could receive a
+different PAIN word when unrelated vulnerabilities entered or left the population,
+when a different tenant mix was scanned, or when asset-classification coverage
+improved. Percentile targets may be useful diagnostics, but they are not defensible
+definitions of consequence.
+
+Moving $\theta_3$ from $0.80$ to $0.92$ while retaining the $0.915$ denominator
+demotes the $0.918033$ single-dimension cluster. This is a legitimate PAIN policy
+change, and the scan distribution improved. Standing alone, however, it retains a
+Medium-centered axis and places the new line almost exactly above the cluster it is
+intended to demote. Without a scenario-derived boundary, the change can reasonably
+look like histogram fitting. The final method therefore changes $\theta_3$ only
+after deriving a semantic boundary from the finite impact/requirement state space.
+The lower thresholds are likewise re-derived from stated Minimal, Narrow, and
+Disruptive anchor scenarios rather than inherited or percentile-fitted. The observed
+histogram is used to test the consequence, not select any threshold.
+
+\subsection{Strict two-dimension alignment gate}
+
+A categorical alternative required two aligned pairs of High technical impact and
+High asset requirement before N4:
+\[
+\#\{d:\ \mathrm{impact}_d=H\ \land\ \mathrm{requirement}_d=H\}\ge2.
+\]
+This made N4 rare, but it was too rigid. An archetype such as
+\code{orchestrator=MMH} could never reach N4, even under complete
+$C{:}H/I{:}H/A{:}H$ compromise, because only availability is High.
+
+\subsection{Compound component gate}
+
+The gate was broadened to require at least one catastrophic H/H alignment and at
+least two High technical impacts on Moderate-or-High requirement dimensions. It
+handled the orchestrator case and produced a credible distribution.
+
+The method was not selected as the final implementation because it adds a second
+classifier after the scalar and loses dimensional information at the boundary.
+Low impacts cease to matter to eligibility, and vectors with materially different
+continuous scores collapse to the same pair of counts. Implementations must also
+explain why a raw scalar above the Debilitating threshold was subsequently capped
+at Disruptive.
+
+The gate nevertheless supplied the semantic test used to derive the final
+arithmetic boundary.
+
+\subsection{CVSS v4 MacroVectors}
+
+CVSS v4 confirms that aligned impact and requirements can be treated categorically.
+Its EQ6 group enters the more-severe level when \emph{any} of
+\code{VC:H/CR:H}, \code{VI:H/IR:H}, or \code{VA:H/AR:H} is true, and it evaluates
+EQ6 jointly with the vulnerable-system impact pattern in EQ3. CVSS v4 does not
+require two aligned dimensions or compound impact. Its full score also includes
+exploitability, subsequent-system impact, and threat metrics that PAIN deliberately
+routes elsewhere.
+
+Accordingly, CVSS v4 informed the alignment analysis but was not copied as the
+PAIN classifier. The final method remains compatible with v4 vulnerable-system
+impact values by mapping \code{VC/VI/VA} onto the PAIN C/I/A inputs when a v3.1
+vector is unavailable.
+
+\section{High-centered normalization}
+\label{sec:normalization}
+
+The final method separates the CVSS-defined cap from the underlying environmental
+impact aggregate. Define the pre-cap aggregate
+\begin{equation}
+U=1-(1-C\mathrm{CR})(1-I\mathrm{IR})(1-A\mathrm{AR}).
+\label{eq:aggregate}
+\end{equation}
+
+The symbol $U$ is PAIN notation for the expression before the CVSS cap; it is not a
+new CVSS metric. CVSS v3.1 defines the conformant Modified Impact Sub-Score as
+\begin{equation}
+\mathrm{MISS}=\min(U,0.915).
+\label{eq:miss-boundary}
+\end{equation}
+When $U\le0.915$, $U$ and MISS are numerically identical. When $U>0.915$, MISS
+remains fixed at $0.915$ regardless of how much additional weighted impact the
+other dimensions contribute. The cap belongs to the official CVSS 0--10 scoring
+machinery, where MISS subsequently interacts with scope, exploitability, and
+rounding rules.
+
+PAIN does not reuse that downstream formula. Its severity axis is impact only;
+exploitability and internet reachability are routed separately to remediation
+timing. Consequently, collapsing every $U>0.915$ to the same value removes
+information PAIN needs to distinguish different compound-impact states. The
+revision branches immediately before the CVSS cap: the published CVSS calculation
+continues to use MISS, while the PAIN calculation retains $U$.
+
+The maximum attainable $U$ over the retained PAIN inputs occurs when all three
+impacts and all three requirements are High:
+\begin{equation}
+D_H=1-(1-0.56\times1.5)^3=1-0.16^3=0.995904.
+\label{eq:dh}
+\end{equation}
+
+The revised scalar is therefore
+\begin{equation}
+S_H=\frac{U}{D_H}=\frac{U}{0.995904}\in[0,1].
+\label{eq:newscore}
+\end{equation}
+
+No cap is needed before division because $D_H$ is the maximum attainable value in
+the defined input domain. An implementation may defensively evaluate
+$\min(U,D_H)/D_H$.
+
+Table~\ref{tab:cvss-pain-boundary} makes the boundary concrete. It compares MISS,
+not a complete CVSS Environmental Score; a complete score would require the rest of
+the CVSS vector and formula.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}P{0.30\textwidth}rrrY@{}}
+\toprule
+\textbf{Weighted-impact state} & \textbf{$U$} & \textbf{CVSS MISS} & \textbf{PAIN $S_H$} & \textbf{Effect} \\
+\midrule
+One H impact on one H requirement & 0.840000 & 0.840000 & 0.843455 & Below the cap; no information is clipped. \\
+One H/H plus one H/M contribution & 0.929600 & 0.915000 & 0.933423 & CVSS clips $0.014600$; PAIN retains the compound increment. \\
+Three H impacts on three H requirements & 0.995904 & 0.915000 & 1.000000 & CVSS clips $0.080904$; PAIN reaches its defined maximum. \\
+\bottomrule
+\end{tabularx}
+\caption{Where the CVSS MISS path and PAIN normalization path diverge.}
+\label{tab:cvss-pain-boundary}
+\end{table}
+
+\begin{cautionbox}
+CVSS and PAIN use the same impact inputs, but they use them for different purposes.
+CVSS stops the aggregate at $0.915$ and continues calculating the official CVSS
+score. PAIN keeps the additional impact above $0.915$ and divides by $0.995904$ so
+that strongly weighted dimensions remain distinguishable. This changes only the
+PAIN classification. It does not recalculate or replace the published CVSS score or
+vector. $U$ and $S_H$ must therefore be labeled as PAIN values, not CVSS scores.
+\end{cautionbox}
+
+\section{Deriving the thresholds}
+\label{sec:thresholds}
+
+\subsection{Deriving the Minimal/Narrow and Narrow/Disruptive boundaries}
+
+The original $0.25$ and $0.55$ values were governed PAIN policy, not CVSS constants.
+Merely multiplying them by $0.915/D_H$ would preserve their old raw-$U$ locations,
+but it would not independently explain why those locations separate the PAIN words.
+The revision instead applies the same scenario-first method used for Debilitating.
+
+There is an important limit to this derivation. The C/I/A and CR/IR/AR lattice does
+not encode the number of affected users, outage duration, or amount and type of
+affected data. It therefore cannot reproduce every part of the FedRAMP word
+definitions by arithmetic alone. The boundaries below are governed, standards-informed
+proxies: CVSS supplies the discrete impact and requirement values; FIPS 199 supplies
+the distinction between limited, serious, and severe or catastrophic adverse effect;
+PAIN assigns those states to its operational words.
+
+For a single dimension, the shorthand H/L means High technical impact on a Low
+Security Requirement; L/H and H/M are read the same way. When terms are joined by
+a plus sign, they occur on different C/I/A dimensions.
+
+\paragraph{Narrow begins with a complete loss on a Low-requirement dimension.}
+A High technical impact on a Low Security Requirement contributes
+$0.56\times0.5=0.28$. Although the asset owner has determined that loss of the
+property has limited adverse effect, the technical loss itself is complete. The
+revision treats that state as Narrow rather than Minimal:
+\begin{equation}
+\boxed{\theta_1=\frac{0.28}{0.995904}\approx0.2811515969}.
+\label{eq:theta1}
+\end{equation}
+An isolated Low impact on a Moderate requirement remains below the line:
+$0.22/0.995904=0.2209048262$. Exhaustive enumeration confirms that no attainable
+state lies between $0.2209048262$ and $0.2811515969$. With an inclusive comparison,
+the complete-loss anchor itself is Narrow.
+
+\paragraph{Disruptive begins with a High impact on a Moderate requirement.}
+A Moderate Security Requirement represents a property whose loss can have a serious
+adverse effect. A High technical impact directly aligned to that property therefore
+provides the first unambiguous Disruptive anchor:
+\begin{equation}
+\boxed{\theta_2=\frac{0.56}{0.995904}\approx0.5623031939}.
+\label{eq:theta2}
+\end{equation}
+The two closest disputed patterns remain Narrow. One H/L contribution combined
+with one L/H contribution yields $S_H=0.5197288092$; two L/H contributions yield
+$S_H=0.5533665896$. Neither contains a High technical impact on a Moderate-or-High
+requirement. The latter is the greatest attainable state below the H/M anchor, and
+no state lies between $0.5533665896$ and $0.5623031939$.
+
+The boundary does not forbid lower-level contributions from becoming Disruptive.
+Because the complement product remains continuous over all three dimensions, any
+compound state whose aggregate reaches the H/M-equivalent value also crosses the
+line. The rule is an arithmetic threshold, not a categorical H/M gate.
+
+\subsection{Deriving Debilitating from the discrete state space}
+
+For derivation only, define a \emph{compound catastrophic} state as one containing:
+
+\begin{enumerate}[leftmargin=1.7em]
+\item at least one High technical impact aligned with a High requirement; and
+\item at least one additional High technical impact aligned with a Moderate-or-High
+  requirement.
+\end{enumerate}
+
+This definition is not implemented as a gate. It partitions the finite input space
+so that a scalar boundary can be derived.
+
+There are $3^3=27$ possible C/I/A impact patterns and $3^3=27$ possible
+CR/IR/AR patterns, for 729 combinations. Exhaustive enumeration establishes two
+extrema.
+
+The highest non-compound combination is one High impact on a High requirement plus
+two Low impacts on High requirements:
+\begin{align}
+U_{\max,\mathrm{noncompound}}
+  &=1-(1-0.84)(1-0.33)^2=0.928176,\\
+S_{\max,\mathrm{noncompound}}
+  &=\frac{0.928176}{0.995904}=0.9319934452.
+\end{align}
+
+The lowest compound catastrophic combination is one High impact on a High
+requirement plus one High impact on a Moderate requirement, with no third impact:
+\begin{align}
+U_{\min,\mathrm{compound}}
+  &=1-(1-0.84)(1-0.56)=0.929600,\\
+S_{\min,\mathrm{compound}}
+  &=\frac{0.929600}{0.995904}=0.9334233018.
+\end{align}
+
+The open interval between those values is non-empty. The selected threshold is
+\begin{equation}
+\boxed{\theta_3=0.933},
+\label{eq:theta3}
+\end{equation}
+which satisfies
+\[
+0.9319934452 < 0.933 < 0.9334233018.
+\]
+
+Across all 729 discrete combinations, $S_H\ge0.933$ if and only if the combination
+meets the compound catastrophic definition above. Seventy combinations qualify;
+none of the 659 non-compound combinations cross the threshold, and no compound
+combination falls below it.
+
+\begin{decisionbox}
+The final PAIN scalar and thresholds are:
+\[
+U=1-(1-C\mathrm{CR})(1-I\mathrm{IR})(1-A\mathrm{AR}),
+\qquad
+S_H=\frac{U}{0.995904},
+\]
+\[
+(\theta_1,\theta_2,\theta_3)=
+\left(\frac{0.28}{0.995904},\ \frac{0.56}{0.995904},\ 0.933\right)
+\approx(0.2811515969,\ 0.5623031939,\ 0.933).
+\]
+Minimal is $S_H<\theta_1$; Narrow is $\theta_1\le S_H<\theta_2$;
+Disruptive is $\theta_2\le S_H<\theta_3$; and Debilitating is
+$S_H\ge\theta_3$. Implementations classify with full-precision $S_H$ and
+thresholds. Rounded values are for display only. The parameter set must be versioned
+as governed PAIN policy.
+\end{decisionbox}
+
+\section{Worked scenarios}
+\label{sec:scenarios}
+
+Tables~\ref{tab:lower-boundaries} and~\ref{tab:scenarios} apply the final arithmetic
+to boundary and ordinary cases. Requirement vectors are explicit scenario inputs
+supplied by the governed asset catalog. Results assume a single-agency resource;
+the separate agency-scope mapping can promote qualifying words to N4 or N5.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.16}
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{0.98\textwidth}{@{}P{0.21\textwidth}P{0.08\textwidth}P{0.12\textwidth}rrY@{}}
+\toprule
+\textbf{Boundary scenario} & \textbf{C/I/A} & \textbf{CR/IR/AR} & \textbf{$U$} & \textbf{$S_H$} & \textbf{Result and reason} \\
+\midrule
+Isolated limited effect & L/N/N & M/M/M & 0.220000 & 0.220905 & N1. Low impact on a Moderate requirement remains Minimal. \\
+Complete loss, Low requirement & H/N/N & L/M/M & 0.280000 & 0.281152 & N2. First Narrow anchor. \\
+Crossed mixed pair & H/L/N & L/H/M & 0.517600 & 0.519729 & N2. No direct serious alignment. \\
+Two limited effects on High requirements & L/L/N & H/H/M & 0.551100 & 0.553367 & N2. Greatest attainable state below H/M. \\
+Direct serious alignment & H/N/N & M/M/M & 0.560000 & 0.562303 & N3. First Disruptive anchor. \\
+\bottomrule
+\end{tabularx}
+\caption{Strict lower-boundary scenarios. Threshold comparisons are inclusive.}
+\label{tab:lower-boundaries}
+\end{table}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.18}
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{0.98\textwidth}{@{}P{0.20\textwidth}P{0.08\textwidth}P{0.12\textwidth}rrY@{}}
+\toprule
+\textbf{Scenario} & \textbf{C/I/A} & \textbf{CR/IR/AR} & \textbf{$U$} & \textbf{$S_H$} & \textbf{Result and reason} \\
+\midrule
+Availability-only orchestrator & N/N/H & M/M/H & 0.840000 & 0.843455 & N3. Catastrophic availability is isolated. \\
+Integrity and availability on orchestrator & N/H/H & M/M/H & 0.929600 & 0.933423 & N4. Minimum compound catastrophic case. \\
+Complete orchestrator compromise & H/H/H & M/M/H & 0.969024 & 0.973010 & N4. Catastrophic availability plus serious C/I impact. \\
+Confidentiality and integrity on data backbone & H/H/N & H/H/M & 0.974400 & 0.978408 & N4. Two catastrophic dimensions. \\
+Complete app-tier compromise & H/H/H & M/M/M & 0.914816 & 0.918578 & N3. Broad serious impact, but no catastrophic requirement alignment. \\
+Worst non-compound boundary & H/L/L & H/H/H & 0.928176 & 0.931993 & N3. Low-impact accumulation remains below the line. \\
+Low availability on orchestrator & N/N/L & M/M/H & 0.330000 & 0.331358 & N2. Partial availability impact remains Narrow. \\
+\bottomrule
+\end{tabularx}
+\caption{Ordinary and Debilitating-boundary behavior under High-centered normalization.}
+\label{tab:scenarios}
+\end{table}
+
+The first two rows of Table~\ref{tab:scenarios} are the central upper-tier
+separation. A single total loss on a
+catastrophic dimension is Disruptive. Adding a High impact on a second serious
+dimension crosses the derived line. The fifth row is an explicit policy decision:
+complete CIA compromise of an all-Moderate asset remains N3 because the governed
+requirements describe every loss as serious rather than catastrophic.
+
+\paragraph{Concrete finding example.}
+Dataset A contains a denial-of-service finding with $C{:}N/I{:}N/A{:}H$ on a
+resource governed by an \code{MMH} requirement vector. $U=0.84$ and
+$S_H=0.843455$, producing N3. The asset can retain the correct High Availability
+Requirement without creating an N4 deadline from a one-dimensional impact.
+
+\section{Empirical backtest}
+\label{sec:backtest}
+
+The candidate methods were replayed against two anonymized evaluation reports
+generated on July 21, 2026. Dataset A contained 2,120 findings and 10,231
+affected-resource observations. Dataset B contained 3,691 findings and
+60,817 affected-resource observations. The same CVE may affect multiple resources;
+the two units are therefore reported separately.
+
+All candidate runs used the same adopted archetype catalog and the existing
+engine's impact-source precedence, including CVSS v3/v4 vector parsing, qualitative
+severity fallback, and technical-impact lifting where recorded. The stored-current
+rows retain the reports' original policy and provide operational context; they are
+not an isolated single-variable control.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Method} & \textbf{Dataset A N4} & \textbf{Dataset B N4} \\
+\midrule
+Stored scan output & 40.56\% & 63.95\% \\
+Adopted catalog baseline; original $D=0.915$, $\theta_3=0.80$ & 26.62\% & 62.22\% \\
+Raise $\theta_3$ to $0.92$ only & 15.66\% & 29.54\% \\
+Change High multiplier to $1.25$ only & 17.49\% & 29.76\% \\
+Strict two-H/H gate & 6.61\% & 20.39\% \\
+Compound gate & 11.60\% & 21.22\% \\
+\textbf{Final: $D_H=0.995904$, $\theta_3=0.933$} & \textbf{11.60\%} & \textbf{21.22\%} \\
+\bottomrule
+\end{tabular}
+\caption{N4 share of affected-resource observations.}
+\label{tab:affected-n4}
+\end{table}
+
+The final arithmetic selected exactly the same N4 affected-resource observations
+as the compound gate in both reports. With the lower thresholds independently
+anchored to the H/L and H/M scenarios, the complete distributions are shown in
+Table~\ref{tab:distribution}.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Scan and policy} & \textbf{N1} & \textbf{N2} & \textbf{N3} & \textbf{N4} \\
+\midrule
+Dataset A stored current & 11.37\% & 28.47\% & 19.60\% & 40.56\% \\
+Dataset A final & 16.12\% & 27.08\% & 45.20\% & \textbf{11.60\%} \\
+Dataset B stored current & 1.50\% & 28.29\% & 6.25\% & 63.95\% \\
+Dataset B final & 2.21\% & 30.41\% & 46.16\% & \textbf{21.22\%} \\
+\bottomrule
+\end{tabular}
+\caption{Affected-resource PAIN distributions under the final calibration.}
+\label{tab:distribution}
+\end{table}
+
+At the finding level, taking the worst affected resource per finding, N4 moved
+from 55.80\% to 18.16\% in Dataset A and from 50.50\% to 17.83\% in Dataset B.
+
+\subsection{The threshold remains reachable}
+
+The purpose of $0.933$ is not to make N4 exceptional or unattainable. It is crossed
+by the common two-High impact shapes $H/H/N$, $H/N/H$, and $N/H/H$, as well as
+$H/H/H$, whenever the requirements provide the necessary catastrophic and serious
+alignment.
+
+\begin{plain}
+$0.933$ does not mean that a vulnerability must cause ``93.3 percent damage,'' nor
+does it represent the 93.3rd percentile of observed findings. The PAIN scalar is an
+ordered index over discrete CVSS-derived states. The first qualifying compound state
+lands at $0.933423$, immediately above the line, while ordinary two-High and
+three-High scenarios land from that point through $1.0$. A vulnerability does not
+need three High impacts, three High requirements, multi-agency scope, or a specially
+constructed vector to reach Debilitating.
+\end{plain}
+
+Dataset A retained 1,187 N4 affected-resource observations across multiple archetypes:
+701 \emph{data-backbone}, 177 \emph{orchestrator}, 125
+\emph{config-actuation}, 102 \emph{identity-secrets}, 49
+\emph{security-tooling}, and 33 across other roles. Its most frequent qualifying
+patterns included $HHH/HHM$, $HHH/MMH$, $HHN/HHM$, $HHH/MHM$, and $HHH/HMM$.
+
+Dataset B retained 12,903 N4 observations, but 11,622 of them were
+\code{unclassified} and therefore used the conservative $HHH$ fail-safe. This is an
+important interpretation constraint: the remaining Dataset B N4 concentration is
+primarily a classification-coverage issue, not evidence that $0.933$ is too low.
+
+At the worst-resource-per-finding level, 385 Dataset A findings (18.16\%) and 658
+Dataset B findings (17.83\%) remained N4. A top tier reached by approximately one in
+six findings in both snapshots is plainly operational rather than theoretical. The
+method nevertheless removes the one-dimensional cases that made N4 cease to signal
+the worst compound consequences.
+
+\subsection{What the backtest does and does not prove}
+
+The backtest demonstrates that the threshold is operationally reachable, does not
+collapse N4 to a handful of exotic vectors, and produces the same top-tier set as
+the independently stated compound predicate. It does not prove that 11.60\% or
+21.22\% is an ideal universal N4 rate. The reports are two deployment snapshots,
+not a representative sample of all federal cloud systems. The mathematical state
+boundary supplies the policy justification; the scans test its consequences.
+
+\section{Why the final method is preferable}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.18}
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{@{}P{0.19\textwidth}YYYY@{}}
+\toprule
+\textbf{Approach} & \textbf{CVSS constants} & \textbf{Tagging burden} & \textbf{Dimensionality} & \textbf{Boundary rationale} \\
+\midrule
+Asset sub-profiles & Preserved & High & Preserved & Hidden in classification choices \\
+$1.25$ multiplier & Changed & Low & Preserved & Indirect \\
+Threshold-only & Preserved & Low & Preserved & Weak unless separately derived \\
+Strict gate & Preserved & Low & Reduced to H/H count & Too restrictive \\
+Compound gate & Preserved & Low & Reduced at the final branch & Explicit but adds a second classifier \\
+High-centered arithmetic & Preserved & Low & Preserved continuously & Derived from the full discrete state space \\
+\bottomrule
+\end{tabularx}
+\caption{Decision summary. ``CVSS constants preserved'' does not mean the final
+PAIN scalar is a conformant CVSS score; the normalization is explicitly PAIN-specific.}
+\end{table}
+
+The final method is preferable because it obtains the compound-gate result without
+executing a gate. It keeps Low impacts and all three requirement levels inside one
+continuous calculation, retains the official metric weights, and makes the top
+threshold reproducible from the input lattice. It also keeps the operator-facing
+model simple: one role-based archetype tag supplies CR/IR/AR; no additional scoring
+profile is required.
+
+\section{Implementation and governance}
+
+\subsection{Normative parameter set}
+
+An implementation of this calibration should govern the following values together:
+
+\begin{verbatim}
+impactWeights:
+  high: 0.56
+  low: 0.22
+  none: 0.0
+
+requirementWeights:
+  high: 1.5
+  medium: 1.0
+  low: 0.5
+
+normalizationDenominator: 0.995904
+
+wordThresholds:
+  narrow: 0.28115159694107
+  disruptive: 0.56230319388214
+  debilitating: 0.933
+\end{verbatim}
+
+The denominator and thresholds are one calibration set. The first two thresholds
+should be constructed from the exact expressions $0.28/D_H$ and $0.56/D_H$ when the
+implementation permits it. The decimal serializations above are deliberately
+truncated rather than rounded upward so that the H/L and H/M anchors remain inside
+their intended bands under an inclusive comparison. Changing a metric weight, adding
+an impact level, or changing the aggregation invalidates the boundary proof and
+requires re-enumeration.
+
+\subsection{Precision and reproducibility}
+
+The separation between the highest non-compound and lowest compound states is
+approximately $0.00143$. Implementations therefore \rfckw{must}:
+
+\begin{itemize}[leftmargin=1.5em]
+\item classify using unrounded internal values;
+\item construct $\theta_1$ and $\theta_2$ from $0.28/D_H$ and $0.56/D_H$, or use
+  decimal serializations that do not round above those exact anchors;
+\item compare against the configured full-precision threshold;
+\item display enough decimal places to explain a boundary decision;
+\item record $U$, $D_H$, $S_H$, the thresholds, resolved C/I/A, CR/IR/AR, and the
+  policy version in audit output; and
+\item include boundary unit tests for the predecessor/anchor pairs
+  $0.2209048262/0.2811515969$, $0.5533665896/0.5623031939$, and
+  $0.9319934452/0.9334233018$.
+\end{itemize}
+
+\subsection{Migration}
+
+The change should be released as a new PAIN methodology version. Historical
+findings should retain the policy version under which their deadline was assigned.
+Active findings should be recomputed under an explicitly approved transition rule;
+the organization must acknowledge that N4-to-N3 changes extend remediation
+deadlines. The scoring calibration should be versioned and reviewed independently
+from any asset-catalog revision.
+
+The default for an unclassified asset remains conservative $HHH$. The final method
+reduces single-dimension findings on that default to N3, but two- and three-High
+impact findings readily remain N4. Classification coverage should be monitored so
+that the fail-safe does not become the dominant production archetype.
+
+\section{Limitations and future work}
+
+\begin{itemize}[leftmargin=1.5em]
+\item The exact $0.933$ separation depends on the discrete
+  $\{N,L,H\}\times\{L,M,H\}$ domain and the retained CVSS v3.1 weights. It must be
+  re-derived if those inputs change.
+\item Native CVSS v4 subsequent-system impacts and Safety are not included in the
+  three-dimension proof. A future PAIN version may add them, but doing so requires a
+  new denominator and threshold analysis rather than silently extending this one.
+\item The two backtests establish observed consequences, not statistical
+  generalizability. Additional production datasets and analyst-rated scenario sets
+  should be evaluated before broad standardization.
+\item A scalar cannot replace architecture review. Archetype assignment, Modified
+  impact evidence, agency scope, and vulnerability applicability remain governed
+  inputs.
+\item The threshold's narrow mathematical gap is safe for deterministic software
+  using full precision but unsuitable for manual classification from rounded
+  dashboard values.
+\end{itemize}
+
+\section{Conclusion}
+
+The original PAIN method correctly joined vulnerability impact with asset-specific
+security requirements, but its Medium-centered denominator saturated too early for
+High-requirement assets. The resulting single-dimension cliff made Debilitating too
+common and created pressure to solve a scoring problem through asset
+underclassification.
+
+The review considered richer tagging, a lower High multiplier, threshold-only
+tuning, and categorical gates. Each could reduce N4, but each either increased
+operator complexity, abandoned a CVSS-defined value, obscured the semantic reason
+for the threshold, or discarded dimensional information.
+
+High-centered normalization resolves the underlying mismatch. The new denominator
+is derived directly from the retained CVSS weights. Narrow begins at a complete
+technical loss on a Low-requirement dimension; Disruptive begins at a High impact
+on a Moderate-requirement dimension. The Debilitating threshold lies between two
+provable extrema in the complete discrete state space and remains readily reachable
+by ordinary two-High impact scenarios. The empirical scans then validate the
+operational consequences rather than dictate the boundaries.
+
+The resulting rule is concise:
+\[
+\boxed{
+S_H=\frac{1-(1-C\mathrm{CR})(1-I\mathrm{IR})(1-A\mathrm{AR})}{0.995904}
+}
+\]
+with
+\[
+\boxed{
+(\theta_1,\theta_2,\theta_3)
+=\left(\frac{0.28}{0.995904},\ \frac{0.56}{0.995904},\ 0.933\right).
+}
+\]
+
+This preserves the CVSS-derived evidence chain while giving PAIN a more defensible
+meaning at its most consequential boundary: N4 and N5 are reserved for impact that
+is not only severe, but compound and catastrophic in the affected environment.
+
+\clearpage
+\section*{References}
+\addcontentsline{toc}{section}{References}
+
+{\small
+\begin{itemize}[leftmargin=3.2em,itemsep=0.3em,topsep=0.4em]
+\item[{[PAIN]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
+  FedRAMP VDR/VER Vulnerability Prioritization}, stackArmor, July 2026.
+  \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}.
+\item[{[CVSS31]}] FIRST, \emph{Common Vulnerability Scoring System v3.1:
+  Specification Document}. Environmental Security Requirements, MISS formula, and
+  metric values. \url{https://www.first.org/cvss/v3.1/specification-document}.
+\item[{[CVSS40]}] FIRST, \emph{Common Vulnerability Scoring System v4.0:
+  Specification Document}. Environmental metrics and EQ3/EQ6 MacroVectors.
+  \url{https://www.first.org/cvss/v4.0/specification-document}.
+\item[{[CVSS40-UG]}] FIRST, \emph{CVSS v4.0 User Guide}. Expert comparison,
+  equivalence-set, and interpolation methodology.
+  \url{https://www.first.org/cvss/user-guide.html}.
+\item[{[FIPS199]}] National Institute of Standards and Technology,
+  \emph{Standards for Security Categorization of Federal Information and
+  Information Systems}, FIPS PUB 199.
+  \url{https://csrc.nist.gov/pubs/fips/199/final}.
+\item[{[FEDRAMP]}] FedRAMP, \emph{Potential Agency Impact Definitions},
+  Notice 0012, and \emph{Vulnerability Evaluation and Reporting}, Consolidated
+  Rules 2026.
+  \url{https://www.fedramp.gov/notices/0012/};
+  \url{https://www.fedramp.gov/2026/reference/rev5/b/vulnerability-evaluation-and-reporting/}.
+\end{itemize}
+}
+
+\subsection*{Reproducibility record}
+
+The discrete-state verification enumerates the Cartesian product of three impact
+values for each of C/I/A and three requirement values for each of CR/IR/AR. A
+conforming test run over the resulting 729 states must return:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Check} & \textbf{Expected result} \\
+\midrule
+$D_H$ & 0.995904000000 \\
+Predecessor to Narrow & 0.22090482616798 \\
+Narrow anchor (H/L) & 0.28115159694107 \\
+Predecessor to Disruptive & 0.55336658955080 \\
+Disruptive anchor (H/M) & 0.56230319388214 \\
+Maximum non-compound $S_H$ & 0.93199344515134 \\
+Minimum compound $S_H$ & 0.93342330184435 \\
+States at or above $0.933$ & 70 \\
+State counts Minimal/Narrow/Disruptive/Debilitating & 90 / 218 / 351 / 70 \\
+Predicate/threshold mismatches & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The empirical run used the two July 21, 2026 evaluation exports described in
+Section~\ref{sec:backtest}: 2,120 findings and 10,231 affected-resource observations
+for Dataset A; 3,691 findings and 60,817 observations for Dataset B. Dataset names,
+resource names, and source identifiers are intentionally omitted from this public
+paper. Authorized reviewers may reproduce the run using the controlled internal
+evidence package.
+
+\end{document}

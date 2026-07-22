@@ -500,10 +500,11 @@
       <details class="control-details">
         <summary>Method settings <small>Governed thresholds for administrators and model exploration</small></summary>
         <div class="details-body">
-          <label class="fld">Severity thresholds <span class="tipicon" tabindex="0" data-tip="The method&rsquo;s only calibratable judgments. They must live in documented, governed configuration — back-tested against analyst-rated findings — never as ad-hoc settings.">?</span></label>
-          <div class="row"><label for="t1" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Minimal&rarr;Narrow</label><input type="range" id="t1" min="0.05" max="0.95" step="0.01" value="0.25" style="flex:1"><output class="rangeval" id="t1v" for="t1">0.25</output></div>
-          <div class="row"><label for="t2" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Narrow&rarr;Disruptive</label><input type="range" id="t2" min="0.05" max="0.95" step="0.01" value="0.55" style="flex:1"><output class="rangeval" id="t2v" for="t2">0.55</output></div>
-          <div class="row"><label for="t3" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Disruptive&rarr;Debilitating</label><input type="range" id="t3" min="0.05" max="0.95" step="0.01" value="0.80" style="flex:1"><output class="rangeval" id="t3v" for="t3">0.80</output></div>
+          <label class="fld">Severity thresholds <span class="tipicon" tabindex="0" data-tip="The published defaults are anchored to explicit consequence scenarios and verified across all 729 discrete CVSS impact/requirement states. Treat the denominator and thresholds as one versioned, governed calibration set.">?</span></label>
+          <div class="row"><label for="t1" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Minimal&rarr;Narrow</label><input type="range" id="t1" min="0" max="1" step="0.00000000000001" value="0.28115159694107" style="flex:1"><output class="rangeval" id="t1v" for="t1">0.281152</output></div>
+          <div class="row"><label for="t2" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Narrow&rarr;Disruptive</label><input type="range" id="t2" min="0" max="1" step="0.00000000000001" value="0.56230319388214" style="flex:1"><output class="rangeval" id="t2v" for="t2">0.562303</output></div>
+          <div class="row"><label for="t3" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">Disruptive&rarr;Debilitating</label><input type="range" id="t3" min="0" max="1" step="0.00000000000001" value="0.933" style="flex:1"><output class="rangeval" id="t3v" for="t3">0.933000</output></div>
+          <p class="hint" style="margin-top:8px">Defaults follow the <a href="vdr-pain-calibration.pdf">High-centered PAIN calibration</a>; sliders are for governed model exploration.</p>
           <div class="row" style="margin-top:6px"><label for="thEpss" class="rangeval" style="min-width:120px;text-align:left;font-size:11.5px;color:var(--muted)">EPSS trigger point</label><input type="range" id="thEpss" min="0.05" max="0.95" step="0.05" value="0.50" style="flex:1"><output class="rangeval" id="thEpssV" for="thEpss">0.50</output></div>
         </div>
       </details>
@@ -525,7 +526,7 @@
 </main>
 
 <footer>
-  <p>Built solely on <i>A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization</i> and its companion <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog is the memo&rsquo;s illustrative example, not a standard.</p>
+  <p>Built on <i>A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization</i>, its <i>High-Centered PAIN Calibration</i>, and <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog mirrors the governed VDR policy and remains provider policy, not a FedRAMP standard.</p>
 </footer>
 
 <script>
@@ -533,30 +534,35 @@
 /* ============================== reference data (all from the papers) ============================== */
 const W_IMPACT = {N:0, L:0.22, H:0.56};
 const W_REQ = {L:0.5, M:1.0, H:1.5};
-const CAP = 0.915;
+const CVSS_MISS_CAP = 0.915;
+const PAIN_DENOMINATOR = 0.995904;
 
 const ARCHETYPES = [
-  {id:'cicd-pipeline',       lens:'control', cr:'H',ir:'H',ar:'H', members:'build/deploy runners, artifact signing, registries'},
-  {id:'orchestrator',        lens:'control', cr:'H',ir:'H',ar:'H', members:'control plane, etcd, scheduler'},
-  {id:'config-actuation',    lens:'control', cr:'H',ir:'H',ar:'H', members:'IaC/GitOps, schema registry, admin jobs'},
-  {id:'identity-secrets',    lens:'control', cr:'H',ir:'H',ar:'H', members:'IdP/SSO, KMS, secrets, session stores'},
-  {id:'security-tooling',    lens:'control', cr:'H',ir:'H',ar:'M', members:'scanners, SIEM, EDR'},
-  {id:'change-record',       lens:'control', cr:'M',ir:'M',ar:'M', members:'ITSM/ticketing (record only)'},
-  {id:'platform-foundation', lens:'control', cr:'L',ir:'H',ar:'H', members:'DNS, NTP, service discovery (metadata only)'},
-  {id:'data-sensitive',      lens:'data',    cr:'H',ir:'H',ar:'H', members:'PII/CUI datastores'},
-  {id:'data-backbone',       lens:'data',    cr:'H',ir:'H',ar:'H', members:'payload queues/brokers, system-of-record DB'},
-  {id:'telemetry-backbone',  lens:'data',    cr:'M',ir:'M',ar:'M', members:'metrics/trace pipelines, no agency payload'},
-  {id:'app-tier',            lens:'data',    cr:'M',ir:'M',ar:'M', members:'stateless services, APIs, UIs, caches'},
-  {id:'batch-analytics',     lens:'data',    cr:'M',ir:'M',ar:'L', members:'ETL, reporting jobs'},
-  {id:'public-edge',         lens:'data',    cr:'M',ir:'M',ar:'H', members:'TLS-terminating L7 edge: ingress, API gateways, public web'},
-  {id:'passthrough-edge',    lens:'data',    cr:'L',ir:'L',ar:'H', members:'L4/SNI passthrough LBs — no TLS termination, keys never enter the boundary'},
-  {id:'internal-tooling',    lens:'data',    cr:'L',ir:'L',ar:'L', members:'dashboards, log agents'},
-  {id:'dev-test',            lens:'data',    cr:'L',ir:'L',ar:'L', members:'non-production'},
-  {id:'unclassified',        lens:'fail-safe', cr:'H',ir:'H',ar:'H', members:'untagged — deliberately scores loudly'},
-  {id:'asset-value: High',     lens:'simple asset-value scheme', cr:'H',ir:'H',ar:'H', members:'every need High'},
-  {id:'asset-value: Moderate', lens:'simple asset-value scheme', cr:'M',ir:'M',ar:'M', members:'every need Medium'},
-  {id:'asset-value: Low',      lens:'simple asset-value scheme', cr:'L',ir:'L',ar:'L', members:'every need Low'},
-  {id:'custom',              lens:'custom',  cr:'H',ir:'H',ar:'H', members:'set the three needs directly'},
+  {id:'cicd-pipeline',       lens:'control', cr:'H',ir:'H',ar:'H', members:'build/deployment runners, signing services, artifact registries'},
+  {id:'orchestrator',        lens:'control', cr:'H',ir:'H',ar:'H', members:'control planes, etcd/schedulers, coordination services, CNI/CSI controllers'},
+  {id:'config-actuation',    lens:'control', cr:'H',ir:'H',ar:'H', members:'IaC/GitOps controllers, schema registries, administrative/migration jobs'},
+  {id:'identity-secrets',    lens:'control', cr:'H',ir:'H',ar:'H', members:'IdP/SSO, KMS/secrets managers, session/token stores'},
+  {id:'privileged-identity', lens:'control', cr:'H',ir:'H',ar:'H', members:'administrators and identities with IAM mutation, deployment, impersonation, or broad access'},
+  {id:'scoped-identity',     lens:'control', cr:'M',ir:'H',ar:'M', members:'workload identities constrained to one application or service'},
+  {id:'security-tooling',    lens:'control', cr:'H',ir:'H',ar:'M', members:'scanners/SIEM, EDR/runtime security, admission policy'},
+  {id:'change-record',       lens:'control', cr:'M',ir:'M',ar:'M', members:'ITSM/ticketing systems that record but do not actuate changes'},
+  {id:'platform-foundation', lens:'control', cr:'L',ir:'H',ar:'H', members:'DNS/NTP, service discovery, metadata-only internal L4 load balancers'},
+  {id:'unclassified',        lens:'control', cr:'H',ir:'H',ar:'H', members:'fail-safe default for untagged assets'},
+  {id:'data-sensitive',      lens:'data',    cr:'H',ir:'H',ar:'H', members:'PII and CUI datastores'},
+  {id:'public-data',         lens:'data',    cr:'L',ir:'M',ar:'M', members:'intentionally public buckets, datasets, and static downloads'},
+  {id:'telemetry-data',      lens:'data',    cr:'M',ir:'M',ar:'M', members:'log archives, metrics/trace storage, operational audit data without regulated payloads'},
+  {id:'data-backbone',       lens:'data',    cr:'H',ir:'H',ar:'H', members:'payload queues/brokers and system-of-record databases'},
+  {id:'telemetry-backbone',  lens:'data',    cr:'M',ir:'M',ar:'M', members:'metrics/trace pipelines, telemetry queues, event buses without agency payload'},
+  {id:'app-tier',            lens:'data',    cr:'M',ir:'M',ar:'M', members:'stateless services/APIs, user interfaces, caches'},
+  {id:'batch-analytics',     lens:'data',    cr:'M',ir:'M',ar:'L', members:'ETL, reporting, and analytics jobs'},
+  {id:'public-edge',         lens:'data',    cr:'M',ir:'M',ar:'H', members:'TLS-terminating ingress/gateways and public web front doors'},
+  {id:'passthrough-edge',    lens:'data',    cr:'L',ir:'L',ar:'H', members:'L4/SNI passthrough and managed load balancers whose keys remain outside the boundary'},
+  {id:'internal-tooling',    lens:'data',    cr:'L',ir:'L',ar:'L', members:'dashboards, metrics agents, and log agents'},
+  {id:'dev-test',            lens:'data',    cr:'L',ir:'L',ar:'L', members:'non-production workloads'},
+  {id:'generic-high',        lens:'generic', cr:'H',ir:'H',ar:'H', members:'coarsely classified high-impact assets'},
+  {id:'generic-medium',      lens:'generic', cr:'M',ir:'M',ar:'M', members:'coarsely classified moderate-impact assets'},
+  {id:'generic-low',         lens:'generic', cr:'L',ir:'L',ar:'L', members:'coarsely classified low-impact assets'},
+  {id:'custom',              lens:'custom',  cr:'H',ir:'H',ar:'H', members:'set the three requirements directly'},
 ];
 
 /* Verbatim VDR-TFR-PVR values (days; 0.5 = 12 hours). Columns: [LEV+IRV, LEV+NIRV, NLEV]. */
@@ -633,11 +639,11 @@ const state = {
   epss:0.30, kev:false,
   exposed:false, gate3:false, j:'unknown', c0:false, p0:false,
   mitC:false, mitI:false, mitA:false, mitE:false,
-  t1:0.25, t2:0.55, t3:0.80, thEpss:0.50,
+  t1:0.28/PAIN_DENOMINATOR, t2:0.56/PAIN_DENOMINATOR, t3:0.933, thEpss:0.50,
 };
 const INITIAL_STATE = JSON.parse(JSON.stringify(state));
 
-/* ============================== engine (unchanged from the memo) ============================== */
+/* ============================== engine (High-centered PAIN calibration) ============================== */
 function requirements(){
   if (state.arch==='custom') return {cr:state.cCR, ir:state.cIR, ar:state.cAR};
   const a = ARCHETYPES.find(x=>x.id===state.arch) || ARCHETYPES.find(x=>x.id==='unclassified');
@@ -653,9 +659,9 @@ function compute(){
   const effA = mitAok ? W_IMPACT.L : baseA;
   const pC=effC*cr, pI=effI*ir, pA=effA*ar;
   const raw = 1 - (1-pC)*(1-pI)*(1-pA);
-  const capped = raw > CAP;
-  const isc = Math.min(raw, CAP);
-  const S = isc/CAP;
+  const cvssMiss = Math.min(raw, CVSS_MISS_CAP);
+  const aboveCvssCap = raw > CVSS_MISS_CAP;
+  const S = Math.min(raw, PAIN_DENOMINATOR)/PAIN_DENOMINATOR;
   let word;
   if (S < state.t1) word='Minimal';
   else if (S < state.t2) word='Narrow';
@@ -678,7 +684,7 @@ function compute(){
   const deadline = pain==='N1' ? null : MATRIX[state.cls][pain][col];
   const seedHits = state.cwes.filter(c=>SEED_CWES[c]);
   return {req, cr,ir,ar, baseC,baseI,baseA, effC,effI,effA, mitCok,mitIok,mitAok,
-          pC,pI,pA, raw, capped, isc, S, word, pain,
+          pC,pI,pA, raw, cvssMiss, aboveCvssCap, S, word, pain,
           avDirectOk, D, indirect, irv, floor, byEpss, lev, col, deadline, seedHits};
 }
 
@@ -686,6 +692,7 @@ function compute(){
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const f3 = x => x.toFixed(3), f4 = x => x.toFixed(4);
+const fmtThreshold = x => x.toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
 const trim0 = x => String(parseFloat(x.toFixed(4)));
 function fmtDays(d){
   if (d===null) return 'no deadline';
@@ -861,7 +868,7 @@ function stepPanel2(r){
   return (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe default</span>Untagged assets count as needing everything at High until someone classifies them.</div>' : '')
   + '<div class="card"><div class="head"><h3>Damage on <i>this</i> asset</h3><span class="cite">'+esc(state.arch)+'</span></div><div class="body">'
   + rows
-  + '<div style="margin-top:14px;font-size:13px;color:var(--muted)">Combined damage score: <b style="color:var(--ink);font-family:var(--mono)">'+f3(r.S)+'</b> of 1.000'+(r.capped?' <span style="color:var(--accent)">(hit the scale&rsquo;s ceiling)</span>':'')+' &rarr; <span class="badge word-'+r.word+'">'+r.word+'</span></div>'
+  + '<div style="margin-top:14px;font-size:13px;color:var(--muted)">Combined impact scalar: <b style="color:var(--ink);font-family:var(--mono)">'+f3(r.S)+'</b> of 1.000'+(r.aboveCvssCap?' <span style="color:var(--accent)">(impact above CVSS&rsquo;s 0.915 MISS cap retained for PAIN)</span>':'')+' &rarr; <span class="badge word-'+r.word+'">'+r.word+'</span></div>'
   + gaugeHtml(r)
   + '</div></div>';
 }
@@ -910,20 +917,21 @@ function stepPanel5(r){
   }).join('')
   + '<tr class="'+(r.pain==='N1'?'':'dimrow')+'"><th scope="row" class="rowh">N1</th><td colspan="3" class="nodeadline'+(r.pain==='N1'?' active':'')+'">no FedRAMP deadline — routine operations</td></tr>';
 
-  const capTip = '0.915 is CVSS&rsquo;s own ceiling: 1 &minus; (1 &minus; 0.56)&sup3;, an all-High flaw at Medium needs. High needs can push a finding toward the worst case but never past it — which keeps &ldquo;1.000&rdquo; meaning the same thing on every asset.';
+  const normTip = '0.995904 is the maximum pre-cap aggregate attainable with the retained CVSS values: all three impacts High and all three requirements High. PAIN divides U by this High-centered maximum. The official CVSS MISS calculation still caps at 0.915.';
   function dimRow(sym, base, eff, mit, mult, prod){
     const impTxt = mit ? '<span class="base-struck">'+trim0(base)+'</span> <span class="hi">'+trim0(eff)+'</span>' : trim0(eff);
     return '<div><span class="lbl">'+sym+'</span> = '+impTxt+' &times; '+mult+' = <span class="res">'+trim0(prod)+'</span></div>';
   }
   const math =
-    '<details class="math"><summary>Show the memo&rsquo;s math (CVSS v3.1 notation)</summary><div class="inner"><div class="eq">'+
+    '<details class="math"><summary>Show the revised PAIN calibration math</summary><div class="inner"><div class="eq">'+
     '<div><span class="lbl">weights</span> C/I/A: None=0, Low=0.22, High=0.56 &nbsp; CR/IR/AR: L=0.5, M=1.0, H=1.5</div>'+
     dimRow('C&middot;CR', r.baseC, r.effC, r.mitCok, r.cr, r.pC)+
     dimRow('I&middot;IR', r.baseI, r.effI, r.mitIok, r.ir, r.pI)+
     dimRow('A&middot;AR', r.baseA, r.effA, r.mitAok, r.ar, r.pA)+
-    '<div><span class="lbl">ISC</span>= min[ 1 &minus; (1&minus;'+trim0(r.pC)+')(1&minus;'+trim0(r.pI)+')(1&minus;'+trim0(r.pA)+'), <span class="tip" tabindex="0" data-tip="'+capTip+'">0.915</span> ] = <span class="res">'+f4(r.isc)+'</span>'+(r.capped?' <span class="hi">&larr; cap engaged</span>':'')+'</div>'+
-    '<div><span class="lbl">S</span>= '+f4(r.isc)+' / 0.915 = <span class="res">'+f3(r.S)+'</span></div>'+
-    '<div><span class="lbl">word</span> thresholds ('+state.t1.toFixed(2)+', '+state.t2.toFixed(2)+', '+state.t3.toFixed(2)+') &rArr; '+r.word+'</div>'+
+    '<div><span class="lbl">U</span>= 1 &minus; (1&minus;'+trim0(r.pC)+')(1&minus;'+trim0(r.pI)+')(1&minus;'+trim0(r.pA)+') = <span class="res">'+f4(r.raw)+'</span></div>'+
+    '<div><span class="lbl">CVSS MISS</span>= min('+f4(r.raw)+', 0.915) = '+f4(r.cvssMiss)+(r.aboveCvssCap?' <span class="hi">&larr; official CVSS path caps here</span>':'')+'</div>'+
+    '<div><span class="lbl">PAIN S<sub>H</sub></span>= '+f4(r.raw)+' / <span class="tip" tabindex="0" data-tip="'+normTip+'">0.995904</span> = <span class="res">'+f3(r.S)+'</span></div>'+
+    '<div><span class="lbl">word</span> thresholds ('+fmtThreshold(state.t1)+', '+fmtThreshold(state.t2)+', '+fmtThreshold(state.t3)+') &rArr; '+r.word+'</div>'+
     '<div><span class="lbl">PAIN</span> '+r.word+' &and; m='+(state.m?1:0)+' &rArr; <span class="res">'+r.pain+'</span></div>'+
     '<div><span class="lbl">column</span> LEV='+(r.lev?1:0)+' (EPSS&ge;&theta;: '+(r.byEpss?1:0)+' &or; KEV: '+(state.kev?1:0)+' &or; floor: '+(r.floor?1:0)+'), IRV='+(r.irv?1:0)+' (direct: '+(r.D?1:0)+' &or; indirect: '+(r.indirect?1:0)+') &rArr; '+COLNAMES[r.col]+'</div>'+
     '<div><span class="lbl">deadline</span> M['+state.cls+']['+r.pain+']['+COLNAMES[r.col]+'] = <span class="res">'+(r.deadline===null?'—':fmtDays(r.deadline))+'</span></div>'+
@@ -1132,7 +1140,7 @@ function writeControls(){
   $('jstatus').value=state.j; $('c0').checked=state.c0; $('p0').checked=state.p0;
   $('mitC').checked=state.mitC; $('mitI').checked=state.mitI; $('mitA').checked=state.mitA; $('mitE').checked=state.mitE;
   $('t1').value=state.t1; $('t2').value=state.t2; $('t3').value=state.t3;
-  $('t1v').textContent=state.t1.toFixed(2); $('t2v').textContent=state.t2.toFixed(2); $('t3v').textContent=state.t3.toFixed(2);
+  $('t1v').textContent=state.t1.toFixed(6); $('t2v').textContent=state.t2.toFixed(6); $('t3v').textContent=state.t3.toFixed(6);
   $('thEpss').value=state.thEpss; $('thEpssV').textContent=state.thEpss.toFixed(2);
 }
 function wire(){
@@ -1145,8 +1153,7 @@ function wire(){
       arcSel.appendChild(og); lastLens=a.lens;
     }
     const o = document.createElement('option');
-    const pretty = a.id.startsWith('asset-value:') ? a.id.replace('asset-value:','').trim()+' asset value'
-      : a.id.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    const pretty = a.id.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
     o.value=a.id; o.textContent = pretty+' — '+a.members;
     arcSel.lastChild.appendChild(o);
   });
