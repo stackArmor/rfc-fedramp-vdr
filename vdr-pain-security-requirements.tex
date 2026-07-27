@@ -140,11 +140,12 @@ environment requires confidentiality, integrity, and availability. Neither sourc
 however, automatically provides the three values for a particular asset in a
 particular agency deployment.
 
-The existing PAIN method recommends asset archetypes: governed role descriptions
-such as system-of-record database, identity service, orchestrator, message broker,
-or disposable cache. This is preferable to asking each asset owner to declare an
-unexplained value. Yet one vector is being asked to carry two different kinds of
-information:
+When we originally wrote the PAIN method, we recommended asset archetypes:
+governed role descriptions such as system-of-record database, identity service,
+orchestrator, message broker, or disposable cache. We did so to replace unexplained
+asset-owner declarations with reusable classifications whose rationale could be
+reviewed and audited. In that original formulation, however, we asked the
+archetype's CR/IR/AR vector to carry two different kinds of information:
 
 \begin{enumerate}[leftmargin=1.7em]
 \item \textbf{Architectural consequence:} what role does this component perform
@@ -153,14 +154,17 @@ information:
   are actually in scope for the affected agency or agencies?
 \end{enumerate}
 
-Combining those questions inside every archetype makes the catalog customer-specific.
-A database archetype may become High for one agency, Moderate for another, and then
-change again when the CSO adds a customer. The resulting catalog is difficult to
-reuse and difficult to audit.
+That coupling was a pragmatic first step, but its limitation becomes visible when
+the same CSO and architectural roles are reused across agencies. Combining both
+questions inside every archetype makes the catalog customer-specific. A database
+archetype may become High for one agency, Moderate for another, and then change
+again when the CSO adds a customer. The resulting catalog is difficult to reuse
+and difficult to audit.
 
-This method separates the questions. The archetype holds the first answer. A
-Security Requirements ceiling derived from intended federal information use holds
-the second. PAIN receives their per-objective intersection.
+The refinement proposed here preserves the original governed-archetype mechanism
+while separating the questions. The archetype holds the first answer. A Security
+Requirements ceiling derived from intended federal information use holds the
+second. PAIN receives their per-objective intersection.
 
 \begin{plain}
 A primary database can be architecturally important even when the current federal
