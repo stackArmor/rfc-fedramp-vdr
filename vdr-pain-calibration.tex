@@ -338,6 +338,32 @@ The lower thresholds are likewise re-derived from stated Minimal, Narrow, and
 Disruptive anchor scenarios rather than inherited or percentile-fitted. The observed
 histogram is used to test the consequence, not select any threshold.
 
+\subsection{Restoring round thresholds with another normalization}
+
+The review also considered retaining visually simple thresholds such as
+$(0.25,0.55,0.80)$ by dividing the final score by an additional constant. No single
+constant can preserve the three adopted semantic boundaries. If
+$S'=S_H/k$, mapping the adopted boundaries to those three values would require,
+respectively,
+\[
+k=\frac{0.2811515969}{0.25}\approx1.125,\qquad
+k=\frac{0.5623031939}{0.55}\approx1.022,\qquad
+k=\frac{0.933}{0.80}=1.16625.
+\]
+Because these are different constants, another uniform normalization cannot
+perform all three mappings. Selecting the top-boundary value alone would move the
+lower boundaries and compress the maximum possible score below one.
+
+A piecewise or nonlinear monotone transformation could force all three display
+values while preserving the current classifications, but only by introducing
+another governed function whose sole purpose is cosmetic. Likewise, some rounded
+cut points happen to fall inside empty intervals in the present 729-state lattice,
+but they would no longer state the scenario anchors directly and could behave
+differently if a future method admitted intermediate impact values. The method
+therefore retains the directly derived $S_H$ scale and thresholds. Implementations
+may round values for display, but must classify with the governed full-precision
+parameters.
+
 \subsection{Strict two-dimension alignment gate}
 
 A categorical alternative required two aligned pairs of High technical impact and
@@ -639,6 +665,21 @@ does not make every vulnerability Debilitating. The finding still needs:
 \item another High technical impact aligned with an effective Moderate-or-High
   requirement.
 \end{enumerate}
+
+Certification Class does not change this reachability result. A Class~C
+certification is not a Moderate-impact ceiling: current FedRAMP guidance allows a
+Class~C package to provide adequate information for some High security objectives
+\mbox{[FEDRAMP-CLASS]}. For a Class~B or Class~C use, however, any High objective handed
+to this calculation must be affirmatively identified and justified by the deploying
+agency; it must not be inferred from generic product capabilities or hypothetical
+content. If that agency-identified objective survives the asset-archetype cap, the
+High requirement remains in scope for PAIN.
+
+These layered conditions make a Class~B or Class~C Debilitating result exceptional
+by construction, not impossible. The calibration establishes the necessary
+reachability conditions; it does not claim a universal empirical frequency.
+Certification Class selects the applicable remediation timeframe only after the
+PAIN word and agency scope have been determined.
 
 The archetype can also keep a dimension below the ceiling because the ceiling is
 only a cap. Finally, multi-agency scope maps an already derived customer-effect word
@@ -1009,7 +1050,10 @@ not a categorization rule imported from NIST or FedRAMP.
   Notice 0012, and \emph{Vulnerability Evaluation and Reporting}, Consolidated
   Rules 2026.
   \url{https://www.fedramp.gov/notices/0012/};
-  \url{https://www.fedramp.gov/2026/reference/rev5/b/vulnerability-evaluation-and-reporting/}.
+  \url{https://www.fedramp.gov/2026/providers/20x/rules/vulnerability-evaluation-and-reporting/}.
+\item[{[FEDRAMP-CLASS]}] FedRAMP,
+  \emph{Choosing a Certification Class}, Consolidated Rules 2026.
+  \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
 \end{itemize}
 }
 
