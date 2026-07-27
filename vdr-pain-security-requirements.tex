@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.5}
+\date{July 2026\\\small Version 1.0}
 
 \begin{document}
 \maketitle
@@ -148,6 +148,29 @@ Requirements supply a standard vocabulary for stating how strongly the affected
 environment requires confidentiality, integrity, and availability. Neither source,
 however, automatically provides the three values for a particular asset in a
 particular agency deployment.
+
+\paragraph{Why this step still matters under FedRAMP CR~2026.}
+The derivation in this paper deliberately follows the substance of the FIPS~199 and
+NIST SP~800-60 categorization process: identify the applicable information types,
+determine potential impact separately for Confidentiality, Integrity, and
+Availability, retain the dimensional vector, and separately derive the overall
+high-water-mark category.
+
+FedRAMP's Consolidated Rules for 2026 (CR~2026) replace the historical provider
+Low/Moderate/High Impact Level designation with Certification Classes A--D and
+expressly state that Class and Impact Level do not directly correlate. In practical
+terms, this removes the old shortcut by which a provider's certification label
+appeared to carry a FIPS~199 category through the provider certification process.
+It does not remove the agency's separate responsibility to categorize its federal
+information system \mbox{[FEDRAMP-CLASS, FEDRAMP-2026]}.
+
+That decoupling makes the categorization reasoning no less important for PAIN.
+PAIN still asks the CSP to estimate the potential agency effect of exploiting a
+vulnerability, and CVSS Environmental scoring still needs objective-specific
+CR/IR/AR values. A Certification Class alone cannot supply those values. This
+paper preserves the FIPS~199 consequence analysis needed to derive them without
+turning the Class into an agency system category or the CSO certification into an
+agency authorization.
 
 When we originally wrote the PAIN method, we recommended asset archetypes:
 governed role descriptions such as system-of-record database, identity service,
@@ -368,7 +391,9 @@ security objectives \mbox{[FEDRAMP-CLASS]}.
 
 This method therefore records Certification Class separately. Class can corroborate
 an intended-use assessment and selects FedRAMP processes outside the PAIN impact
-equation, but it does not flatten or cap the ceiling. A Class~C offering can
+equation. Where confirmed intended-use evidence is incomplete, it can also inform
+a disclosed, rebuttable planning approximation of the ceiling. It does not by
+itself impose a categorical ceiling or flatten the vector. A Class~C offering can
 therefore participate in an agency system whose applied vector contains a High
 objective. Under FIPS~199 that agency information system is High overall even
 though the offering's certification remains Class~C.
@@ -387,8 +412,10 @@ and provider commitment answer different questions:
 \subsection{A planning approximation, not a categorization rule}
 
 The former Low/Moderate/High shorthand remains useful as an initial approximation
-of assurance fit. It must not be used as a substitute for the FIPS~199 vector or as
-an authorization rule:
+of assurance fit. Where confirmed intended-use evidence is incomplete, the same
+shorthand may also supply a provisional, rebuttable planning envelope for the
+ceiling. It must not be used as a substitute for the FIPS~199 vector, as an
+authorization rule, or in preference to actual-use evidence:
 
 \begin{table}[H]
 \centering
@@ -1118,8 +1145,10 @@ rewrite the consequence.
 Certification Class and the intended-use vector answer different questions. Class
 describes the reusable assurance and operational commitments supplied by the CSP;
 the vector describes the adverse effect the government could experience. Class is
-therefore not a data-eligibility label, FIPS~199 category, or impact ceiling. The
-Low/Moderate/High Class shorthand is useful only as a planning approximation.
+therefore not a data-eligibility label, FIPS~199 category, or impact ceiling by
+itself. It may inform a provisional ceiling approximation when actual-use evidence
+is incomplete; the Low/Moderate/High Class shorthand remains a rebuttable planning
+aid rather than a categorization rule.
 
 For a Class~B or Class~C use containing a High objective, the agency must identify
 and justify that objective and the CSP must affirmatively accept the use. Neither
@@ -1148,6 +1177,17 @@ produce Debilitating under that calibration. This is a consequence of the PAIN
 formula and thresholds; NIST SP~800-60 and FIPS~199 do not independently classify
 vulnerabilities as Debilitating.
 
+\begin{plain}
+In plain terms, \emph{Debilitating} is PAIN's catastrophic customer-effect class.
+FedRAMP introduced the term as the replacement for \emph{Catastrophic Adverse
+Effect} \mbox{[FEDRAMP-PAIN]}. FIPS~199 and NIST SP~800-60, in turn, assign High
+when loss of a security objective could have a severe or catastrophic adverse
+effect on organizational operations, organizational assets, or individuals
+\mbox{[FIPS199, SP800-60-1]}. Requiring an effective High objective before
+Debilitating becomes reachable therefore aligns PAIN's highest single-agency
+consequence class with NIST's High-impact consequence category.
+\end{plain}
+
 A High objective changes reachability, not the result for every vulnerability.
 The reference calibration still requires at least one High technical impact aligned
 with a High effective requirement, plus an additional High technical impact aligned
@@ -1157,11 +1197,21 @@ Class~B or Class~C offering is exceptional but not impossible: the agency-identi
 High objective must survive the asset cap and the vulnerability must satisfy the
 compound alignment.
 
-Certification Class does not change that PAIN word. It selects the standard level
-of assurance and operational timeframes applied after consequence and affected
-scope have been derived. Providers may govern different PAIN calibrations, but any
-different thresholds or predicates must be disclosed as policy choices rather than
-attributed to FIPS~199, NIST SP~800-60, or Certification Class.
+Certification Class does not mechanically determine that PAIN word, but it can
+affect PAIN indirectly. Where exact intended-use evidence is incomplete, the Class
+planning shorthand can inform a reasonable, disclosed, and rebuttable approximation
+of the ceiling for the information and use the offering is expected to support.
+Because that ceiling caps $R_x^{\mathrm{eff}}$, the approximation constrains which
+PAIN results are reachable.
+
+The approximation is not conclusive. Confirmed agency information types, special
+factors, and accepted intended use displace it: an agency-identified High objective
+can remain High in a supported Class~C use, while Class~D does not raise a Low-role
+asset or turn every objective High. Once the consequence and affected scope are
+derived, Class also selects the standard level of assurance and operational
+timeframes. Providers may govern different PAIN calibrations, but any different
+thresholds or predicates must be disclosed as policy choices rather than attributed
+to FIPS~199, NIST SP~800-60, or Certification Class.
 
 \subsection{The cross-CSP approximation boundary}
 
@@ -1172,6 +1222,7 @@ provider may make a justified dimension-by-dimension decision from evidence abou
 its actual bounded population, but it cannot claim that a particular value of $x$
 proves the asymptotic endpoint has been reached.
 
+\clearpage
 \section{Conclusion}
 
 The first input to an agency-specific PAIN calculation should be the federal
@@ -1204,7 +1255,7 @@ and contract evidence without treating any single implementation as mandatory.
 \addcontentsline{toc}{section}{References}
 
 {\small
-\begin{itemize}[leftmargin=3.2em,itemsep=0.35em,topsep=0.4em]
+\begin{itemize}[leftmargin=3.2em,itemsep=0.18em,topsep=0.3em]
 \item[{[FIPS199]}] National Institute of Standards and Technology,
   \emph{Standards for Security Categorization of Federal Information and
   Information Systems}, FIPS PUB 199, February 2004.
@@ -1231,6 +1282,9 @@ and contract evidence without treating any single implementation as mandatory.
 \item[{[FEDRAMP-CLASS]}] FedRAMP, \emph{Choosing a Certification Class},
   Consolidated Rules for 2026.
   \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
+\item[{[FEDRAMP-2026]}] FedRAMP, \emph{What's Changing in 2026},
+  Consolidated Rules for 2026.
+  \url{https://www.fedramp.gov/2026/providers/updating/changes/}.
 \item[{[FEDRAMP-VDR]}] FedRAMP, \emph{Vulnerability Detection and Response},
   Consolidated Rules for 2026, rule VDR-TFR-PVR.
   \url{https://www.fedramp.gov/2026/providers/20x/rules/vulnerability-detection-and-response/}.
