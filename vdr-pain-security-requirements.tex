@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.4}
+\date{July 2026\\\small Version 1.5}
 
 \begin{document}
 \maketitle
@@ -943,7 +943,8 @@ the use.
 This paper identifies the cross-CSP composition problem but does not standardize a
 saturation threshold, convergence rule, or attestation protocol. It offers an
 asymptotic upper-envelope observation, not guidance for deciding when a finite
-deployment may use it. A complete supply-chain profile is future work.
+deployment may use it. Developing a complete supply-chain profile is an exercise
+left to the reader.
 \end{boundarybox}
 
 \section{Governance and audit record}
@@ -1040,40 +1041,136 @@ assurance disposition, and any contract or agency-managed safeguards. These fiel
 do not modify $R_x^{\mathrm{eff}}$; they explain whether the operational commitment
 is sufficient for the consequence the vector represents.
 
-\section{Limitations, assurance boundaries, and prohibited overclaims}
+\section{How the method may---and may not---be used}
+
+This method is intentionally narrow. It answers one question: given the
+government information use that has actually been identified and the role an asset
+actually performs, what is the greatest C/I/A requirement that PAIN should receive
+for that asset? The answer is an effective Security Requirements vector with a
+traceable derivation. It is not a second authorization decision.
+
+\subsection{The output boundary}
+
+The method produces $R_x^{\mathrm{eff}}$, a per-asset CR/IR/AR input to the PAIN
+equation. That vector is not, by itself:
 
 \begin{itemize}[leftmargin=1.5em]
-\item NIST SP~800-60 profiles are provisional recommendations. They do not replace
-  agency categorization, governing sources, or actual-use evidence.
-\item Classified information and national-security systems are outside the
-  publication's scope.
-\item Information-type intersection does not eliminate system-level aggregation,
-  critical-function, control-information, or extenuating-circumstance review.
-\item The vector approximation can conceal mismatched information types and must be
-  labeled as an approximation.
-\item The hyperscaler saturation limit is conservative policy, not measured
-  convergence, a probability model, or a federal standard. It defines no finite
-  dependency-count or diversity trigger.
-\item Certification Class is not a data-eligibility label, a FIPS~199 category, or
-  an impact ceiling. It describes the provider's reusable assurance and operational
-  commitments. The Low/Moderate/High shorthand is only a planning approximation.
-\item An agency's identification of a High objective for a Class~B or Class~C use
-  does not compel the CSP to support that use. Agency disclosure and CSP acceptance
-  are both required; generic technical capability establishes neither.
-\item FedRAMP's published timeframes can change and may be supplemented by
-  contract. The incident tables describe communication obligations, not a universal
-  containment or recovery SLA.
-\item A:H is a consequence statement, not a prescribed uptime percentage,
-  multi-region topology, RTO, or RPO. Availability design and contract evidence can
-  support an assurance-fit decision, but do not by themselves recategorize the
-  system or lower its effective AR.
-\item The ceiling is a cap, not a floor. It cannot make a low-role asset High.
-\item This paper derives the vector handed to PAIN; it does not assign the PAIN
-  word. A High objective can make Debilitating reachable under a downstream
-  calibration without making every vulnerability Debilitating.
-\item The catalog counts describe text and provisional profiles, not the prevalence
-  of High-impact agency deployments.
+\item the agency's FIPS~199 system category or control baseline;
+\item permission for the CSO to accept a particular information type;
+\item the CSO's FedRAMP Certification Class;
+\item a statement that the available assurance is adequate for the intended use;
+  or
+\item a PAIN word, N-level, remediation deadline, or incident-response deadline.
 \end{itemize}
+
+Those decisions consume different evidence and occur at different points in the
+authorization and vulnerability-response processes. Keeping them separate prevents
+a convenient operational label from silently changing the government consequence
+being measured.
+
+\subsection{The authority and evidence boundary}
+
+NIST SP~800-60 provides provisional, government-centered impact recommendations.
+The deploying agency remains responsible for identifying the information types
+authorized for the system, applying special factors and governing sources, and
+confirming the resulting FIPS~199 categorization. The catalog does not make an
+agency determination merely because a type appears in it, and the counts in this
+paper describe the catalog's text rather than the prevalence of High-impact agency
+deployments.
+
+The intersection of agency use and supported CSO use narrows the relevant
+information types; it does not eliminate review of system-level aggregation,
+critical functions, control information, or extenuating circumstances. Classified
+information and national-security systems remain outside this paper's scope.
+
+When only a vector approximation of an information-type set is available, the
+approximation can combine objective maxima that came from different underlying
+types. It is suitable as a conservative envelope, but it cannot be cited as proof
+that one particular information type has that combined profile. The approximation
+must be labeled and its source evidence retained.
+
+\subsection{The ceiling boundary}
+
+The intended-use vector is a cap, not a floor and not a product-capability score.
+Applying it can reduce an archetype requirement that exceeds the consequence
+supported by the agency's intended use; it cannot raise a low-role asset merely
+because the system contains more sensitive information. The uncapped archetype
+continues to describe the reusable role, while the effective vector describes that
+role in this system and agency context.
+
+A lower effective requirement on one asset does not lower the FIPS~199 category of
+the system, remove applicable controls, or authorize a broader data use. It only
+bounds the consequence input used to evaluate a vulnerability affecting that
+asset. Likewise, a generic text field, upload mechanism, or technical ability to
+receive bytes does not add hypothetical information types to the ceiling.
+Accidental or prohibited data spillage remains a security and governance event; it
+is not a reason to categorize every generic input for every imaginable use.
+
+The inverse is equally important. Once an agency identifies and justifies an
+authorized High objective, the CSP must not lower that objective merely to make it
+look consistent with a Certification Class shorthand. If the offering cannot
+support the use at an acceptable level of assurance, the result is an
+authorization, architecture, contract, or acceptance problem---not a reason to
+rewrite the consequence.
+
+\subsection{The Certification Class and assurance boundary}
+
+Certification Class and the intended-use vector answer different questions. Class
+describes the reusable assurance and operational commitments supplied by the CSP;
+the vector describes the adverse effect the government could experience. Class is
+therefore not a data-eligibility label, FIPS~199 category, or impact ceiling. The
+Low/Moderate/High Class shorthand is useful only as a planning approximation.
+
+For a Class~B or Class~C use containing a High objective, the agency must identify
+and justify that objective and the CSP must affirmatively accept the use. Neither
+agency identity nor generic technical capability supplies that agreement. A Class~C
+offering can support an agency use with a High objective, but it continues to
+supply Class~C commitments unless a contract or higher Class provides more. The
+agency and CSP must record whether that level of assurance is adequate rather than
+altering the impact vector to conceal a divergence.
+
+FedRAMP's published timeframes can change, and contracts can supplement them.
+Incident-reporting timeframes are communication obligations, not universal
+containment or recovery SLAs. Availability also requires a specific distinction:
+A:H states a severe or catastrophic government consequence, but it does not itself
+prescribe an uptime percentage, multi-region topology, RTO, or RPO. Architecture,
+testing, recovery evidence, agency continuity measures, and contract terms can
+establish an acceptable availability-assurance case; they do not recategorize the
+system or lower its effective AR.
+
+\subsection{The downstream PAIN boundary}
+
+This paper ends when it hands $R_x^{\mathrm{eff}}$ to PAIN. Under the reference
+calibration in \mbox{[PAIN]}, an effective vector containing only Low and Moderate
+requirements cannot produce a Debilitating result. Combined with the FIPS~199
+high-water-mark rule, this means a genuinely Low- or Moderate-impact system cannot
+produce Debilitating under that calibration. This is a consequence of the PAIN
+formula and thresholds; NIST SP~800-60 and FIPS~199 do not independently classify
+vulnerabilities as Debilitating.
+
+A High objective changes reachability, not the result for every vulnerability.
+The reference calibration still requires at least one High technical impact aligned
+with a High effective requirement, plus an additional High technical impact aligned
+with a Moderate-or-High effective requirement. A single High/High alignment remains
+Disruptive under that calibration. Consequently, a Debilitating result in a
+Class~B or Class~C offering is exceptional but not impossible: the agency-identified
+High objective must survive the asset cap and the vulnerability must satisfy the
+compound alignment.
+
+Certification Class does not change that PAIN word. It selects the standard level
+of assurance and operational timeframes applied after consequence and affected
+scope have been derived. Providers may govern different PAIN calibrations, but any
+different thresholds or predicates must be disclosed as policy choices rather than
+attributed to FIPS~199, NIST SP~800-60, or Certification Class.
+
+\subsection{The cross-CSP approximation boundary}
+
+The hyperscaler saturation limit is a conservative upper-envelope policy, not a
+measured convergence result, probability model, or federal standard. It defines no
+finite dependency count, customer-diversity measure, or confidence threshold. A
+provider may make a justified dimension-by-dimension decision from evidence about
+its actual bounded population, but it cannot claim that a particular value of $x$
+proves the asymptotic endpoint has been reached.
 
 \section{Conclusion}
 
