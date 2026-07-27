@@ -23,6 +23,7 @@
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
 \newcommand{\origpaper}{\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}{the initial PAIN publication}}
+\newcommand{\ceilingpaper}{\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf}{\emph{Before the PAIN Equation}}}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
@@ -57,7 +58,7 @@
 High-Centered Normalization and\\
 Standards-Anchored Thresholds}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.0}
+\date{July 2026\\\small Version 1.1}
 
 \begin{document}
 \maketitle
@@ -122,9 +123,12 @@ likely-exploitable logic, internet-reachability logic, multi-agency handling, VE
 dispositions, and evidence-gated Modified impact reductions remain outside its
 scope.
 
-The governed asset-archetype catalog is also an external input to this calibration.
-This paper does not define or revise archetype CR/IR/AR assignments; it holds the
-adopted catalog constant while comparing scoring methods.
+The governed asset-archetype catalog and any intended-use Security Requirements
+ceiling are also external inputs to this calibration. This paper does not derive
+either input. It holds the effective CR/IR/AR vector constant while comparing
+scoring methods. \ceilingpaper{} specifies the upstream derivation that caps a
+system-relative archetype vector by the confirmed federal information types in the
+affected agency scope.
 
 \begin{plain}
 The original model asked the right question but used the wrong ruler at the top of
@@ -576,12 +580,77 @@ thresholds. Rounded values are for display only. The parameter set must be versi
 as governed PAIN policy.
 \end{decisionbox}
 
+\section{Ceiling-constrained reachability}
+\label{sec:ceiling-reachability}
+
+The 729-state proof above describes the unconstrained Cartesian product of every
+CVSS impact vector and every effective Security Requirements vector. A particular
+deployment may expose only a subset of those states after its intended-use ceiling
+is applied.
+
+Let the uncapped archetype requirement be $R_x(o)$ and the intended-use ceiling be
+$E_x(o)$. The PAIN calculation receives:
+\[
+R_x^{\mathrm{eff}}(o)=\min\big(R_x(o),E_x(o)\big).
+\]
+The ceiling derivation is upstream of this calibration; see \ceilingpaper{}. This
+section examines only what the adopted PAIN arithmetic does with that input.
+
+\subsection{Low- and Moderate-impact ceilings}
+
+If a ceiling contains no High objective, then every effective requirement is at
+most Moderate, regardless of the archetype. The largest possible pre-cap aggregate
+occurs with High technical impact on all three Moderate requirements:
+\begin{align}
+U_{\max,\le M}
+  &=1-(1-0.56)^3=0.914816,\\
+S_{\max,\le M}
+  &=\frac{0.914816}{0.995904}=0.918578\ldots
+\end{align}
+This is below the adopted Debilitating threshold:
+\[
+0.918578\ldots < 0.933.
+\]
+Therefore no state permitted by an all-Low/Moderate ceiling reaches Debilitating
+under this calibration. All 70 Debilitating states in the unconstrained lattice
+require at least one effective High requirement and are removed by such a ceiling.
+
+\begin{cautionbox}
+This is a consequence of the PAIN method's retained CVSS weights,
+High-centered denominator, and $0.933$ threshold. NIST SP~800-60 and FIPS~199 do
+not independently define this reachability result. A different PAIN aggregation
+or threshold could classify the same effective requirements differently.
+\end{cautionbox}
+
+FIPS~199 separately establishes that any High system objective makes the
+information system High overall. Combining that categorization rule with this
+methodology-specific result means that a genuinely Low- or Moderate-impact
+information system cannot reach the Debilitating word \emph{under the adopted PAIN
+calibration}. The dimensional vector must still be retained: an overall High
+system may be H/M/L, and the label High does not turn it into H/H/H.
+
+\subsection{What a High ceiling does not prove}
+
+A High objective makes Debilitating reachable in the deployment's state space; it
+does not make every vulnerability Debilitating. The finding still needs:
+
+\begin{enumerate}[leftmargin=1.7em]
+\item a High technical impact aligned with an effective High requirement; and
+\item another High technical impact aligned with an effective Moderate-or-High
+  requirement.
+\end{enumerate}
+
+The archetype can also keep a dimension below the ceiling because the ceiling is
+only a cap. Finally, multi-agency scope maps an already derived customer-effect word
+to the N-level; it does not create the Debilitating word.
+
 \section{Worked scenarios}
 \label{sec:scenarios}
 
 Tables~\ref{tab:lower-boundaries} and~\ref{tab:scenarios} apply the final arithmetic
-to boundary and ordinary cases. Requirement vectors are explicit scenario inputs
-supplied by the governed asset catalog. Results assume a single-agency resource;
+to boundary and ordinary cases. Requirement vectors are explicit effective inputs:
+the governed asset catalog supplies the uncapped archetype and any intended-use
+ceiling caps it before these calculations. Results assume a single-agency resource;
 the separate agency-scope mapping can promote qualifying words to N4 or N5.
 
 \begin{table}[H]
@@ -771,8 +840,9 @@ The final method is preferable because it obtains the compound-gate result witho
 executing a gate. It keeps Low impacts and all three requirement levels inside one
 continuous calculation, retains the official metric weights, and makes the top
 threshold reproducible from the input lattice. It also keeps the operator-facing
-model simple: one role-based archetype tag supplies CR/IR/AR; no additional scoring
-profile is required.
+model simple: one role-based archetype supplies the reusable architectural vector,
+and one scope-resolved intended-use ceiling supplies the federal consequence cap.
+Neither changes per finding.
 
 \section{Implementation and governance}
 
@@ -845,6 +915,10 @@ that the fail-safe does not become the dominant production archetype.
 \item The exact $0.933$ separation depends on the discrete
   $\{N,L,H\}\times\{L,M,H\}$ domain and the retained CVSS v3.1 weights. It must be
   re-derived if those inputs change.
+\item The finding that an all-Low/Moderate ceiling cannot reach Debilitating is a
+  consequence of this calibration, not an independent NIST or FedRAMP rule. It
+  must be re-evaluated if the aggregation, weights, denominator, or thresholds
+  change.
 \item Native CVSS v4 subsequent-system impacts and Safety are not included in the
   three-dimension proof. A future PAIN version may add them, but doing so requires a
   new denominator and threshold analysis rather than silently extending this one.
@@ -852,8 +926,8 @@ that the fail-safe does not become the dominant production archetype.
   generalizability. Additional production datasets and analyst-rated scenario sets
   should be evaluated before broad standardization.
 \item A scalar cannot replace architecture review. Archetype assignment, Modified
-  impact evidence, agency scope, and vulnerability applicability remain governed
-  inputs.
+  impact evidence, intended-use ceiling, agency scope, and vulnerability
+  applicability remain governed inputs.
 \item The threshold's narrow mathematical gap is safe for deterministic software
   using full precision but unsuitable for manual classification from rounded
   dashboard values.
@@ -897,6 +971,9 @@ with
 This preserves the CVSS-derived evidence chain while giving PAIN a more defensible
 meaning at its most consequential boundary: N4 and N5 are reserved for impact that
 is not only severe, but compound and catastrophic in the affected environment.
+When an intended-use ceiling has no High objective, the adopted formula makes that
+boundary unreachable; this is a transparent property of the PAIN calibration,
+not a categorization rule imported from NIST or FedRAMP.
 
 \clearpage
 \section*{References}
@@ -907,6 +984,10 @@ is not only severe, but compound and catastrophic in the affected environment.
 \item[{[PAIN]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
   FedRAMP VDR/VER Vulnerability Prioritization}, stackArmor, July 2026.
   \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}.
+\item[{[CEILING]}] M.~Venne, \emph{Before the PAIN Equation: Deriving
+  Security-Requirements Ceilings from Intended Federal Information Types},
+  stackArmor, July 2026.
+  \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf}.
 \item[{[CVSS31]}] FIRST, \emph{Common Vulnerability Scoring System v3.1:
   Specification Document}. Environmental Security Requirements, MISS formula, and
   metric values. \url{https://www.first.org/cvss/v3.1/specification-document}.
@@ -920,6 +1001,10 @@ is not only severe, but compound and catastrophic in the affected environment.
   \emph{Standards for Security Categorization of Federal Information and
   Information Systems}, FIPS PUB 199.
   \url{https://csrc.nist.gov/pubs/fips/199/final}.
+\item[{[SP800-60]}] National Institute of Standards and Technology,
+  \emph{Guide for Mapping Types of Information and Information Systems to Security
+  Categories}, SP 800-60 Volumes I and II, Revision 1.
+  \url{https://csrc.nist.gov/pubs/sp/800/60/r1/final}.
 \item[{[FEDRAMP]}] FedRAMP, \emph{Potential Agency Impact Definitions},
   Notice 0012, and \emph{Vulnerability Evaluation and Reporting}, Consolidated
   Rules 2026.
@@ -950,6 +1035,8 @@ Minimum compound $S_H$ & 0.93342330184435 \\
 States at or above $0.933$ & 70 \\
 State counts Minimal/Narrow/Disruptive/Debilitating & 90 / 218 / 351 / 70 \\
 Predicate/threshold mismatches & 0 \\
+Maximum $S_H$ with every requirement $\le M$ & 0.918578497526 \\
+Debilitating states after an all-Low/Moderate ceiling & 0 \\
 \bottomrule
 \end{tabular}
 \end{center}

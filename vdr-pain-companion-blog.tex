@@ -10,6 +10,12 @@
 \usepackage[hidelinks]{hyperref}
 
 \emergencystretch=3em  % absorb the occasional unbreakable prose line
+\setlist{topsep=.45em,itemsep=.2em,parsep=0pt}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-2.2ex plus -.7ex minus -.2ex}{.9ex}%
+  {\normalfont\Large\bfseries}}
+\makeatother
 
 % --- palette (matches the technical memo) ---
 \definecolor{infoblue}{HTML}{2C3E50}
@@ -27,7 +33,7 @@
 
 \title{\bfseries Your Scanner Says ``Critical.''\\ FedRAMP Asks a Harder Question.}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{June 2026}
+\date{July 2026}
 
 \begin{document}
 \maketitle
@@ -100,10 +106,11 @@ One agency or many? & A scope multiplier on the result \\
 \end{tabular}
 \end{center}
 
-The payoff: \textbf{you don't need to invent a risk algebra.} You assign each asset
-its CR/IR/AR, evaluate two facts about reachability and exploitation, and the
-published CVSS math does the rest. The output is deterministic --- same inputs,
-same answer, every analyst, every run.
+The payoff: \textbf{you don't need to invent a risk algebra.} You derive what
+federal consequences are actually in scope, assign each asset its architectural
+role, evaluate two facts about reachability and exploitation, and the published
+CVSS math does the rest. The output is deterministic --- same inputs, same answer,
+every analyst, every run.
 
 \section*{How it actually works (the no-math version)}
 Every vulnerability can hurt three things: \textbf{secrecy} (confidentiality),
@@ -125,18 +132,38 @@ scoring is three cut-points that decide where one word turns into the next --- a
 those are meant to be documented, governed, and back-tested against how your senior
 analysts actually triage.
 
+\section*{Before the asset score: what federal impact is actually possible?}
+There is one important step before the arithmetic. A cloud service may be capable
+of serving many agencies and many information types, but a particular deployment
+has a narrower intended use. NIST SP~800-60 gives provisional confidentiality,
+integrity, and availability profiles for federal information types. The agency
+confirms which types it will actually use in the offering and whether any special
+factors apply.
+
+That produces a three-dimensional \textbf{Security Requirements ceiling}. Keep the
+dimensions. If the system category is High because confidentiality is High while
+integrity is Moderate and availability is Low, the ceiling is H/M/L --- not H/H/H.
+A generic text box or file upload does not authorize every hypothetical kind of
+federal data.
+
+This is also where the point of view matters. PAIN asks about impact to the agency,
+government operations, federal assets, and affected individuals. The CSP may care
+more about the same event for brand or corporate-reputation reasons, but that
+separate business risk does not silently raise the agency's PAIN inputs.
+
 \section*{But where does an asset's criticality come from? Archetypes.}
 Everything above hinges on that second number --- \emph{how much does this system
 depend on secrecy, correctness, and uptime?} That's the CR/IR/AR. So the obvious
 question is: who decides that, and how do you keep it from becoming the same
 analyst-by-analyst guesswork the method was trying to escape?
 
-The answer is \textbf{asset archetypes.} Instead of hand-rating every server in
+The architectural answer is \textbf{asset archetypes.} Instead of hand-rating every server in
 isolation, you sort each asset into a short catalog of roles based on \textbf{what
-it does and what data it touches} --- a database, a login service, a cache, a
+it does inside the service} --- a database, a login service, a cache, a
 message bus, a CI/CD runner, a public load balancer, and so on. Each archetype
-comes with its CR/IR/AR criticality \emph{pre-filled and justified}. Tag an asset
-with its archetype, and its criticality is inherited automatically.
+comes with an uncapped CR/IR/AR profile \emph{pre-filled and justified}. Tag an
+asset with its archetype, and its architectural profile is inherited
+automatically.
 
 The reason this matters isn't just convenience --- it's the \textbf{chain of
 thought}. If you hand-score a host as ``CR: Low, IR: High, AR: Low,'' six months
@@ -156,9 +183,11 @@ by that powerful control function regardless of the data it happens to store.
 So the full pipeline reads top to bottom like this:
 
 \begin{plain}
-\textbf{Classify the asset (archetype)} --- what it does, what data it touches
-$\rightarrow$ \textbf{sets its CR/IR/AR} --- the criticality multipliers for
-confidentiality, integrity, availability $\rightarrow$ \textbf{feeds the CVSS
+\textbf{Derive intended-use ceiling} --- which federal information types and
+consequences are in scope $\rightarrow$ \textbf{classify the asset (archetype)}
+--- what it does inside the service $\rightarrow$ \textbf{take the lower value
+on each objective} --- effective CR/IR/AR for confidentiality, integrity, and
+availability $\rightarrow$ \textbf{feed the CVSS
 Environmental impact math} --- re-weighting the CVE's raw impact by what's at stake
 \emph{here} $\rightarrow$ \textbf{produces the PAIN level (N1--N5)} --- plus, with
 the reachability and exploitation facts, a concrete deadline.
@@ -168,9 +197,11 @@ Two important guardrails on the archetype catalog:
 \begin{itemize}[leftmargin=1.5em]
 \item \textbf{It's an example, not a standard.} The proposal publishes a sample
   catalog as an \emph{existence proof} --- but every provider should derive its own
-  from its actual FIPS-199 categorization, data inventory, and authorization
-  boundary. Two providers holding different data can legitimately assign the same
-  software different criticality.
+  from its own architecture, roles, trust relationships, and control functions.
+  Agency FIPS-199 and information-type context belongs in the separate ceiling.
+  Two providers using the same software for different roles can legitimately
+  assign different archetypes; two agencies can retain the same archetype while
+  receiving different effective requirements.
 \item \textbf{Mislabeling is a downgrade attack.} Because the whole score rides on
   the tag, tagging an asset \emph{down} makes its flaws look smaller than they are.
   So archetype tags should be controlled and reviewed like any other security
@@ -182,7 +213,8 @@ Two important guardrails on the archetype catalog:
 This is the part worth internalizing, because it's the entire point of the method.
 Take one identical remote-code-execution CVE:
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{On a crown-jewel datastore holding multiple agencies' data:} scores
+\item \textbf{On a crown-jewel datastore whose archetype and intended-use ceiling
+  retain the necessary High requirements, holding multiple agencies' data:} scores
   Debilitating, multi-agency $\rightarrow$ \textbf{N5}, remediate in hours.
 \item \textbf{On a single-agency throwaway sandbox:} same CVE, scores Disruptive
   $\rightarrow$ \textbf{N3}, a much longer clock.
@@ -265,9 +297,10 @@ You can summarize the entire proposal in four claims:
 \item \textbf{You don't have to invent it.} CVSS Environmental metrics already
   encode ``re-weight impact by what's at stake'' --- which \emph{is} the
   agency-impact question.
-\item \textbf{With two human inputs per asset} --- its archetype (which sets
-  CR/IR/AR) and a one-agency-or-many flag --- every finding gets a deterministic,
-  auditable N-level and a concrete deadline. Everything else is derived.
+\item \textbf{With governed inputs} --- an intended-use ceiling, the asset's
+  archetype, and a one-agency-or-many affected scope --- every finding gets a
+  deterministic, auditable N-level and a concrete deadline. The inputs change
+  when use, architecture, or tenancy changes; the finding math does not.
 \item \textbf{It's defensible.} Same inputs, same output, every time --- with the
   full derivation attached to each finding, and a fail-safe that errs toward
   over-classifying rather than under.
@@ -287,6 +320,9 @@ same way every time.}
 \noindent\emph{Read the full technical memo:
 \href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}{A
 Deterministic, CVSS--Environmental Method for FedRAMP VDR/VER Vulnerability
-Prioritization}}
+Prioritization}. Read the upstream derivation:
+\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf}{Before
+the PAIN Equation: Deriving Security-Requirements Ceilings from Intended Federal
+Information Types}.}
 
 \end{document}

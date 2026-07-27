@@ -1,0 +1,885 @@
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,left=1in,right=1in,top=0.75in,bottom=0.75in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{enumitem}
+\usepackage[most]{tcolorbox}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\emergencystretch=3em
+
+\definecolor{infoblue}{HTML}{2C3E50}
+\definecolor{rule}{HTML}{BDC3C7}
+\definecolor{decisiongreen}{HTML}{1B7F5A}
+\definecolor{boundaryred}{HTML}{A33A2B}
+
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\rfckw}[1]{\textsc{#1}}
+\newcommand{\painpaper}{\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}{the PAIN method}}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\newtcolorbox{plain}{
+  enhanced, breakable,
+  colback=Sepia!7, colframe=Sepia!55, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=Sepia!72!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={IN PLAIN TERMS}
+}
+
+\newtcolorbox{modelbox}{
+  enhanced, breakable,
+  colback=decisiongreen!5, colframe=decisiongreen!65, boxrule=0.5pt, arc=2pt,
+  left=7pt, right=7pt, top=5pt, bottom=5pt,
+  fontupper=\small,
+  coltitle=decisiongreen!75!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={DERIVATION}
+}
+
+\newtcolorbox{boundarybox}{
+  enhanced, breakable,
+  colback=boundaryred!4, colframe=boundaryred!55, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=boundaryred!75!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={SCOPE BOUNDARY}
+}
+
+\title{\bfseries Before the PAIN Equation:\\
+Deriving Security-Requirements Ceilings\\
+from Intended Federal Information Types}
+\author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
+\date{July 2026\\\small Version 1.0}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Potential Agency Impact (PAIN) calculations require a Confidentiality, Integrity,
+and Availability Security Requirements vector for the affected asset. An asset
+archetype can provide a consistent architectural vector, but it cannot by itself
+answer a different question: which federal consequences are possible in a
+particular agency's intended use of a Cloud Service Offering (CSO)?
+
+This paper specifies the missing upstream derivation. It begins with the federal
+information types the CSO is designed and authorized to process and the information
+types an agency intends and is authorized to place in that offering. Confirmed
+overlap is mapped to the provisional objective values and special factors in NIST
+SP~800-60. The applicable values are aggregated independently for Confidentiality,
+Integrity, and Availability, preserving the full dimensional vector required by
+FIPS~199. That vector becomes a Security Requirements ceiling. The effective
+requirement for an asset is the per-objective minimum of its system-relative
+archetype requirement and the intended-use ceiling.
+
+The separation matters. Archetypes remain reusable across agency deployments because
+they describe the role of a component inside the CSO, not every possible customer
+data type. The ceiling supplies the agency-specific consequence context without
+turning a system's overall FIPS~199 impact label into an all-equal vector. Generic
+free text, file upload, or integration capability does not authorize hypothetical
+information types. Multi-agency assets aggregate only the definite agencies they can
+affect. The assessment measures adverse effect on federal operations, federal
+assets, and individuals; a CSP's separate brand or corporate risk does not silently
+raise agency impact.
+
+This paper ends at the effective Security Requirements vector. It does not choose a
+PAIN aggregation formula, word threshold, or N-rating. Those downstream policy
+choices belong to the PAIN method and its calibration.
+\end{abstract}
+
+\tableofcontents
+
+\section{Status, scope, and relationship to PAIN}
+
+This document is informational. It does not define a FedRAMP requirement, replace an
+agency categorization, or make NIST SP~800-60 recommendations mandatory. It proposes
+a deterministic bridge from federal information categorization to the
+Security Requirements inputs consumed by \painpaper{}.
+
+The key words \rfckw{must}, \rfckw{must not}, \rfckw{should},
+\rfckw{should not}, and \rfckw{may} describe this proposed method as in RFC~2119.
+They do not create obligations under FedRAMP, FIPS~199, or NIST guidance.
+
+\begin{description}[leftmargin=1.6em,style=nextline]
+\item[Cloud Service Offering (CSO)] The bounded cloud service whose intended federal
+  use is being assessed.
+\item[Information type] A category of federal information identified under NIST
+  SP~800-60, with provisional Confidentiality, Integrity, and Availability impact
+  recommendations.
+\item[Applied profile] The objective vector retained after an agency confirms that
+  an information type applies and evaluates its special factors and actual use.
+\item[Archetype requirements] The uncapped CR/IR/AR vector assigned from an asset's
+  role and consequence inside the CSO architecture.
+\item[Security-requirements ceiling] The greatest C/I/A consequence supported by
+  the confirmed intended information use in the asset's agency scope.
+\item[Effective requirements] The per-objective minimum of the archetype
+  requirements and the ceiling. This is the CR/IR/AR vector handed to PAIN.
+\end{description}
+
+\begin{boundarybox}
+The paper stops at effective CR/IR/AR. Whether a particular effective vector can
+produce Minimal, Narrow, Disruptive, or Debilitating under a selected PAIN formula
+is a property of that downstream formula and its governed thresholds. It is not a
+property established by NIST SP~800-60 or FIPS~199 alone.
+\end{boundarybox}
+
+\section{The missing first step}
+
+FedRAMP requires providers to evaluate vulnerabilities in the context of the CSO
+and estimate potential impact on government customers. CVSS Environmental Security
+Requirements supply a standard vocabulary for stating how strongly the affected
+environment requires confidentiality, integrity, and availability. Neither source,
+however, automatically provides the three values for a particular asset in a
+particular agency deployment.
+
+The existing PAIN method recommends asset archetypes: governed role descriptions
+such as system-of-record database, identity service, orchestrator, message broker,
+or disposable cache. This is preferable to asking each asset owner to declare an
+unexplained value. Yet one vector is being asked to carry two different kinds of
+information:
+
+\begin{enumerate}[leftmargin=1.7em]
+\item \textbf{Architectural consequence:} what role does this component perform
+  inside the CSO, and how much can its compromise affect the offering?
+\item \textbf{Federal mission consequence:} what information and government use
+  are actually in scope for the affected agency or agencies?
+\end{enumerate}
+
+Combining those questions inside every archetype makes the catalog customer-specific.
+A database archetype may become High for one agency, Moderate for another, and then
+change again when the CSO adds a customer. The resulting catalog is difficult to
+reuse and difficult to audit.
+
+This method separates the questions. The archetype holds the first answer. A
+Security Requirements ceiling derived from intended federal information use holds
+the second. PAIN receives their per-objective intersection.
+
+\begin{plain}
+A primary database can be architecturally important even when the current federal
+use is only Moderate. Keep the database role stable. Derive the agency's
+three-dimensional ceiling separately. The database keeps its identity, while its
+effective PAIN requirements reflect what is actually at stake for that agency.
+\end{plain}
+
+\section{Risk has a point of view}
+
+FIPS~199 defines impact through adverse effects on organizational operations,
+organizational assets, and individuals. NIST SP~800-60 applies that federal frame
+to information types and agency missions. FedRAMP's PAIN vocabulary likewise asks
+about effects on agencies using the cloud service.
+
+Risk is therefore not an intrinsic property of a byte sequence. The same
+information can carry different consequences for different stakeholders:
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{}P{0.21\textwidth}YY@{}}
+\toprule
+\textbf{Stakeholder} & \textbf{Question} & \textbf{Treatment in this method} \\
+\midrule
+Federal agency &
+Would disclosure, corruption, or loss cause limited, serious, or severe or
+catastrophic adverse effect on the mission, federal assets, or individuals? &
+This is the impact measured by the ceiling and handed to PAIN. \\
+CSP &
+Would the same event harm brand, market position, revenue, contractual posture, or
+corporate reputation? &
+Important enterprise risk, but not automatically federal agency impact. Include it
+only where it creates a documented federal consequence. \\
+Other customer &
+Would the event harm a non-federal customer's operations or obligations? &
+Outside federal PAIN unless that consequence also affects an agency in the assessed
+scope. \\
+\bottomrule
+\end{tabularx}
+\caption{Stakeholder consequences are related but not interchangeable.}
+\end{table}
+
+A Low federal Confidentiality objective does not mean disclosure is desirable or
+costless. It means the agency has determined that unauthorized disclosure would
+have only limited adverse effect under the FIPS~199 frame. A CSP may rationally
+assign greater internal importance to avoiding the same disclosure. That separate
+judgment belongs in the CSP's enterprise risk process rather than being smuggled
+into PAIN as if the government made it.
+
+\section{NIST SP 800-60 as provisional evidence}
+
+NIST SP~800-60 Volume~II Revision~1 contains a catalog of management-and-support
+and mission-based information types. Each scored record supplies a provisional
+C/I/A profile, objective-level rationale, special factors, and a recommendation.
+The values are starting points. The agency identifies applicable information
+types, evaluates actual use, applies special factors, considers aggregation and
+system context, and documents adjustments.
+
+\subsection{What the catalog does and does not decide}
+
+For an information type $t$, write its provisional profile as
+\[
+p_t=(p_t^C,p_t^I,p_t^A), \qquad p_t^o\in\{L,M,H\}.
+\]
+After the agency evaluates actual use and special factors, the applied profile is
+\[
+q_{a,t}=(q_{a,t}^C,q_{a,t}^I,q_{a,t}^A).
+\]
+
+The method \rfckw{must} preserve both values and explain every difference. A
+provisional High is not automatic proof that the agency's use is High. A
+provisional Low does not prevent a documented special factor or aggregate from
+raising the applied objective. A candidate information type does not participate
+in the math until its applicability is confirmed.
+
+The catalog does not cover classified information or national-security systems.
+Those uses remain outside this method.
+
+\subsection{High-impact paths in the catalog}
+
+A source-pinned conversion of Volume~II contains 170 records: 168 scored
+information types and two delivery mechanisms without standalone profiles. Eleven
+of the 168 scored types begin with at least one provisional High objective:
+
+\begin{table}[H]
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{@{}P{0.10\textwidth}YP{0.19\textwidth}@{}}
+\toprule
+\textbf{ID} & \textbf{Information type} & \textbf{Provisional vector} \\
+\midrule
+D.2.2 & Key Asset and Critical Infrastructure Protection & C:H/I:H/A:H \\
+D.2.3 & Catastrophic Defense & C:H/I:H/A:H \\
+D.2.4 & EOP Executive Functions & C:H/I:M/A:H \\
+D.3 & Intelligence Operations (Unclassified Domestic Intelligence) & C:H/I:H/A:H \\
+D.4.1 & Disaster Monitoring and Prediction & C:L/I:H/A:H \\
+D.4.4 & Emergency Response & C:L/I:H/A:H \\
+D.5.1 & Foreign Affairs & C:H/I:H/A:M \\
+D.5.3 & Global Trade & C:H/I:H/A:H \\
+D.11.4 & Space Operations & C:L/I:H/A:H \\
+D.14.4 & Health Care Delivery Services & C:L/I:H/A:L \\
+D.17.2 & Legal Defense & C:M/I:H/A:L \\
+\bottomrule
+\end{tabularx}
+\caption{The eleven information types with a provisional High objective.}
+\end{table}
+
+Only four provisionally begin at H/H/H. Another 94 scored records contain
+objective-specific special-factor language that explicitly permits High under
+stated conditions. Sixty-three have no explicit High path in either their
+provisional profile or special factors.
+
+These counts require careful interpretation. Provisional High is uncommon.
+Conditional High is available across a broader part of the catalog, but a
+conditional path does not make the information type High by itself. Common
+conditions concern life safety, primary mission failure, critical infrastructure,
+time-critical emergency or operational decisions, catastrophic market disruption,
+and disclosure or corruption that enables catastrophic harm. Each requires an
+affirmative fact about the agency's intended use.
+
+\begin{boundarybox}
+The catalog supports ``provisional High is rare'' and ``conditional High requires
+specific facts.'' It does not support the claim that only a small fraction of
+information types have any conceivable High path: 105 of 168 have either a
+provisional or explicit conditional path. Nor does the catalog establish how many
+agencies actually meet those conditions.
+\end{boundarybox}
+
+\section{Preserving the FIPS 199 dimensions}
+
+\subsection{Information-type profiles}
+
+FIPS~199 expresses the security category of information as a tuple:
+\[
+\mathrm{SC}_{t}
+=\{(C,q_t^C),(I,q_t^I),(A,q_t^A)\}.
+\]
+The dimensions are not interchangeable. An information type may be High for
+Integrity and Low for Confidentiality and Availability. That asymmetry is evidence,
+not noise.
+
+\subsection{System aggregation}
+
+For the set of applicable information types $T$ in a system, FIPS~199 takes the
+high-water mark independently for each objective:
+\begin{align}
+\mathrm{SC}_{\mathrm{system}}(C)&=\max_{t\in T} q_t^C,\\
+\mathrm{SC}_{\mathrm{system}}(I)&=\max_{t\in T} q_t^I,\\
+\mathrm{SC}_{\mathrm{system}}(A)&=\max_{t\in T} q_t^A.
+\end{align}
+NIST SP~800-60 then calls for review of aggregation, critical system functionality,
+and other system factors, with documented adjustment where warranted.
+
+The system's overall impact level is the highest of the three resulting objectives:
+\[
+\mathrm{Impact}_{\mathrm{system}}
+=\max\{\mathrm{SC}_{\mathrm{system}}(C),
+       \mathrm{SC}_{\mathrm{system}}(I),
+       \mathrm{SC}_{\mathrm{system}}(A)\}.
+\]
+
+Therefore any applied High objective makes the information system High overall. A
+genuinely Moderate system cannot contain a High system objective. But the overall
+word \emph{High} does not replace the vector. If the category is H/M/L, PAIN needs
+H/M/L, not H/H/H.
+
+\begin{modelbox}
+\textbf{Use the high-water mark twice, for two different outputs.}
+
+\begin{enumerate}[leftmargin=1.5em,nosep]
+\item Take a maximum per objective to retain the system vector.
+\item Take the maximum of that vector to name the overall FIPS~199 impact level.
+\end{enumerate}
+
+The overall label is useful for authorization and reporting. The dimensional vector
+is the input needed for an objective-sensitive PAIN calculation.
+\end{modelbox}
+
+\subsection{Certification Class is not the vector}
+
+FedRAMP's 2026 terminology uses Certification Classes A--D for package
+specifications. Current FedRAMP guidance describes those classes as levels of
+assurance that can support agency use cases; it does not make the Class letter a
+substitute for an agency's FIPS~199 C/I/A category. In particular, the guidance
+states that some Class~C packages may support some High security objectives.
+
+This method therefore records Certification Class separately. Class can corroborate
+an intended-use assessment and selects FedRAMP processes outside this paper, but it
+does not flatten the ceiling. A conflict between the agency's category, intended use,
+and the CSO's authorized boundary is surfaced for review rather than resolved by
+silently changing the data.
+
+\section{Intended use, not hypothetical capability}
+
+\subsection{Two sets}
+
+Let:
+
+\begin{description}[leftmargin=2.2em,style=nextline]
+\item[$T_{\mathrm{CSO}}$] Information types the offering is designed and authorized
+  to process, including applicable service-generated records needed to operate the
+  offering.
+\item[$T_a$] Information types agency $a$ intends and is authorized to process
+  through the offering.
+\end{description}
+
+The applicable set for that agency and offering is:
+\begin{equation}
+T_{a,\mathrm{CSO}}=T_{\mathrm{CSO}}\cap T_a.
+\label{eq:type-intersection}
+\end{equation}
+
+Each entry is more than an identifier. It carries the agency-confirmed applied
+profile and the special-factor rationale for this use.
+
+\subsection{Generic input mechanisms}
+
+A text box can technically accept a medical narrative, criminal-justice record,
+tax return, trade secret, grocery list, or poem. That technical fact does not place
+all corresponding information types inside the intended boundary. The same is true
+of file uploads, object storage, email ingestion, and general APIs.
+
+The CSO documents what it is designed and authorized to do. The agency documents
+what it intends and is authorized to put there. Only the confirmed overlap enters
+Equation~\eqref{eq:type-intersection}. Prohibited information remains prohibited.
+Accidental or unauthorized data spillage is managed as spillage, not normalized
+into the ordinary categorization merely because the user interface could carry it.
+
+This rule prevents generic product capability from becoming an automatic High
+designation. It also prevents the opposite error: a documented free-text,
+attachment, or integration workflow that is intended to carry a sensitive
+information type cannot be ignored just because the product has a generic label.
+
+\subsection{System-generated and control information}
+
+The intersection is not limited to agency-uploaded content. A CSO can generate
+audit records, identity material, security telemetry, configurations, decisions,
+transactions, or derived aggregates that require categorization. NIST SP~800-60
+also directs reviewers to consider critical system functionality and security
+policy enforcement information.
+
+The assessment therefore records:
+
+\begin{itemize}[leftmargin=1.5em]
+\item agency-supplied intended information;
+\item service-generated information;
+\item derived or aggregated information;
+\item trusted decisions and actions performed by the CSO;
+\item documented system-level adjustments.
+\end{itemize}
+
+These facts can alter an applied profile. They do not erase the requirement to
+identify the objective and rationale being changed.
+
+\section{From applied information types to a ceiling}
+
+\subsection{One agency}
+
+For agency $a$, objective $o\in\{C,I,A\}$, and confirmed applied profile
+$q_{a,t}$, define:
+\begin{equation}
+E_a(o)=\max_{t\in T_{a,\mathrm{CSO}}}q_{a,t}^o.
+\label{eq:agency-ceiling}
+\end{equation}
+
+Apply any documented system-level adjustment after the information-type maximum.
+The result
+\[
+E_a=(E_a(C),E_a(I),E_a(A))
+\]
+is the intended-use ceiling for that agency's deployment.
+
+If no intended information types have been confirmed, the method does not invent a
+low ceiling. It records an unresolved assessment and uses a conservative,
+explicitly provisional upper bound until the intended use is confirmed.
+
+\subsection{Several agencies and affected scope}
+
+Let $A_x$ be the definite agencies whose information or mission can be affected
+through asset $x$. The asset-scoped ceiling is:
+\begin{equation}
+E_x(o)=\max_{a\in A_x}E_a(o).
+\label{eq:asset-ceiling}
+\end{equation}
+
+This is deliberately asset-scoped:
+
+\begin{itemize}[leftmargin=1.5em]
+\item A single-tenant component receives the ceiling for its one definite agency.
+\item A shared control plane receives the per-objective maximum for every definite
+  agency it can affect.
+\item Adding an agency to a shared component can raise, but never lower, its ceiling.
+\item Adding an agency elsewhere does not change a component that cannot affect
+  that agency.
+\end{itemize}
+
+Agency identity alone does not determine an objective. An agency may operate many
+systems with different information types. Only its intended use of the assessed CSO
+participates.
+
+\subsection{The vector approximation}
+
+Some implementations already maintain only two aggregate vectors:
+
+\begin{itemize}[leftmargin=1.5em]
+\item an offering or System Security Objectives vector (SSO);
+\item an Agency Security Objectives vector (ASO).
+\end{itemize}
+
+They can approximate Equation~\eqref{eq:agency-ceiling} with:
+\begin{equation}
+\widehat{E}_a(o)=\min(\mathrm{SSO}(o),\mathrm{ASO}_a(o)).
+\label{eq:vector-approx}
+\end{equation}
+
+For several agencies, take the per-objective maximum of their ASO vectors before
+the minimum. This approximation is simple and safe when the aggregate vectors
+faithfully describe the same intended-use set. It can be imprecise when the CSO and
+agency vectors become High for unrelated information types. Two aggregate High
+values prove dimensional compatibility, not type-level overlap.
+
+The preferred audit record therefore retains confirmed information-type membership.
+Equation~\eqref{eq:vector-approx} remains a documented fallback, not a claim that
+the set intersection was evaluated.
+
+\begin{plain}
+The vector shortcut asks, ``How high can each side go?'' The type-aware method also
+asks, ``Are they talking about the same intended use?'' Keep the shortcut where
+detail is unavailable, but label it honestly.
+\end{plain}
+
+\section{Archetype requirements remain separate}
+
+\subsection{Role, not software kind}
+
+An archetype describes how an asset is used inside the CSO. The same software can
+serve different roles:
+
+\begin{itemize}[leftmargin=1.5em]
+\item an in-memory store used as a disposable cache;
+\item the same store holding durable sessions or authentication tokens;
+\item the same store brokering mission-driving work;
+\item the same engine acting as a system-of-record database.
+\end{itemize}
+
+Those roles justify different uncapped requirements even before the agency context
+is applied. The archetype catalog is therefore system-relative: a provider derives
+it from the CSO architecture, trust relationships, control functions, and
+consequences of component compromise.
+
+\subsection{Effective requirements}
+
+Let the archetype requirements for asset $x$ be
+\[
+R_x=(R_x(C),R_x(I),R_x(A)).
+\]
+The effective requirements handed to PAIN are:
+\begin{equation}
+R_x^{\mathrm{eff}}(o)=\min(R_x(o),E_x(o)),
+\qquad o\in\{C,I,A\}.
+\label{eq:effective}
+\end{equation}
+
+The ceiling never raises an archetype. A High ceiling means only that High remains
+available where the asset's architectural role supports it. Conversely, a High
+archetype does not manufacture a High federal consequence when the intended-use
+ceiling is Moderate.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}P{0.25\textwidth}P{0.22\textwidth}P{0.22\textwidth}Y@{}}
+\toprule
+\textbf{Input} & \textbf{Example} & \textbf{Scope} & \textbf{Meaning} \\
+\midrule
+Archetype requirements & H/H/M & Asset in the CSO & Uncapped architectural
+consequence of the role \\
+Intended-use ceiling & M/M/L & Agency or affected agency set & Maximum federal
+consequence supported by confirmed intended use \\
+Effective requirements & M/M/L & Asset in that agency scope & Per-objective
+minimum supplied to PAIN \\
+\bottomrule
+\end{tabularx}
+\caption{The three vectors remain visible in the audit chain.}
+\end{table}
+
+\subsection{Why this improves reuse}
+
+The same CSO can retain one governed archetype catalog across several agency
+deployments. The customer-specific information appears in the ceiling. A role
+change still changes the archetype. An intended-use change still changes the
+ceiling. Reviewers can challenge either judgment without rebuilding both.
+
+Cross-system trust anchors, software-delivery paths onto agency devices, and shared
+CSP infrastructure require particular care because their consequences may extend
+beyond the information stored in the assessed component. The correct response is
+to model their architectural role and affected scope explicitly, not to make a
+data-only archetype and then hide an exception.
+
+\section{Worked derivations}
+
+\subsection{Moderate intended use on a high-role database}
+
+A CSO's system-of-record database has archetype requirements H/H/M. One agency's
+confirmed intended information types aggregate to M/M/L. Therefore:
+\[
+R_{\mathrm{db}}^{\mathrm{eff}}
+=\min((H,H,M),(M,M,L))=(M,M,L).
+\]
+
+The database remains the system-of-record archetype. No customer-specific variant
+is created. If a later agency uses the same CSO differently, its ceiling changes
+without rewriting the database role.
+
+\subsection{High confidentiality without H/H/H flattening}
+
+An agency's applied information types and special factors aggregate to H/M/L. The
+overall FIPS~199 impact level is High because one objective is High. The ceiling
+remains H/M/L.
+
+For a secrets service with H/H/H archetype requirements:
+\[
+R_{\mathrm{secrets}}^{\mathrm{eff}}
+=\min((H,H,H),(H,M,L))=(H,M,L).
+\]
+
+Turning the overall High label into H/H/H would discard the agency's dimensional
+judgment and overstate Integrity and Availability.
+
+\subsection{A shared asset across two agencies}
+
+Agency~1 has ceiling M/M/L. Agency~2 has ceiling L/H/M. A component dedicated to
+Agency~1 retains M/M/L. A component dedicated to Agency~2 retains L/H/M. A shared
+control plane that can affect both receives:
+\[
+E_{\mathrm{shared}}
+=\max((M,M,L),(L,H,M))=(M,H,M).
+\]
+
+Multi-agency scope increases only the objectives supported by a definite affected
+agency. It does not automatically force H/H/H.
+
+\subsection{A generic text field}
+
+A project-management CSO provides comments and attachments. Its documented
+intended use covers project plans, task records, and approved supporting artifacts.
+The agency has prohibited health, tax, criminal-justice, and classified content.
+
+The text field does not add every NIST information type to
+$T_{\mathrm{CSO}}$. Confirmed project and planning types enter the ceiling.
+Prohibited content remains governed by data-use policy and spillage response.
+If the agency later authorizes a new intended record type, the type inventory and
+ceiling are reviewed as a change.
+
+\subsection{Government impact and CSP reputation}
+
+An information type has applied C:L because disclosure would have limited adverse
+effect on the agency's operations. The CSP believes any public incident involving
+the record would materially harm its brand. The ceiling retains C:L unless the CSP
+can show how that reputational event creates a greater adverse effect on the agency,
+federal assets, or affected individuals. The CSP can and should manage its separate
+corporate exposure through enterprise risk controls.
+
+\section{Cross-CSP composition and the hyperscaler boundary}
+
+\subsection{The knowledge problem}
+
+An upstream CSP may support many downstream CSOs without knowing which agencies
+ultimately depend on each service or which information types those agencies process.
+Requiring a hyperscaler to collect every downstream agency customer list is
+unlikely to be practical and may conflict with contractual boundaries.
+
+The missing information does not prove a low ceiling. It creates uncertainty about
+the dimensional aggregate.
+
+\subsection{Privacy-preserving vector attestations}
+
+A downstream CSO could share a bounded assertion without naming its agency
+customers or detailed information types:
+
+\begin{itemize}[leftmargin=1.5em]
+\item downstream CSO identifier;
+\item authorization or categorization boundary;
+\item maximum required C/I/A ceiling for the dependency;
+\item whether the dependency is single-customer or shared;
+\item evidence status, effective date, and expiry;
+\item attesting party and signature.
+\end{itemize}
+
+The upstream CSP can take the per-objective maximum of current assertions. This is
+less precise than type-level evidence but more informative than customer identities
+alone.
+
+\subsection{A non-normative saturation approximation}
+
+Where no downstream vector assertions exist and the upstream service supports a
+broad, heterogeneous population of confirmed downstream CSOs, the dimensional
+maximum will tend toward the upper envelope allowed by the upstream boundary. A
+reasonable conservative approximation is:
+
+\[
+E_{\mathrm{downstream}}\approx
+\begin{cases}
+(M,M,M), & \text{Moderate-impact upstream system},\\
+(H,H,H), & \text{High-impact upstream system}.
+\end{cases}
+\]
+
+This is an uncertainty policy, not a NIST or FedRAMP derivation. The trigger cannot
+be ``many'' in undocumented prose. An adopter must govern the dependency-count or
+diversity threshold, evidence window, confidence, and review cycle. The
+approximation never authorizes a use outside the upstream boundary: if a downstream
+use actually requires High while the upstream information system is genuinely
+Moderate, the result is a boundary mismatch, not permission to process the use.
+
+\begin{boundarybox}
+This paper identifies the cross-CSP composition problem but does not standardize a
+saturation threshold or attestation protocol. The approximation is suitable as a
+disclosed conservative fallback. A complete supply-chain profile is future work.
+\end{boundarybox}
+
+\section{Governance and audit record}
+
+A deterministic equation does not make uncertain inputs certain. A conforming
+assessment preserves evidence and ownership for each judgment.
+
+\subsection{Minimum record}
+
+The record \rfckw{should} contain:
+
+\begin{itemize}[leftmargin=1.5em]
+\item CSO identity, boundary, designed functions, and service-generated data;
+\item confirmed intended and prohibited information types;
+\item per-agency information types, relationship (definite or target), and
+  governing evidence;
+\item each provisional and applied C/I/A profile;
+\item special factors considered and objective-specific adjustment rationale;
+\item system-level aggregation or critical-function adjustments;
+\item the per-agency and asset-scoped ceilings;
+\item the overall FIPS~199 impact label, stored separately from the vector;
+\item archetype requirements, effective requirements, and every capped objective;
+\item multi-agency affected-scope basis;
+\item confidence, assumptions, manual-review items, effective date, and expiry;
+\item any vector approximation or downstream-CSP saturation approximation used.
+\end{itemize}
+
+Operator attestations remain separate from analyst or automated inferences.
+Confidence measures evidence quality and never lowers an objective. When two
+adjacent values remain credible, select the higher value provisionally and state
+what evidence would justify lowering it.
+
+\subsection{Change triggers}
+
+Reassess the ceiling when:
+
+\begin{itemize}[leftmargin=1.5em]
+\item an agency adds or removes an intended information type;
+\item a special factor becomes applicable or ceases to apply;
+\item a CSO adds a new ingestion path, generated record, trusted decision, or
+  system function;
+\item tenancy or shared-control-plane scope changes;
+\item aggregation creates a new system-level consequence;
+\item the governing categorization or authorization boundary changes;
+\item a downstream-CSP assertion expires or the approximation threshold is crossed.
+\end{itemize}
+
+Archetype changes follow different triggers: component role, trust, privilege,
+dependency, or architectural consequence. Keeping the triggers separate is one of
+the model's principal governance benefits.
+
+\section{Handoff contract}
+
+The output of this paper is not a PAIN word or N-rating. It is an auditable,
+three-dimensional input:
+
+\begin{modelbox}
+For each affected asset $x$:
+\[
+\boxed{
+R_x^{\mathrm{eff}}(o)
+=\min\left(
+R_x(o),
+\max_{a\in A_x}
+\max_{t\in T_{\mathrm{CSO}}\cap T_a}
+q_{a,t}^o
+\right)
+}
+\]
+for $o\in\{C,I,A\}$, with documented system-level adjustments applied where
+required.
+\end{modelbox}
+
+A transport may encode the resulting vector as:
+
+\begin{verbatim}
+CR:M/IR:H/AR:L
+\end{verbatim}
+
+or:
+
+\begin{verbatim}
+cr-m_ir-h_ar-l
+\end{verbatim}
+
+The handoff must also identify the uncapped archetype vector, ceiling vector,
+ceiling source and scope, and whether any objective was capped. The downstream PAIN
+method then combines this effective requirements vector with vulnerability impact.
+
+\section{Limitations and prohibited overclaims}
+
+\begin{itemize}[leftmargin=1.5em]
+\item NIST SP~800-60 profiles are provisional recommendations. They do not replace
+  agency categorization, governing sources, or actual-use evidence.
+\item Classified information and national-security systems are outside the
+  publication's scope.
+\item Information-type intersection does not eliminate system-level aggregation,
+  critical-function, control-information, or extenuating-circumstance review.
+\item The vector approximation can conceal mismatched information types and must be
+  labeled as an approximation.
+\item The hyperscaler saturation rule is conservative policy, not a measured
+  probability or a federal standard.
+\item Certification Class does not replace the FIPS~199 category or the intended-use
+  vector.
+\item The ceiling is a cap, not a floor. It cannot make a low-role asset High.
+\item This paper does not prove that any effective vector produces a particular
+  PAIN word. Such a result depends on the downstream PAIN formula and thresholds.
+\item The catalog counts describe text and provisional profiles, not the prevalence
+  of High-impact agency deployments.
+\end{itemize}
+
+\section{Conclusion}
+
+The first input to an agency-specific PAIN calculation should be the federal
+consequence that is actually possible in the assessed use. NIST SP~800-60 supplies
+provisional, objective-specific evidence; FIPS~199 supplies dimensional aggregation
+and the overall system impact rule. Neither calls for replacing the resulting
+vector with one repeated High, Moderate, or Low label.
+
+Separating the intended-use ceiling from the asset archetype makes both judgments
+clearer. The archetype records what the component does in the CSO. The ceiling
+records what the definite agency use puts at stake. Their per-objective minimum
+becomes the effective CR/IR/AR vector handed to PAIN. Multi-agency components
+aggregate only the agencies they can affect. Generic technical capability does not
+authorize hypothetical data. CSP corporate consequences remain important but do
+not silently redefine government impact.
+
+The result is a reusable architectural classification joined to an agency-specific,
+source-traceable federal consequence vector. The PAIN equation can then begin with
+its most consequential assumption made explicit.
+
+\clearpage
+\section*{References}
+\addcontentsline{toc}{section}{References}
+
+{\small
+\begin{itemize}[leftmargin=3.2em,itemsep=0.35em,topsep=0.4em]
+\item[{[FIPS199]}] National Institute of Standards and Technology,
+  \emph{Standards for Security Categorization of Federal Information and
+  Information Systems}, FIPS PUB 199, February 2004.
+  \url{https://doi.org/10.6028/NIST.FIPS.199}.
+\item[{[SP800-60-1]}] K.~Stine, R.~Kissel, W.~Barker, J.~Fahlsing, and J.~Gulick,
+  \emph{Guide for Mapping Types of Information and Information Systems to Security
+  Categories, Volume I}, NIST SP 800-60 Volume I Revision 1, August 2008.
+  \url{https://doi.org/10.6028/NIST.SP.800-60v1r1}.
+\item[{[SP800-60-2]}] K.~Stine, R.~Kissel, W.~Barker, A.~Lee, J.~Fahlsing, and
+  J.~Gulick, \emph{Guide for Mapping Types of Information and Information Systems
+  to Security Categories, Volume II}, NIST SP 800-60 Volume II Revision 1,
+  August 2008.
+  \url{https://doi.org/10.6028/NIST.SP.800-60v2r1}.
+\item[{[CVSS31]}] FIRST, \emph{Common Vulnerability Scoring System v3.1:
+  Specification Document}, Environmental Security Requirements.
+  \url{https://www.first.org/cvss/v3.1/specification-document}.
+\item[{[FEDRAMP-VER]}] FedRAMP, \emph{Vulnerability Evaluation and Reporting},
+  Consolidated Rules for 2026, rule VER-EVA-EPA, launched June 24, 2026.
+  \url{https://www.fedramp.gov/2026/reference/rev5/b/vulnerability-evaluation-and-reporting/}.
+\item[{[FEDRAMP-PAIN]}] FedRAMP, \emph{Initial Outcome of RFC-0031: Updated
+  Incident Communications Procedures}, Notice 0012, PAIN and customer-effect
+  terminology.
+  \url{https://www.fedramp.gov/notices/0012/}.
+\item[{[FEDRAMP-CLASS]}] FedRAMP, \emph{Choosing a Certification Class},
+  Consolidated Rules for 2026.
+  \url{https://www.fedramp.gov/preview/2026/providers/start/class/}.
+\item[{[PAIN]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
+  FedRAMP VDR/VER Vulnerability Prioritization}, stackArmor, July 2026.
+  \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}.
+\end{itemize}
+}
+
+\subsection*{Reproducibility record}
+
+The catalog analysis uses the source-pinned NIST SP~800-60 Volume~II Revision~1
+conversion distributed with \code{trivy-plugin-vdr-skills}. A conforming run must
+return:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Check} & \textbf{Expected result} \\
+\midrule
+Total catalog records & 170 \\
+Scored information types & 168 \\
+Non-scoring delivery mechanisms & 2 \\
+Provisional profile contains at least one High & 11 \\
+Provisional H/H/H & 4 \\
+Additional records with explicit conditional High language & 94 \\
+Unique provisional or conditional High path & 105 \\
+No explicit provisional or conditional High path & 63 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The conditional count includes a record only when objective-specific
+\code{specialFactors} text expressly permits a High impact level. A conditional
+record contributes no High objective to an assessed system unless the agency
+confirms that the stated factor applies.
+
+\end{document}
