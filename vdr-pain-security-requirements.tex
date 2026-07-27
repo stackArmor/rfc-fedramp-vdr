@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.2}
+\date{July 2026\\\small Version 1.3}
 
 \begin{document}
 \maketitle
@@ -638,6 +638,15 @@ If no intended information types have been confirmed, the method does not invent
 low ceiling. It records an unresolved assessment and uses a conservative,
 explicitly provisional upper bound until the intended use is confirmed.
 
+\begin{plain}
+For one agency, list the federal information types actually intended for this
+service. Then look at Confidentiality, Integrity, and Availability separately and
+keep the highest confirmed value in each column. A result such as M/H/L stays
+M/H/L; the overall FIPS~199 label High does not turn it into H/H/H. If the agency
+has not confirmed its intended information, do not guess Low. Mark the assessment
+unresolved and use a clearly provisional, conservative ceiling.
+\end{plain}
+
 \subsection{Several agencies and affected scope}
 
 Let $A_x$ be the definite agencies whose information or mission can be affected
@@ -661,6 +670,15 @@ This is deliberately asset-scoped:
 Agency identity alone does not determine an objective. An agency may operate many
 systems with different information types. Only its intended use of the assessed CSO
 participates.
+
+\begin{plain}
+For a shared asset, first identify the agencies that the asset can actually affect.
+Compare only those agencies' confirmed C/I/A ceilings and keep the highest value in
+each dimension. Do not include an agency merely because it is a CSP customer or
+uses another part of the offering. Sharing can widen the affected scope, but the
+number or identity of agencies does not raise a requirement unless their intended
+uses introduce a higher government consequence.
+\end{plain}
 
 \subsection{The vector approximation}
 
@@ -688,9 +706,13 @@ Equation~\eqref{eq:vector-approx} remains a documented fallback, not a claim tha
 the set intersection was evaluated.
 
 \begin{plain}
-The vector shortcut asks, ``How high can each side go?'' The type-aware method also
-asks, ``Are they talking about the same intended use?'' Keep the shortcut where
-detail is unavailable, but label it honestly.
+The shortcut compares two summary vectors: what the offering is designed to support
+and what the agency expects to use. It is useful when the underlying information-type
+records are unavailable, but it cannot prove that the two sides became High for the
+same reason. The type-aware method asks both, ``How high can each side go?'' and,
+``Are they talking about the same information and use?'' Prefer the type-aware
+record. If the shortcut is used, label it as an approximation and retain that fact
+in the audit trail.
 \end{plain}
 
 \section{Archetype requirements remain separate}
