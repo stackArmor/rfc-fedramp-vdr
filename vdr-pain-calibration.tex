@@ -58,7 +58,7 @@
 High-Centered Normalization and\\
 Standards-Anchored Thresholds}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.1}
+\date{July 2026\\\small Version 1.2}
 
 \begin{document}
 \maketitle
@@ -96,7 +96,11 @@ lowest possible compound catastrophic combination ($0.933423$). Exhaustive testi
 of all 729 discrete impact/requirement combinations and backtesting against two
 anonymized evaluation datasets support the result. All three boundaries are therefore
 anchored to stated consequence scenarios and empirically tested, not fitted to a
-desired histogram.
+desired histogram. The compound condition is a transparent proxy for the breadth of
+the vulnerability's potential effect, not a CWE-based vulnerability classifier.
+The resulting thresholds are the reference calibration used by this method; another
+CSP may adopt different governed values after defining its semantics, re-enumerating
+the state space, validating the consequences, and disclosing the policy version.
 \end{abstract}
 
 \tableofcontents
@@ -547,6 +551,40 @@ For derivation only, define a \emph{compound catastrophic} state as one containi
   requirement.
 \end{enumerate}
 
+\paragraph{What the compound predicate approximates.}
+The first condition preserves the required dimensional alignment: at least one
+security property must combine a complete technical loss with a catastrophic
+agency requirement. The second condition is a breadth test. It asks whether the
+same vulnerability can also cause complete technical loss on another property whose
+loss is at least serious. The reference calibration treats that multidimensional
+shape as a reasonable proxy for a broader and generally more consequential class
+of vulnerability.
+
+This is not an arbitrary rule that High/High alignment is unimportant. A lone
+High/High pair is the strongest possible one-objective loss and remains Disruptive
+under the reference calibration. Likely exploitability, internet reachability, and
+Certification Class can still place it on a demanding remediation clock. The
+additional component is required only before the method uses the much narrower
+word \emph{Debilitating}.
+
+\paragraph{Why CWE is not an input.}
+The method deliberately does not infer this breadth from a CWE identifier. CWE is
+a root-cause taxonomy: entries occur at different abstraction levels, mappings can
+be absent or imprecise, and MITRE's own mapping guidance calls for careful,
+specific review rather than assuming accurate mapping at scale
+\mbox{[CWE-RCM]}. A weakness category does not determine which C/I/A properties a
+particular exploit can affect in a particular deployment. Turning CWE IDs into
+PAIN multipliers or gates would therefore require a large provider-authored lookup
+table with uncertain precedence for multiple, missing, or differently abstracted
+mappings.
+
+CWE remains useful outside the PAIN scalar for root-cause analysis, remediation
+ownership, secure-development trends, detection strategy, and finding grouping.
+PAIN instead uses the CVSS-derived impact dimensions already attached to the
+vulnerability and combines them with the effective requirements of the affected
+asset. The approximation is imperfect, but its inputs and failure modes are visible
+and reproducible.
+
 This definition is not implemented as a gate. It partitions the finite input space
 so that a scalar boundary can be derived.
 
@@ -605,6 +643,65 @@ $S_H\ge\theta_3$. Implementations classify with full-precision $S_H$ and
 thresholds. Rounded values are for display only. The parameter set must be versioned
 as governed PAIN policy.
 \end{decisionbox}
+
+\subsection{Reference calibration and provider variation}
+
+FedRAMP defines the PAIN words and requires providers to estimate them, but it does
+not prescribe this scalar or these cut points. The values above are the governed
+reference calibration for this method, not a claim that $0.933$ is the only
+defensible risk policy.
+
+Table~\ref{tab:theta-lenses} illustrates other top-boundary viewpoints while holding
+the CVSS-derived weights, denominator, and lower thresholds constant:
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.16}
+\begin{tabularx}{0.96\textwidth}{@{}P{0.19\textwidth}P{0.10\textwidth}YP{0.13\textwidth}@{}}
+\toprule
+\textbf{Policy lens} & \textbf{$\theta_3$} & \textbf{Meaning in the 729-state lattice}
+& \textbf{Top-band states} \\
+\midrule
+High-objective dominant & 0.919 & Every qualifying state contains at least one
+H/H alignment, but compound High impact is not required. & 88 \\
+Reference compound catastrophic & 0.933 & At least one H/H alignment plus another
+High impact on a Moderate-or-High requirement. & 70 \\
+Strict two-objective catastrophic & 0.976 & At least two H/H dimensional
+alignments. & 25 \\
+Complete CIA catastrophic & 1.000 & Three H/H dimensional alignments. & 1 \\
+\bottomrule
+\end{tabularx}
+\caption{Illustrative, non-normative Debilitating lenses.}
+\label{tab:theta-lenses}
+\end{table}
+
+An exact policy that makes \emph{every} isolated H/H state Debilitating cannot be
+represented by one scalar threshold on this aggregation. The weakest isolated H/H
+state scores $0.843455$, while complete High technical impact against all-Moderate
+requirements scores $0.918578$ without any H/H pair. A provider that needs an exact
+single-alignment rule must add a categorical predicate rather than disguise it as a
+normalization constant.
+
+A CSP \rfckw{may} adopt a different threshold set based on its own documented risk
+evaluation, but it \rfckw{should}:
+
+\begin{itemize}[leftmargin=1.5em]
+\item define the intended meaning of each word before examining the resulting
+  distribution;
+\item enumerate the full supported input lattice and test the boundary cases;
+\item validate the operational consequences against rated scenarios or findings;
+\item govern and version the denominator and thresholds as one calibration set;
+\item disclose the active policy to affected agencies and retain it in finding
+  audit output; and
+\item avoid changing thresholds per finding, customer, or Certification Class after
+  observing the deadline outcome.
+\end{itemize}
+
+Certification Class belongs downstream: it determines the operational timeframe
+for the already-derived PAIN result. Varying $\theta_3$ by Class would make the same
+agency consequence change meaning merely because the provider selected a different
+assurance tier.
 
 \section{Ceiling-constrained reachability}
 \label{sec:ceiling-reachability}
@@ -1054,6 +1151,8 @@ not a categorization rule imported from NIST or FedRAMP.
 \item[{[FEDRAMP-CLASS]}] FedRAMP,
   \emph{Choosing a Certification Class}, Consolidated Rules 2026.
   \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
+\item[{[CWE-RCM]}] MITRE, \emph{CVE to CWE Root Cause Mapping Guidance}.
+  \url{https://cwe.mitre.org/documents/cwe_usage/guidance.html}.
 \end{itemize}
 }
 

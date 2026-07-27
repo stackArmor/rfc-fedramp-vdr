@@ -136,7 +136,9 @@ and \rfckw{may} are to be interpreted as described in RFC~2119.
   Vulnerability (a VER axis).
 \item[VEX] Vulnerability Exploitability eXchange, a machine-readable assertion about
   whether a finding affects a specific product or deployment.
-\item[Class] The provider Certification Class (A--D) selecting a remediation table.
+\item[Class] The provider Certification Class (A--D): an operational assurance
+  commitment selecting FedRAMP response tables, not a FIPS~199 category or a
+  Security Requirements ceiling.
 \end{description}
 
 \section{Motivation: the gap between VDR/VER and the scanner}
@@ -177,7 +179,8 @@ Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog members
 direct-IRV CVSS floor \\
 Internet reachable (VER) & \code{IRV}: per-finding payload reachability (companion method) \\
 Single- vs.\ multi-agency blast radius & scope multiplier on the PAIN tier \\
-Provider Certification Class & selector of the remediation deadline table \\
+Provider Certification Class & operational-assurance tier selecting the remediation
+deadline table \\
 \bottomrule
 \end{tabular}
 \caption{FedRAMP requirements fall directly onto CVSS Environmental metrics.}
@@ -429,7 +432,19 @@ The Debilitating threshold $\theta_3=0.933$ separates the strongest state withou
 compound High-impact alignment ($S=0.931993\ldots$) from the weakest state with
 one High/High pair plus a second High impact at Medium-or-High requirement
 ($S=0.933423\ldots$). Thus a single High/High pair remains Disruptive; a qualifying
-compound alignment is Debilitating. The companion paper
+compound alignment is Debilitating.
+
+The additional component is a transparent proxy for vulnerability breadth, not a
+claim that one-dimensional catastrophic loss is unimportant. At least one H/H
+alignment remains necessary; the second High impact on a serious-or-catastrophic
+dimension approximates the broader class of vulnerability for which the reference
+method reserves \emph{Debilitating}. The method deliberately does not use CWE ID as
+an input: CWE describes weakness root cause at varying abstraction and does not
+determine the C/I/A consequences of exploitation in a particular deployment.
+CWE remains useful for root-cause analytics and remediation outside the PAIN
+scalar.
+
+The companion paper
 \href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-calibration.pdf}
 {\emph{Calibrating PAIN Without Abandoning CVSS}} derives these anchors by
 exhaustively examining all 729 discrete impact/requirement states and then validates
@@ -542,6 +557,17 @@ is the system reachable from the internet? More severe + more exploitable + more
 exposed = less time to fix. A lookup table turns those into a concrete deadline,
 stricter for higher-assurance providers.
 \end{plain}
+
+Certification Class makes the provider's assurance commitment operational. A
+Class~B or Class~C offering may support an agency use whose intended-use ceiling
+contains a High objective, but the High objective does not silently grant
+Class~D response commitments. Unless a higher Class or tighter contract applies,
+the existing Class selects the vulnerability timeframe. The agency therefore
+needs both signals: PAIN states the potential consequence, while Class states the
+standard response commitment supplied for that consequence. \ceilingpaper{}
+specifies the agency-disclosure, CSP-acceptance, and contract decision that must
+precede a High-objective use on Class~B or Class~C.
+
 The remediation deadline is selected by three values: the provider Certification
 Class, the PAIN level, and an exploitability \emph{column} derived from the two VER
 axes:
@@ -1405,7 +1431,25 @@ on. Each item below names the value we use, why, and the fact that an implementa
   discrete impact/requirement states, and validate the result against anonymized
   operational datasets. An adopter \rfckw{should} revalidate the governed values
   against its own rated findings rather than target a desired percentage in each
-  word bucket.
+  word bucket. A CSP \rfckw{may} adopt different thresholds based on its own
+  documented risk evaluation, but the alternative \rfckw{should} define its word
+  semantics first, enumerate the supported state space, validate boundary
+  consequences, disclose the active policy to affected agencies, and version the
+  complete calibration. Thresholds \rfckw{must not} be changed ad hoc after seeing
+  a finding's deadline. They should also remain independent of Certification Class:
+  Class selects the response commitment after potential impact is derived.
+\item \textbf{Compound impact is a proxy; CWE is not a PAIN input.}
+  The reference $\theta_3$ preserves at least one High-impact/High-requirement
+  alignment and requires another High impact on a Moderate-or-High requirement.
+  This is our auditable approximation that vulnerabilities capable of
+  multidimensional loss belong in a broader consequence class before receiving the
+  word Debilitating. It is not a CWE classifier. CWE is designed for weakness
+  root-cause mapping, contains multiple abstraction levels, and can be missing,
+  multiply mapped, or imprecise for a particular vulnerability. A provider-authored
+  CWE-to-severity table would therefore add a large, contestable input with no
+  stable precedence over observed CVSS impact. CWE \rfckw{may} still support
+  remediation ownership, secure-development analysis, detection planning, and
+  finding grouping outside the PAIN calculation.
 \item \textbf{EPSS Likely-Exploitable threshold $\theta_{\text{epss}} = 0.50$.}
   The EPSS probability at or above which a finding is treated as LEV
   (Section~\ref{sec:remediation}). This memo recommends $0.50$ so vulnerabilities
@@ -1526,7 +1570,8 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
 
 \begin{table}[H]
 \centering
-\renewcommand{\arraystretch}{1.2}
+\small
+\renewcommand{\arraystretch}{1.05}
 \begin{tabular}{lll>{\raggedright\arraybackslash}p{0.55\textwidth}}
 \toprule
 \textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Summary of Changes} \\
@@ -1561,6 +1606,11 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
   ceiling as the explicit upstream input to PAIN. Separated reusable,
   system-relative archetype requirements from agency-specific federal information
   types; effective CR/IR/AR is now their per-objective minimum. \\
+2.0 & July 27, 2026 & M. Venne & Defined Certification Class as the provider's
+  operational assurance commitment rather than an impact ceiling. Clarified that
+  compound dimensional impact is a governed proxy for vulnerability breadth,
+  excluded CWE ID as a PAIN severity input, and documented how CSPs may govern and
+  disclose alternate threshold calibrations. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}
@@ -1607,6 +1657,14 @@ various other team members at stackArmor who helped make it possible.
 \item[{[CVSS]}] FIRST, \emph{CVSS v3.1 Specification} --- Environmental metric group
   and Modified Impact Sub-Score.
 \item[{[EPSS]}] FIRST, \emph{Exploit Prediction Scoring System}.
+\item[{[CLASS]}] FedRAMP, \emph{Choosing a Certification Class}, Consolidated
+  Rules for 2026.
+  \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
+\item[{[IEC]}] FedRAMP, \emph{Incident Evaluation and Communication},
+  Consolidated Rules for 2026.
+  \url{https://www.fedramp.gov/2026/providers/20x/rules/incident-evaluation-and-communication/}.
+\item[{[CWE-RCM]}] MITRE, \emph{CVE to CWE Root Cause Mapping Guidance}.
+  \url{https://cwe.mitre.org/documents/cwe_usage/guidance.html}.
 \end{itemize}
 
 \end{document}

@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.0}
+\date{July 2026\\\small Version 1.1}
 
 \begin{document}
 \maketitle
@@ -92,7 +92,12 @@ raise agency impact.
 
 This paper ends at the effective Security Requirements vector. It does not choose a
 PAIN aggregation formula, word threshold, or N-rating. Those downstream policy
-choices belong to the PAIN method and its calibration.
+choices belong to the PAIN method and its calibration. It also separates that
+consequence vector from Certification Class: Class describes the operational
+assurance and response commitments the provider supplies, while the vector
+describes what the agency has at stake. Where those signals diverge, the agency and
+CSP must resolve the difference through authorization scope, service design,
+contract terms, or explicit risk acceptance rather than altering either signal.
 \end{abstract}
 
 \tableofcontents
@@ -346,19 +351,154 @@ The overall label is useful for authorization and reporting. The dimensional vec
 is the input needed for an objective-sensitive PAIN calculation.
 \end{modelbox}
 
-\subsection{Certification Class is not the vector}
+\section{Certification Class as an operational assurance commitment}
+
+\subsection{Class is not the consequence vector}
 
 FedRAMP's 2026 terminology uses Certification Classes A--D for package
 specifications. Current FedRAMP guidance describes those classes as levels of
 assurance that can support agency use cases; it does not make the Class letter a
 substitute for an agency's FIPS~199 C/I/A category. In particular, the guidance
-states that some Class~C packages may support some High security objectives.
+states that some Class~C packages may provide adequate information for some High
+security objectives \mbox{[FEDRAMP-CLASS]}.
 
 This method therefore records Certification Class separately. Class can corroborate
-an intended-use assessment and selects FedRAMP processes outside this paper, but it
-does not flatten the ceiling. A conflict between the agency's category, intended use,
-and the CSO's authorized boundary is surfaced for review rather than resolved by
-silently changing the data.
+an intended-use assessment and selects FedRAMP processes outside the PAIN impact
+equation, but it does not flatten or cap the ceiling. A Class~C offering can
+therefore participate in an agency system whose applied vector contains a High
+objective. Under FIPS~199 that agency information system is High overall even
+though the offering's certification remains Class~C.
+
+That combination does not imply Class~D-equivalent assurance. The agency consequence
+and provider commitment answer different questions:
+
+\begin{description}[leftmargin=2.2em,style=nextline]
+\item[Consequence vector] What adverse effect could loss of C, I, or A have on the
+  agency's mission, assets, or affected individuals?
+\item[Certification Class] What reusable evidence, verification, monitoring,
+  vulnerability-response, and incident-communication commitments does the provider
+  supply under its certification?
+\end{description}
+
+\subsection{A planning approximation, not a categorization rule}
+
+The former Low/Moderate/High shorthand remains useful as an initial approximation
+of assurance fit. It must not be used as a substitute for the FIPS~199 vector or as
+an authorization rule:
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{0.96\textwidth}{@{}P{0.13\textwidth}P{0.24\textwidth}Y@{}}
+\toprule
+\textbf{Class} & \textbf{Planning shorthand} & \textbf{Interpretation} \\
+\midrule
+A & Entry/non-sensitive & Limited reusable federal assurance; FedRAMP still
+describes some objective-specific uses above that shorthand. \\
+B & Low & A reasonable default fit for most Low objectives, with agency-specific
+exceptions possible. \\
+C & Moderate & A reasonable default fit for most Low and Moderate objectives; some
+High-objective uses remain possible. \\
+D & High/broad & The broadest unclassified assurance fit and the tightest standard
+operational timeframes. \\
+\bottomrule
+\end{tabularx}
+\caption{A planning approximation for assurance fit, not a mapping from Class to a
+FIPS~199 security category.}
+\label{tab:class-fit}
+\end{table}
+
+The approximation is useful precisely because the Classes are progressive. It
+tells an agency where a service is likely to fit without claiming that every use
+at that impact level is supported or that every exception is prohibited.
+
+\subsection{Agency disclosure and provider acceptance}
+
+For any proposed Class~B or Class~C use that would place a High value in the
+intended-use ceiling, the deploying agency \rfckw{must} affirmatively identify:
+
+\begin{itemize}[leftmargin=1.5em]
+\item the applicable information type or types;
+\item the objective or objectives rated High;
+\item the affected use and asset scope; and
+\item the SP~800-60 special factor, agency adjustment, or other governing basis.
+\end{itemize}
+
+The CSP \rfckw{must not} infer that High use from an agency's identity, a generic
+text field, file upload, integration capability, hypothetical content, or an
+unrelated agency system. Once the agency communicates the intended use, the CSP
+\rfckw{must} state whether it supports that use inside the offering's authorized
+and contractual scope. Technical ability to accept the bytes is not acceptance of
+the use.
+
+The CSP \rfckw{may} respond by accepting the existing Class commitment, adding
+controls, redesigning the service, offering tighter contractual response terms, or
+pursuing a higher Certification Class. It may also decline the use. The CSP cannot
+change the agency's impact determination, and the agency cannot unilaterally claim
+that a lower-Class service supplies higher-Class commitments.
+
+The agency-identified data changes the ceiling; it does not by itself change the
+reusable asset archetype. An archetype changes only when the component's actual
+role or consequence inside the CSO changes. A provider redesign made to support the
+new use may justify such a change, but the new data label alone does not.
+
+\subsection{What higher assurance buys}
+
+FedRAMP makes the assurance difference operational. Table~\ref{tab:class-clocks}
+shows selected current Class-dependent timeframes. The vulnerability timeframe is
+selected from Certification Class, PAIN, likely exploitability, and internet
+reachability. Incident communication is likewise selected from Class and PAIN
+\mbox{[FEDRAMP-VDR, FEDRAMP-IEC]}.
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{0.96\textwidth}{@{}Yccc@{}}
+\toprule
+\textbf{Illustrative PAIN-5 commitment} &
+\textbf{Class B} & \textbf{Class C} & \textbf{Class D} \\
+\midrule
+LEV + IRV vulnerability mitigation/remediation & 4 days & 2 days & 12 hours \\
+Initial incident report & 6 hours & 1 hour & 15 minutes \\
+Ongoing incident reports & 1 business day & 6 hours & 3 hours \\
+\bottomrule
+\end{tabularx}
+\caption{Selected 2026 operational timeframes. FedRAMP may revise the governing
+tables; implementations must use the current rules.}
+\label{tab:class-clocks}
+\end{table}
+
+The incident values above govern communication, not a universal containment or
+recovery deadline. A contract can require tighter notification, containment,
+recovery, or mitigation commitments than the Class minimum. Such terms increase
+the assurance supplied to that customer; they do not by themselves convert the
+underlying certification to a higher Class.
+
+\subsection{The authorization and contract decision}
+
+Before a Class~B or Class~C offering is used for an agency-identified High
+objective, the agency \rfckw{must} be told which Class-based timeframes apply. The
+agency and CSP should record one of four dispositions:
+
+\begin{description}[leftmargin=2.3em,style=nextline]
+\item[Standard assurance fit] The agency determines that the existing Class
+  commitments are adequate for the intended use.
+\item[Contractually enhanced] The CSP accepts additional controls, evidence, or
+  response commitments for the agency use.
+\item[Accepted assurance divergence] The agency knowingly accepts the difference
+  between the High consequence and the existing Class commitments.
+\item[Unsupported intended use] The CSP does not accept the proposed information
+  or use inside the offering's supported scope.
+\end{description}
+
+For recurring High-objective demand, a higher Certification Class is ordinarily
+the clearer and more reusable path. For a bounded use, contract terms and
+agency-managed controls may supply the needed assurance. In every case, the
+decision is an authorization and contracting matter. It must not be implemented by
+lowering the agency's C/I/A vector or by changing the resulting PAIN solely to make
+the existing service commitment appear sufficient.
 
 \section{Intended use, not hypothetical capability}
 
@@ -777,7 +917,13 @@ The handoff must also identify the uncapped archetype vector, ceiling vector,
 ceiling source and scope, and whether any objective was capped. The downstream PAIN
 method then combines this effective requirements vector with vulnerability impact.
 
-\section{Limitations and prohibited overclaims}
+If a Class~B or Class~C intended use contains a High objective, the adjacent
+governance record must also identify the agency attestation, Certification Class,
+assurance disposition, and any contract or agency-managed safeguards. These fields
+do not modify $R_x^{\mathrm{eff}}$; they explain whether the operational commitment
+is sufficient for the consequence the vector represents.
+
+\section{Limitations, assurance boundaries, and prohibited overclaims}
 
 \begin{itemize}[leftmargin=1.5em]
 \item NIST SP~800-60 profiles are provisional recommendations. They do not replace
@@ -790,11 +936,19 @@ method then combines this effective requirements vector with vulnerability impac
   labeled as an approximation.
 \item The hyperscaler saturation rule is conservative policy, not a measured
   probability or a federal standard.
-\item Certification Class does not replace the FIPS~199 category or the intended-use
-  vector.
+\item Certification Class is not a data-eligibility label, a FIPS~199 category, or
+  an impact ceiling. It describes the provider's reusable assurance and operational
+  commitments. The Low/Moderate/High shorthand is only a planning approximation.
+\item An agency's identification of a High objective for a Class~B or Class~C use
+  does not compel the CSP to support that use. Agency disclosure and CSP acceptance
+  are both required; generic technical capability establishes neither.
+\item FedRAMP's published timeframes can change and may be supplemented by
+  contract. The incident tables describe communication obligations, not a universal
+  containment or recovery SLA.
 \item The ceiling is a cap, not a floor. It cannot make a low-role asset High.
-\item This paper does not prove that any effective vector produces a particular
-  PAIN word. Such a result depends on the downstream PAIN formula and thresholds.
+\item This paper derives the vector handed to PAIN; it does not assign the PAIN
+  word. A High objective can make Debilitating reachable under a downstream
+  calibration without making every vulnerability Debilitating.
 \item The catalog counts describe text and provisional profiles, not the prevalence
   of High-impact agency deployments.
 \end{itemize}
@@ -816,8 +970,13 @@ authorize hypothetical data. CSP corporate consequences remain important but do
 not silently redefine government impact.
 
 The result is a reusable architectural classification joined to an agency-specific,
-source-traceable federal consequence vector. The PAIN equation can then begin with
-its most consequential assumption made explicit.
+source-traceable federal consequence vector. Certification Class remains beside
+that vector as the provider's operational assurance commitment. When a High
+objective is proposed for a Class~B or Class~C offering, agency disclosure, CSP
+acceptance, the applicable response clocks, and any supplemental contract terms
+make the divergence explicit. The PAIN equation can then begin with its most
+consequential assumption made explicit without pretending that impact and
+assurance are the same thing.
 
 \clearpage
 \section*{References}
@@ -843,14 +1002,20 @@ its most consequential assumption made explicit.
   \url{https://www.first.org/cvss/v3.1/specification-document}.
 \item[{[FEDRAMP-VER]}] FedRAMP, \emph{Vulnerability Evaluation and Reporting},
   Consolidated Rules for 2026, rule VER-EVA-EPA, launched June 24, 2026.
-  \url{https://www.fedramp.gov/2026/reference/rev5/b/vulnerability-evaluation-and-reporting/}.
+  \url{https://www.fedramp.gov/2026/providers/20x/rules/vulnerability-evaluation-and-reporting/}.
 \item[{[FEDRAMP-PAIN]}] FedRAMP, \emph{Initial Outcome of RFC-0031: Updated
   Incident Communications Procedures}, Notice 0012, PAIN and customer-effect
   terminology.
   \url{https://www.fedramp.gov/notices/0012/}.
 \item[{[FEDRAMP-CLASS]}] FedRAMP, \emph{Choosing a Certification Class},
   Consolidated Rules for 2026.
-  \url{https://www.fedramp.gov/preview/2026/providers/start/class/}.
+  \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
+\item[{[FEDRAMP-VDR]}] FedRAMP, \emph{Vulnerability Detection and Response},
+  Consolidated Rules for 2026, rule VDR-TFR-PVR.
+  \url{https://www.fedramp.gov/2026/providers/20x/rules/vulnerability-detection-and-response/}.
+\item[{[FEDRAMP-IEC]}] FedRAMP, \emph{Incident Evaluation and Communication},
+  Consolidated Rules for 2026, rules IEC-CSO-IIR and IEC-CSO-OIR.
+  \url{https://www.fedramp.gov/2026/providers/20x/rules/incident-evaluation-and-communication/}.
 \item[{[PAIN]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
   FedRAMP VDR/VER Vulnerability Prioritization}, stackArmor, July 2026.
   \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}.
