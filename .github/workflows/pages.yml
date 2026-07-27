@@ -1,0 +1,122 @@
+name: Pages - production and dev preview
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build both lanes and deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out the triggering revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Materialize production and preview sources
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin main:refs/remotes/origin/main
+          git worktree add --detach "${RUNNER_TEMP}/pages-live" origin/main
+
+          if git ls-remote --exit-code --heads origin dev >/dev/null 2>&1; then
+            git fetch origin dev:refs/remotes/origin/dev
+            git worktree add --detach "${RUNNER_TEMP}/pages-dev" origin/dev
+          else
+            echo "The dev branch does not exist yet; using main for the initial preview."
+            git worktree add --detach "${RUNNER_TEMP}/pages-dev" origin/main
+          fi
+
+      - name: Set up Tectonic
+        uses: wtfjoke/setup-tectonic@eb29fd68b7d3f76011906b6e45ea4320c8de5d2f # v4.0.5
+        with:
+          tectonic-version: 0.16.9
+
+      - name: Cache TeX resources
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Tectonic
+          key: ${{ runner.os }}-tectonic-${{ hashFiles('**/*.tex') }}
+          restore-keys: |
+            ${{ runner.os }}-tectonic-
+
+      - name: Compile site PDFs in both lanes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          papers=(
+            vdr-pain-cvss
+            vdr-pain-security-requirements
+            vdr-pain-calibration
+            vdr-pain-compliance
+            vdr-pain-companion-blog
+            internet-reachability
+            internet-reachability-companion-blog
+            vlev-proposal
+            vex-cyclonedx
+          )
+
+          for source in "${RUNNER_TEMP}/pages-live" "${RUNNER_TEMP}/pages-dev"; do
+            for paper in "${papers[@]}"; do
+              if [[ -f "${source}/${paper}.tex" ]]; then
+                (
+                  cd "${source}"
+                  tectonic "${paper}.tex"
+                  cp "${paper}.pdf" "docs/${paper}.pdf"
+                )
+              fi
+            done
+          done
+
+      - name: Assemble production root and dev subdirectory
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf "${GITHUB_WORKSPACE}/_site"
+          mkdir -p "${GITHUB_WORKSPACE}/_site/dev"
+          cp -a "${RUNNER_TEMP}/pages-live/docs/." "${GITHUB_WORKSPACE}/_site/"
+          cp -a "${RUNNER_TEMP}/pages-dev/docs/." "${GITHUB_WORKSPACE}/_site/dev/"
+
+          touch "${GITHUB_WORKSPACE}/_site/.nojekyll"
+          touch "${GITHUB_WORKSPACE}/_site/dev/.nojekyll"
+
+          preview_sha="$(git -C "${RUNNER_TEMP}/pages-dev" rev-parse --short=12 HEAD)"
+          printf '%s\n' "${preview_sha}" > "${GITHUB_WORKSPACE}/_site/dev/preview-revision.txt"
+
+          while IFS= read -r -d '' html; do
+            sed -i 's#</head>#<meta name="robots" content="noindex,nofollow"></head>#' "${html}"
+            sed -i 's#</body>#<script src="./preview-banner.js"></script></body>#' "${html}"
+          done < <(find "${GITHUB_WORKSPACE}/_site/dev" -maxdepth 1 -name '*.html' -print0)
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the combined Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
