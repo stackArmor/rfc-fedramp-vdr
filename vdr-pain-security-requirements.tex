@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.1}
+\date{July 2026\\\small Version 1.2}
 
 \begin{document}
 \maketitle
@@ -98,6 +98,10 @@ assurance and response commitments the provider supplies, while the vector
 describes what the agency has at stake. Where those signals diverge, the agency and
 CSP must resolve the difference through authorization scope, service design,
 contract terms, or explicit risk acceptance rather than altering either signal.
+For an Availability objective rated High, the paper also recommends a specific
+availability-assurance case that translates the agency consequence into service
+design, disaster-recovery, and contractual evidence without prescribing one
+topology or uptime percentage.
 \end{abstract}
 
 \tableofcontents
@@ -499,6 +503,56 @@ agency-managed controls may supply the needed assurance. In every case, the
 decision is an authorization and contracting matter. It must not be implemented by
 lowering the agency's C/I/A vector or by changing the resulting PAIN solely to make
 the existing service commitment appear sufficient.
+
+\subsection{Availability-specific assurance case}
+
+Availability deserves an explicit treatment because an applied A:H objective has
+direct implications for continuity engineering and service commitments. A:H means
+that loss of availability could have a severe or catastrophic adverse effect on
+the agency. It does not, by itself, prescribe multi-region deployment, a particular
+uptime percentage, or universal Recovery Time Objective (RTO) and Recovery Point
+Objective (RPO) values.
+
+The agency and CSP \rfckw{should} translate the High consequence into an
+availability-assurance case that addresses, as applicable:
+
+\begin{itemize}[leftmargin=1.5em]
+\item mission time sensitivity, maximum tolerable disruption, and critical
+  operating windows;
+\item the uptime commitment, its measurement boundary, exclusions, and dependent
+  services;
+\item RTO and RPO by service or data tier;
+\item redundancy, failure-domain isolation, backup and restoration, failover mode,
+  and degraded-service behavior;
+\item external and provider-managed dependencies that can defeat the design;
+\item recovery and failover test evidence, operating staffing, escalation, and
+  agency communication; and
+\item any agency-managed continuity measures or residual risk.
+\end{itemize}
+
+This is an evidence discussion, not a checklist that makes any single mechanism
+dispositive. Multi-region deployment can still share a vulnerable software path,
+and a high uptime percentage does not alone establish recovery capability. The
+strength of the assurance case comes from the traceable relationship between the
+agency's mission tolerance and the combined architecture, operations, testing, and
+contractual commitments.
+
+When agency-authorized information types raise the intended-use ceiling to A:H for
+a Class~C offering, the existing uptime SLA and disaster-recovery strategy may
+support a \emph{Standard assurance fit} disposition for the bounded use. If they do
+not, the parties can select \emph{Contractually enhanced} terms, add architectural
+or agency-managed continuity measures, accept a documented assurance divergence,
+decline the use, or pursue Class~D. The record \rfckw{should} identify the chosen
+disposition and the evidence supporting it.
+
+An adequate availability-assurance case can support use of a Class~C offering
+without necessarily moving the offering to Class~D. It does not reclassify a system
+whose FIPS~199 vector contains A:H, automatically lower the intended-use ceiling,
+or change the asset archetype. It shows why the Class~C level of assurance,
+including any supplemental commitments, is acceptable for that High-availability
+consequence. This recommendation is specific to Availability; it is not a claim
+that uptime or disaster-recovery measures satisfy High Confidentiality or
+Integrity objectives.
 
 \section{Intended use, not hypothetical capability}
 
@@ -945,6 +999,10 @@ is sufficient for the consequence the vector represents.
 \item FedRAMP's published timeframes can change and may be supplemented by
   contract. The incident tables describe communication obligations, not a universal
   containment or recovery SLA.
+\item A:H is a consequence statement, not a prescribed uptime percentage,
+  multi-region topology, RTO, or RPO. Availability design and contract evidence can
+  support an assurance-fit decision, but do not by themselves recategorize the
+  system or lower its effective AR.
 \item The ceiling is a cap, not a floor. It cannot make a low-role asset High.
 \item This paper derives the vector handed to PAIN; it does not assign the PAIN
   word. A High objective can make Debilitating reachable under a downstream
@@ -976,7 +1034,9 @@ objective is proposed for a Class~B or Class~C offering, agency disclosure, CSP
 acceptance, the applicable response clocks, and any supplemental contract terms
 make the divergence explicit. The PAIN equation can then begin with its most
 consequential assumption made explicit without pretending that impact and
-assurance are the same thing.
+assurance are the same thing. For A:H specifically, an availability-assurance case
+connects that consequence to uptime, recovery, architecture, testing, dependencies,
+and contract evidence without treating any single implementation as mandatory.
 
 \clearpage
 \section*{References}

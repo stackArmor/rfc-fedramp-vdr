@@ -568,6 +568,16 @@ standard response commitment supplied for that consequence. \ceilingpaper{}
 specifies the agency-disclosure, CSP-acceptance, and contract decision that must
 precede a High-objective use on Class~B or Class~C.
 
+Availability is a specific case with additional operational evidence. When
+agency-authorized use produces an effective AR:H on a Class~C offering, the agency
+and CSP should evaluate the service's uptime commitment, RTO, RPO, failure-domain
+design, backup and restoration, failover behavior, dependencies, and recovery-test
+evidence. AR:H does not prescribe multi-region architecture or a particular uptime
+percentage. An adequate design and contract record may support the agency's use of
+Class~C without moving the offering to Class~D, but it does not change the system's
+FIPS~199 High category or lower AR:H. \ceilingpaper{} defines this
+availability-assurance case and its disposition choices.
+
 The remediation deadline is selected by three values: the provider Certification
 Class, the PAIN level, and an exploitability \emph{column} derived from the two VER
 axes:
@@ -1611,6 +1621,10 @@ This memo is a living document. Table~\ref{tab:history} tracks its version histo
   compound dimensional impact is a governed proxy for vulnerability breadth,
   excluded CWE ID as a PAIN severity input, and documented how CSPs may govern and
   disclose alternate threshold calibrations. \\
+2.1 & July 27, 2026 & M. Venne & Clarified why genuinely FIPS~199 Low or Moderate
+  systems cannot reach Debilitating under the reference calibration while
+  Class~C High-objective uses can. Added the Availability-specific design,
+  recovery, and contract assurance case for AR:H use below Class~D. \\
 \bottomrule
 \end{tabular}
 \caption{Document version history.}

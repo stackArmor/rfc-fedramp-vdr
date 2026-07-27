@@ -58,7 +58,7 @@
 High-Centered Normalization and\\
 Standards-Anchored Thresholds}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.2}
+\date{July 2026\\\small Version 1.3}
 
 \begin{document}
 \maketitle
@@ -772,11 +772,30 @@ agency; it must not be inferred from generic product capabilities or hypothetica
 content. If that agency-identified objective survives the asset-archetype cap, the
 High requirement remains in scope for PAIN.
 
+Class is nevertheless operationally consequential. It states the provider's
+reusable level of assurance and selects the standard vulnerability-response and
+incident-communication commitments supplied for the already-derived consequence.
+A Class~C service supporting a High objective therefore supplies Class~C
+commitments unless a tighter contract or higher Class applies. The agency and CSP
+must evaluate and record whether those commitments, service design, supplemental
+controls, and any agency-managed safeguards are adequate. They must not express an
+assurance shortfall by lowering the effective requirement or the PAIN result.
+
+\begin{plain}
+A genuinely FIPS~199 Low- or Moderate-impact system cannot produce Debilitating
+under the reference calibration because it has no effective High requirement.
+Class~C is not a synonym for FIPS Moderate. If an agency-identified High objective
+remains High on the affected asset, Debilitating becomes mathematically possible,
+while the Class~C level of assurance still governs the standard operational
+commitment. Possibility, classification, and assurance are separate judgments.
+\end{plain}
+
 These layered conditions make a Class~B or Class~C Debilitating result exceptional
 by construction, not impossible. The calibration establishes the necessary
 reachability conditions; it does not claim a universal empirical frequency.
 Certification Class selects the applicable remediation timeframe only after the
-PAIN word and agency scope have been determined.
+PAIN word and agency scope have been determined; the upstream paper specifies how
+the agency and CSP document the resulting assurance fit or divergence.
 
 The archetype can also keep a dimension below the ceiling because the ceiling is
 only a cap. Finally, multi-agency scope maps an already derived customer-effect word
