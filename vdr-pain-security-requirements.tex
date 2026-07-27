@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.3}
+\date{July 2026\\\small Version 1.4}
 
 \begin{document}
 \maketitle
@@ -882,28 +882,68 @@ alone.
 
 Where no downstream vector assertions exist and the upstream service supports a
 broad, heterogeneous population of confirmed downstream CSOs, the dimensional
-maximum will tend toward the upper envelope allowed by the upstream boundary. A
-reasonable conservative approximation is:
+maximum can reasonably be expected to tend toward the upper envelope used for the
+upstream system category.
+
+Let $x$ be the number of confirmed downstream CSPs whose CSOs depend on the
+upstream service and whose agency-specific intended-use vectors are unavailable to
+the upstream CSP. Let $\widehat{E}_{\mathrm{downstream}}(x)$ denote the conservative
+policy approximation, not an observed population statistic. The asymptotic claim is:
 
 \[
-E_{\mathrm{downstream}}\approx
+\lim_{x\to\infty}\widehat{E}_{\mathrm{downstream}}(x)=
 \begin{cases}
 (M,M,M), & \text{Moderate-impact upstream system},\\
 (H,H,H), & \text{High-impact upstream system}.
 \end{cases}
 \]
 
-This is an uncertainty policy, not a NIST or FedRAMP derivation. The trigger cannot
-be ``many'' in undocumented prose. An adopter must govern the dependency-count or
-diversity threshold, evidence window, confidence, and review cycle. The
-approximation never authorizes a use outside the upstream boundary: if a downstream
-use actually requires High while the upstream information system is genuinely
-Moderate, the result is a boundary mismatch, not permission to process the use.
+This limit states only the conservative endpoint of the approximation. It does not
+claim that downstream uses are independent samples, specify a distribution over
+information types, measure a probability of convergence, or define a function for
+finite $x$. This paper makes no claim, approximation, or recommendation about a
+dependency count, diversity measure, confidence level, or other point at which an
+upstream CSP could treat a finite population as having reached the endpoint.
+
+The observation is narrower: for an upstream CSP supporting an extremely broad,
+heterogeneous population of downstream CSPs while lacking their agency-specific
+vectors, the applicable upper-envelope vector is a reasonable conservative
+approximation of the otherwise unknowable aggregate. Whether to use that
+approximation for any finite deployment is an adopter-specific risk and governance
+decision outside this paper. Any use must be disclosed as an assumption rather than
+presented as a measured result.
+
+\paragraph{Capability and justified finite decisions.}
+Nothing in the limit prevents an upstream CSP from making a supportable
+dimension-by-dimension decision for its actual finite population. Where the CSP can
+document the expected and permitted downstream information types, prohibited uses,
+service boundary, customer commitments, and relevant technical evidence, it may
+justify setting one or more dimensions below the asymptotic envelope. That decision
+is derived from the documented use case, not from a claim that a particular value of
+$x$ proves convergence. Its assumptions and reassessment conditions should remain in
+the governance record.
+
+Large hyperscalers also illustrate why technical capability and government
+consequence must remain separate. AWS documents FedRAMP High-authorized services in
+AWS GovCloud (US), and Google documents a FedRAMP High-authorized cloud boundary and
+in-scope services \mbox{[AWS-HIGH, GCP-HIGH]}. Those defined scopes demonstrate that
+some upstream providers already possess controls and operational capabilities that
+can support some High-objective uses. They do not make every hyperscaler service
+H/H/H, authorize every downstream information type, or determine the FIPS~199
+category of an agency system. Capability is evidence about the assurance a service
+can supply; the intended-use vector still states the government consequence at
+stake.
+
+The approximation never authorizes a use outside the upstream boundary. If a
+downstream use actually requires High while the upstream information system is
+genuinely Moderate, the result is a boundary mismatch, not permission to process
+the use.
 
 \begin{boundarybox}
 This paper identifies the cross-CSP composition problem but does not standardize a
-saturation threshold or attestation protocol. The approximation is suitable as a
-disclosed conservative fallback. A complete supply-chain profile is future work.
+saturation threshold, convergence rule, or attestation protocol. It offers an
+asymptotic upper-envelope observation, not guidance for deciding when a finite
+deployment may use it. A complete supply-chain profile is future work.
 \end{boundarybox}
 
 \section{Governance and audit record}
@@ -948,7 +988,8 @@ Reassess the ceiling when:
 \item tenancy or shared-control-plane scope changes;
 \item aggregation creates a new system-level consequence;
 \item the governing categorization or authorization boundary changes;
-\item a downstream-CSP assertion expires or the approximation threshold is crossed.
+\item a downstream-CSP assertion expires or the known dependency composition changes
+  materially.
 \end{itemize}
 
 Archetype changes follow different triggers: component role, trust, privilege,
@@ -1010,8 +1051,9 @@ is sufficient for the consequence the vector represents.
   critical-function, control-information, or extenuating-circumstance review.
 \item The vector approximation can conceal mismatched information types and must be
   labeled as an approximation.
-\item The hyperscaler saturation rule is conservative policy, not a measured
-  probability or a federal standard.
+\item The hyperscaler saturation limit is conservative policy, not measured
+  convergence, a probability model, or a federal standard. It defines no finite
+  dependency-count or diversity trigger.
 \item Certification Class is not a data-eligibility label, a FIPS~199 category, or
   an impact ceiling. It describes the provider's reusable assurance and operational
   commitments. The Low/Moderate/High shorthand is only a planning approximation.
@@ -1098,6 +1140,12 @@ and contract evidence without treating any single implementation as mandatory.
 \item[{[FEDRAMP-IEC]}] FedRAMP, \emph{Incident Evaluation and Communication},
   Consolidated Rules for 2026, rules IEC-CSO-IIR and IEC-CSO-OIR.
   \url{https://www.fedramp.gov/2026/providers/20x/rules/incident-evaluation-and-communication/}.
+\item[{[AWS-HIGH]}] Amazon Web Services, \emph{FedRAMP Compliance}, AWS GovCloud
+  (US) FedRAMP High scope and services.
+  \url{https://aws.amazon.com/compliance/fedramp/}.
+\item[{[GCP-HIGH]}] Google Cloud, \emph{FedRAMP Compliance}, FedRAMP High cloud
+  boundary and in-scope services.
+  \url{https://cloud.google.com/security/compliance/fedramp}.
 \item[{[PAIN]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
   FedRAMP VDR/VER Vulnerability Prioritization}, stackArmor, July 2026.
   \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}.
