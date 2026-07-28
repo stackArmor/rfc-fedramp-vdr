@@ -58,7 +58,7 @@
 High-Centered Normalization and\\
 Standards-Anchored Thresholds}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.3}
+\date{July 2026}
 
 \begin{document}
 \maketitle
@@ -127,12 +127,13 @@ likely-exploitable logic, internet-reachability logic, multi-agency handling, VE
 dispositions, and evidence-gated Modified impact reductions remain outside its
 scope.
 
-The governed asset-archetype catalog and any intended-use Security Requirements
-ceiling are also external inputs to this calibration. This paper does not derive
-either input. It holds the effective CR/IR/AR vector constant while comparing
-scoring methods. \ceilingpaper{} specifies the upstream derivation that caps a
-system-relative archetype vector by the confirmed federal information types in the
-affected agency scope.
+The governed asset security-impact profile and any intended-use Security
+Requirements ceiling are also external inputs to this calibration. This paper does
+not derive either input. It holds the effective CR/IR/AR vector constant while
+comparing scoring methods. \ceilingpaper{} specifies the upstream derivation that
+caps a system-relative profile---whether derived from an archetype, direct
+per-objective assessment, or another governed method---by the confirmed federal
+information types in the affected agency scope.
 
 \begin{plain}
 The original model asked the right question but used the wrong ruler at the top of
@@ -201,29 +202,30 @@ The review applied five criteria before accepting a change:
 \item \textbf{Preserve CVSS-derived inputs.} The official $0.56/0.22/0$ impact
   weights, $1.5/1.0/0.5$ Security Requirement weights, and complement-product form
   should remain unless evidence demonstrates that a particular input is unsuitable.
-\item \textbf{Keep tagging usable.} A regular operator should select an asset's role
-  from a short governed catalog without navigating a cross-product of profiles,
-  lenses, deployment modes, and impact exceptions.
+\item \textbf{Keep profile assignment usable.} A regular operator should resolve an
+  asset's independently dimensional profile through a manageable governed workflow
+  without navigating a cross-product of roles, modifiers, deployment modes, and
+  impact exceptions.
 \item \textbf{Preserve dimensional information.} Low impacts, Moderate requirements,
   and accumulation across C/I/A should continue to affect the scalar rather than
   disappear behind a boolean count.
 \item \textbf{Remain deterministic and auditable.} Given the same effective impact
-  vector and archetype, every implementation must produce the same result, retain
-  full-precision intermediate values, and expose the policy version.
+  vector and effective CR/IR/AR profile, every implementation must produce the same
+  result, retain full-precision intermediate values, and expose the policy version.
 \end{enumerate}
 
 \section{Alternatives evaluated}
 \label{sec:alternatives}
 
-\subsection{Additional asset sub-profiles}
+\subsection{Additional context modifiers}
 
-One approach was to retain broad archetypes but add environment-specific variants,
+One approach was to retain broad role classes but add environment-specific variants,
 such as internal-only orchestration, administrator-only CI/CD, redundant control
-planes, or restricted security tooling. A primary archetype label could have been
-combined with a second profile label, or the catalog could have introduced parallel
-archetypes for each context.
+planes, or restricted security tooling. A primary role label could have been
+combined with a second context modifier, or the catalog could have introduced
+parallel role classes for each context.
 
-Reviewing the underlying archetype taxonomy was still necessary: some broad High
+Reviewing the underlying role taxonomy was still necessary: some broad High
 assignments warranted clearer, role-based treatment. But taxonomy correction and
 scoring calibration solve different problems. Reclassification is justified only
 when the asset's actual mission role supports a different CR/IR/AR vector. Even a
@@ -233,15 +235,16 @@ Relying exclusively on re-categorizing assets would therefore move the calibrati
 problem into operator tagging, reward under-classification, and leave the underlying
 arithmetic unchanged.
 
-\paragraph{Illustrative profile model.}
+\paragraph{Illustrative two-label model.}
 The two-label form would be straightforward at first:
 
 \begin{verbatim}
 asset-archetype: orchestrator
-asset-impact-profile: redundant-admin-only
+deployment-context: redundant-admin-only
 \end{verbatim}
 
-The second label would alter the requirement vector supplied by the first. Table~\ref{tab:profile-complexity}
+The second label would alter the security-impact profile supplied by the first.
+Table~\ref{tab:profile-complexity}
 shows representative outcomes considered during the design discussion. They are
 illustrative rejected alternatives, not normative archetype assignments.
 
@@ -251,7 +254,7 @@ illustrative rejected alternatives, not normative archetype assignments.
 \renewcommand{\arraystretch}{1.14}
 \begin{tabularx}{\textwidth}{@{}P{0.19\textwidth}P{0.29\textwidth}cccY@{}}
 \toprule
-\textbf{Archetype} & \textbf{Impact profile} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Distinction encoded} \\
+\textbf{Primary role} & \textbf{Context modifier} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Distinction encoded} \\
 \midrule
 \code{orchestrator} & service-critical control plane & M & M & H & Sustained loss stops service delivery. \\
 \code{orchestrator} & redundant, administrator-only & M & M & M & Failover limits the availability consequence. \\
@@ -263,15 +266,15 @@ illustrative rejected alternatives, not normative archetype assignments.
 \code{identity-secrets} & replicated ephemeral token cache & H & M & L & Replication and regeneration reduce availability need. \\
 \bottomrule
 \end{tabularx}
-\caption{Illustrative, non-normative sub-profile mappings considered and rejected.}
+\caption{Illustrative, non-normative two-label mappings considered and rejected.}
 \label{tab:profile-complexity}
 \end{table}
 
-Even this small example requires rules for whether every profile is valid for every
-archetype, what an omitted profile means, whether a profile replaces or modifies the
-base vector, and whether a direct CR/IR/AR override takes precedence. Eight
-archetypes and three profiles expose up to 24 apparent choices before exceptions;
-adding a fourth profile adds another eight combinations and their documentation,
+Even this small example requires rules for whether every modifier is valid for
+every role, what an omitted modifier means, whether a modifier replaces or changes
+the base vector, and whether a direct CR/IR/AR override takes precedence. Eight
+roles and three modifiers expose up to 24 apparent choices before exceptions;
+adding a fourth modifier adds another eight combinations and their documentation,
 validation, tests, and migration behavior.
 
 This could produce the desired numerical result because it moves more dimensions
@@ -280,7 +283,7 @@ from High to Moderate or Low before scoring. It was not selected for three reaso
 \begin{itemize}[leftmargin=1.5em]
 \item Two independent metadata axes create a cross-product of valid and invalid
   combinations and make precedence rules necessary.
-\item Parallel archetypes cause catalog growth, ambiguous choices, and drift as
+\item Parallel role classes cause catalog growth, ambiguous choices, and drift as
   teams interpret nearly identical labels differently.
 \item The approach moves calibration pressure into asset tagging. Operators can
   obtain a more favorable deadline by choosing a less severe profile even when the
@@ -711,7 +714,8 @@ CVSS impact vector and every effective Security Requirements vector. A particula
 deployment may expose only a subset of those states after its intended-use ceiling
 is applied.
 
-Let the uncapped archetype requirement be $R_x(o)$ and the intended-use ceiling be
+Let the uncapped asset security-impact-profile requirement be $R_x(o)$ and the
+intended-use ceiling be
 $E_x(o)$. The PAIN calculation receives:
 \[
 R_x^{\mathrm{eff}}(o)=\min\big(R_x(o),E_x(o)\big).
@@ -722,7 +726,7 @@ section examines only what the adopted PAIN arithmetic does with that input.
 \subsection{Low- and Moderate-impact ceilings}
 
 If a ceiling contains no High objective, then every effective requirement is at
-most Moderate, regardless of the archetype. The largest possible pre-cap aggregate
+most Moderate, regardless of the uncapped profile. The largest possible pre-cap aggregate
 occurs with High technical impact on all three Moderate requirements:
 \begin{align}
 U_{\max,\le M}
@@ -769,8 +773,9 @@ Class~C package to provide adequate information for some High security objective
 \mbox{[FEDRAMP-CLASS]}. For a Class~B or Class~C use, however, any High objective handed
 to this calculation must be affirmatively identified and justified by the deploying
 agency; it must not be inferred from generic product capabilities or hypothetical
-content. If that agency-identified objective survives the asset-archetype cap, the
-High requirement remains in scope for PAIN.
+content. If that agency-identified objective remains High after the asset profile
+and intended-use ceiling are intersected, the High requirement remains in scope for
+PAIN.
 
 Class is nevertheless operationally consequential. It states the provider's
 reusable level of assurance and selects the standard vulnerability-response and
@@ -797,18 +802,20 @@ Certification Class selects the applicable remediation timeframe only after the
 PAIN word and agency scope have been determined; the upstream paper specifies how
 the agency and CSP document the resulting assurance fit or divergence.
 
-The archetype can also keep a dimension below the ceiling because the ceiling is
-only a cap. Finally, multi-agency scope maps an already derived customer-effect word
-to the N-level; it does not create the Debilitating word.
+The asset security-impact profile can also keep a dimension below the ceiling
+because the ceiling is only a cap. Finally, multi-agency scope maps an already
+derived customer-effect word to the N-level; it does not create the Debilitating
+word.
 
 \section{Worked scenarios}
 \label{sec:scenarios}
 
 Tables~\ref{tab:lower-boundaries} and~\ref{tab:scenarios} apply the final arithmetic
 to boundary and ordinary cases. Requirement vectors are explicit effective inputs:
-the governed asset catalog supplies the uncapped archetype and any intended-use
-ceiling caps it before these calculations. Results assume a single-agency resource;
-the separate agency-scope mapping can promote qualifying words to N4 or N5.
+the governed asset assessment supplies the uncapped security-impact profile and any
+intended-use ceiling caps it before these calculations. Results assume a
+single-agency resource; the separate agency-scope mapping can promote qualifying
+words to N4 or N5.
 
 \begin{table}[H]
 \centering
@@ -997,9 +1004,10 @@ The final method is preferable because it obtains the compound-gate result witho
 executing a gate. It keeps Low impacts and all three requirement levels inside one
 continuous calculation, retains the official metric weights, and makes the top
 threshold reproducible from the input lattice. It also keeps the operator-facing
-model simple: one role-based archetype supplies the reusable architectural vector,
-and one scope-resolved intended-use ceiling supplies the federal consequence cap.
-Neither changes per finding.
+model simple: one independently dimensional asset security-impact profile supplies
+the reusable architectural vector, and one scope-resolved intended-use ceiling
+supplies the federal consequence cap. A role-based archetype catalog is one
+optional way to derive the first input. Neither input changes per finding.
 
 \section{Implementation and governance}
 
@@ -1064,7 +1072,7 @@ from any asset-catalog revision.
 The default for an unclassified asset remains conservative $HHH$. The final method
 reduces single-dimension findings on that default to N3, but two- and three-High
 impact findings readily remain N4. Classification coverage should be monitored so
-that the fail-safe does not become the dominant production archetype.
+that the fail-safe does not become the dominant production profile.
 
 \section{Limitations and future work}
 
@@ -1082,9 +1090,9 @@ that the fail-safe does not become the dominant production archetype.
 \item The two backtests establish observed consequences, not statistical
   generalizability. Additional production datasets and analyst-rated scenario sets
   should be evaluated before broad standardization.
-\item A scalar cannot replace architecture review. Archetype assignment, Modified
-  impact evidence, intended-use ceiling, agency scope, and vulnerability
-  applicability remain governed inputs.
+\item A scalar cannot replace architecture review. Security-impact-profile
+  assignment and its derivation evidence, Modified impact evidence, intended-use
+  ceiling, agency scope, and vulnerability applicability remain governed inputs.
 \item The threshold's narrow mathematical gap is safe for deterministic software
   using full precision but unsuitable for manual classification from rounded
   dashboard values.

@@ -431,9 +431,9 @@
     <!-- STEP 2: the asset -->
     <section class="wstep" data-step="2" aria-labelledby="step2Title">
       <h2 id="step2Title" tabindex="-1">Where does it live?</h2>
-      <p class="lead">Choose the affected asset&rsquo;s architectural role. Its reusable requirements are capped by the System Context ceiling.</p>
+      <p class="lead">Resolve the affected asset&rsquo;s security-impact profile. This demo uses an illustrative role catalog; CSPs may instead assign CR/IR/AR directly or use another governed mapping. The reusable profile is capped by the System Context ceiling.</p>
 
-      <label class="fld" for="archetype">Role of the affected asset <span class="tipicon" tabindex="0" data-tip="Each role carries reusable, system-relative Security Requirements (CR/IR/AR: Low = 0.5&times;, Medium = 1&times;, High = 1.5&times;). Derive roles from component function and architecture, independently of agency information types. Untagged assets default to all-High before the system ceiling is applied.">?</span></label>
+      <label class="fld" for="archetype">Example role or custom profile <span class="tipicon" tabindex="0" data-tip="The example roles map to reusable, system-relative Security Requirements (CR/IR/AR: Low = 0.5&times;, Medium = 1&times;, High = 1.5&times;). The taxonomy is optional; the independently dimensional profile is the input. Unresolved assets default to all-High before the system ceiling is applied.">?</span></label>
       <select id="archetype"></select>
       <div class="reqchips" id="reqChips"></div>
       <div class="triple" id="customReqRow" style="display:none;margin-top:10px">
@@ -554,7 +554,7 @@
 </main>
 
 <footer>
-  <p>Built on <i>A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization</i>, its <i>High-Centered PAIN Calibration</i>, and <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog mirrors the governed VDR policy and remains provider policy, not a FedRAMP standard.</p>
+  <p>Built on <i>A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization</i>, its <i>High-Centered PAIN Calibration</i>, and <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog is an illustrative way to derive asset security-impact profiles; it remains provider policy, not a required taxonomy or FedRAMP standard.</p>
 </footer>
 
 <script>
@@ -913,10 +913,10 @@ function stepPanel2(r){
   }).join('');
   const vector = q => q.cr+'/'+q.ir+'/'+q.ar;
   const capped = vector(r.archetypeReq)!==vector(r.req);
-  return (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe archetype</span>Untagged assets begin at H/H/H. The evidenced system ceiling still applies.</div>' : '')
+  return (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe profile</span>Unresolved assets begin at H/H/H. The evidenced system ceiling still applies.</div>' : '')
   + '<div class="callout note"><span class="ct">Effective requirements</span>'
-  + 'Archetype <b>'+vector(r.archetypeReq)+'</b> &rarr; system ceiling <b>'+vector(r.ceiling)+'</b> &rarr; effective <b>'+vector(r.req)+'</b>. '
-  + (capped?'At least one asset requirement is capped before PAIN is calculated.':'The ceiling does not reduce this archetype.')
+  + 'Uncapped profile <b>'+vector(r.archetypeReq)+'</b> &rarr; system ceiling <b>'+vector(r.ceiling)+'</b> &rarr; effective <b>'+vector(r.req)+'</b>. '
+  + (capped?'At least one asset requirement is capped before PAIN is calculated.':'The ceiling does not reduce this profile.')
   + '</div>'
   + '<div class="card"><div class="head"><h3>Damage on <i>this</i> asset</h3><span class="cite">'+esc(state.arch)+'</span></div><div class="body">'
   + rows
@@ -977,7 +977,7 @@ function stepPanel5(r){
   const math =
     '<details class="math"><summary>Show the revised PAIN calibration math</summary><div class="inner"><div class="eq">'+
     '<div><span class="lbl">weights</span> C/I/A: None=0, Low=0.22, High=0.56 &nbsp; CR/IR/AR: L=0.5, M=1.0, H=1.5</div>'+
-    '<div><span class="lbl">requirements</span> archetype '+r.archetypeReq.cr+'/'+r.archetypeReq.ir+'/'+r.archetypeReq.ar+
+    '<div><span class="lbl">requirements</span> profile '+r.archetypeReq.cr+'/'+r.archetypeReq.ir+'/'+r.archetypeReq.ar+
     ' &cap; ceiling '+r.ceiling.cr+'/'+r.ceiling.ir+'/'+r.ceiling.ar+
     ' = effective <span class="res">'+r.req.cr+'/'+r.req.ir+'/'+r.req.ar+'</span></div>'+
     dimRow('C&middot;CR', r.baseC, r.effC, r.mitCok, r.cr, r.pC)+

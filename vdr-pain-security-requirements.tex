@@ -57,7 +57,7 @@
 Deriving Security-Requirements Ceilings\\
 from Intended Federal Information Types}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.0}
+\date{July 2026}
 
 \begin{document}
 \maketitle
@@ -65,8 +65,10 @@ from Intended Federal Information Types}
 \begin{abstract}
 \noindent
 Potential Agency Impact (PAIN) calculations require a Confidentiality, Integrity,
-and Availability Security Requirements vector for the affected asset. An asset
-archetype can provide a consistent architectural vector, but it cannot by itself
+and Availability Security Requirements vector for the affected asset. This paper
+calls the uncapped vector the asset's \emph{security-impact profile}. A CSP may
+derive it through a role-based archetype catalog, direct per-objective assessment,
+or another governed method, but no architectural assignment method can by itself
 answer a different question: which federal consequences are possible in a
 particular agency's intended use of a Cloud Service Offering (CSO)?
 
@@ -78,11 +80,13 @@ SP~800-60. The applicable values are aggregated independently for Confidentialit
 Integrity, and Availability, preserving the full dimensional vector required by
 FIPS~199. That vector becomes a Security Requirements ceiling. The effective
 requirement for an asset is the per-objective minimum of its system-relative
-archetype requirement and the intended-use ceiling.
+security-impact profile and the intended-use ceiling.
 
-The separation matters. Archetypes remain reusable across agency deployments because
-they describe the role of a component inside the CSO, not every possible customer
-data type. The ceiling supplies the agency-specific consequence context without
+The separation matters. Security-impact profiles remain reusable across agency
+deployments because they describe the component inside the CSO, not every possible
+customer data type. A provider that uses archetypes can reuse those role mappings;
+a provider that assigns the three objectives directly can reuse its governed
+assessment. The ceiling supplies the agency-specific consequence context without
 turning a system's overall FIPS~199 impact label into an all-equal vector. Generic
 free text, file upload, or integration capability does not authorize hypothetical
 information types. Multi-agency assets aggregate only the definite agencies they can
@@ -125,12 +129,14 @@ They do not create obligations under FedRAMP, FIPS~199, or NIST guidance.
   recommendations.
 \item[Applied profile] The objective vector retained after an agency confirms that
   an information type applies and evaluates its special factors and actual use.
-\item[Archetype requirements] The uncapped CR/IR/AR vector assigned from an asset's
-  role and consequence inside the CSO architecture.
+\item[Asset security-impact profile] The uncapped, independently assignable
+  CR/IR/AR vector for an affected asset. It may be derived from an archetype,
+  direct per-objective assessment, or another governed method.
 \item[Security-requirements ceiling] The greatest C/I/A consequence supported by
   the confirmed intended information use in the asset's agency scope.
-\item[Effective requirements] The per-objective minimum of the archetype
-  requirements and the ceiling. This is the CR/IR/AR vector handed to PAIN.
+\item[Effective requirements] The per-objective minimum of the asset
+  security-impact profile and the ceiling. This is the CR/IR/AR vector handed to
+  PAIN.
 \end{description}
 
 \begin{boundarybox}
@@ -193,10 +199,11 @@ archetype may become High for one agency, Moderate for another, and then change
 again when the CSO adds a customer. The resulting catalog is difficult to reuse
 and difficult to audit.
 
-The refinement proposed here preserves the original governed-archetype mechanism
-while separating the questions. The archetype holds the first answer. A Security
-Requirements ceiling derived from intended federal information use holds the
-second. PAIN receives their per-objective intersection.
+The refinement proposed here preserves role-based archetypes as one useful
+mechanism while generalizing the first answer into an asset security-impact
+profile. The profile holds the architectural answer regardless of how it was
+derived. A Security Requirements ceiling derived from intended federal information
+use holds the second. PAIN receives their per-objective intersection.
 
 \begin{plain}
 A primary database can be architecturally important even when the current federal
@@ -470,9 +477,10 @@ change the agency's impact determination, and the agency cannot unilaterally cla
 that a lower-Class service supplies higher-Class commitments.
 
 The agency-identified data changes the ceiling; it does not by itself change the
-reusable asset archetype. An archetype changes only when the component's actual
-role or consequence inside the CSO changes. A provider redesign made to support the
-new use may justify such a change, but the new data label alone does not.
+reusable asset security-impact profile. The profile changes only when the
+component's actual role, trust, privilege, dependency, data handling, or consequence
+inside the CSO changes. A provider redesign made to support the new use may justify
+such a change, but the new data label alone does not.
 
 \subsection{What higher assurance buys}
 
@@ -575,7 +583,7 @@ disposition and the evidence supporting it.
 An adequate availability-assurance case can support use of a Class~C offering
 without necessarily moving the offering to Class~D. It does not reclassify a system
 whose FIPS~199 vector contains A:H, automatically lower the intended-use ceiling,
-or change the asset archetype. It shows why the Class~C level of assurance,
+or change the asset security-impact profile. It shows why the Class~C level of assurance,
 including any supplemental commitments, is acceptable for that High-availability
 consequence. This recommendation is specific to Availability; it is not a claim
 that uptime or disaster-recovery measures satisfy High Confidentiality or
@@ -742,12 +750,18 @@ record. If the shortcut is used, label it as an approximation and retain that fa
 in the audit trail.
 \end{plain}
 
-\section{Archetype requirements remain separate}
+\section{The asset security-impact profile remains separate}
 
-\subsection{Role, not software kind}
+\subsection{A profile, not a required taxonomy}
 
-An archetype describes how an asset is used inside the CSO. The same software can
-serve different roles:
+The profile describes the uncapped confidentiality, integrity, and availability
+requirements of an asset inside the CSO. It is an input contract, not a required
+classification taxonomy or metadata key. A CSP \rfckw{may} derive it by assigning
+the three objectives directly, by mapping a role-based archetype, or through
+another governed and deterministic method.
+
+Role-based archetypes are a useful example because the same software can serve
+different roles:
 
 \begin{itemize}[leftmargin=1.5em]
 \item an in-memory store used as a disposable cache;
@@ -756,14 +770,22 @@ serve different roles:
 \item the same engine acting as a system-of-record database.
 \end{itemize}
 
-Those roles justify different uncapped requirements even before the agency context
-is applied. The archetype catalog is therefore system-relative: a provider derives
-it from the CSO architecture, trust relationships, control functions, and
-consequences of component compromise.
+Those roles justify different uncapped profiles even before the agency context is
+applied. A role-based catalog is therefore system-relative: a provider derives it
+from the CSO architecture, trust relationships, control functions, and consequences
+of component compromise. The archetype is optional; the independently dimensional
+profile is not.
+
+A conforming assignment \rfckw{must} permit CR, IR, and AR to differ and
+\rfckw{should} retain the derivation method, source evidence, objective-specific
+rationale, policy version, and any override. A scalar asset-value label may be used
+as a low-resolution shorthand for L/L/L, M/M/M, or H/H/H, but it
+\rfckw{should not} be the only assignment interface because it forces every
+objective to move together and preserves less of the derivation evidence.
 
 \subsection{Effective requirements}
 
-Let the archetype requirements for asset $x$ be
+Let the uncapped asset security-impact profile for asset $x$ be
 \[
 R_x=(R_x(C),R_x(I),R_x(A)).
 \]
@@ -774,10 +796,10 @@ R_x^{\mathrm{eff}}(o)=\min(R_x(o),E_x(o)),
 \label{eq:effective}
 \end{equation}
 
-The ceiling never raises an archetype. A High ceiling means only that High remains
-available where the asset's architectural role supports it. Conversely, a High
-archetype does not manufacture a High federal consequence when the intended-use
-ceiling is Moderate.
+The ceiling never raises a profile requirement. A High ceiling means only that High
+remains available where the asset's system-relative profile supports it.
+Conversely, a High profile requirement does not manufacture a High federal
+consequence when the intended-use ceiling is Moderate.
 
 \begin{table}[H]
 \centering
@@ -787,8 +809,8 @@ ceiling is Moderate.
 \toprule
 \textbf{Input} & \textbf{Example} & \textbf{Scope} & \textbf{Meaning} \\
 \midrule
-Archetype requirements & H/H/M & Asset in the CSO & Uncapped architectural
-consequence of the role \\
+Asset security-impact profile & H/H/M & Asset in the CSO & Uncapped
+system-relative consequence profile \\
 Intended-use ceiling & M/M/L & Agency or affected agency set & Maximum federal
 consequence supported by confirmed intended use \\
 Effective requirements & M/M/L & Asset in that agency scope & Per-objective
@@ -800,31 +822,34 @@ minimum supplied to PAIN \\
 
 \subsection{Why this improves reuse}
 
-The same CSO can retain one governed archetype catalog across several agency
-deployments. The customer-specific information appears in the ceiling. A role
-change still changes the archetype. An intended-use change still changes the
-ceiling. Reviewers can challenge either judgment without rebuilding both.
+The same CSO can retain one governed profile derivation policy across several
+agency deployments. If it uses archetypes, it can reuse the catalog; if it uses
+direct per-objective assessment, it can reuse that evidence model. The
+customer-specific information appears in the ceiling. An architectural change
+still changes the profile. An intended-use change still changes the ceiling.
+Reviewers can challenge either judgment without rebuilding both.
 
 Cross-system trust anchors, software-delivery paths onto agency devices, and shared
 CSP infrastructure require particular care because their consequences may extend
 beyond the information stored in the assessed component. The correct response is
-to model their architectural role and affected scope explicitly, not to make a
-data-only archetype and then hide an exception.
+to model their architectural role and affected scope explicitly, not to assign a
+data-only profile and then hide an exception.
 
 \section{Worked derivations}
 
 \subsection{Moderate intended use on a high-role database}
 
-A CSO's system-of-record database has archetype requirements H/H/M. One agency's
+A CSO's system-of-record database has an uncapped security-impact profile H/H/M,
+derived here from a role-based archetype. One agency's
 confirmed intended information types aggregate to M/M/L. Therefore:
 \[
 R_{\mathrm{db}}^{\mathrm{eff}}
 =\min((H,H,M),(M,M,L))=(M,M,L).
 \]
 
-The database remains the system-of-record archetype. No customer-specific variant
-is created. If a later agency uses the same CSO differently, its ceiling changes
-without rewriting the database role.
+The database retains the same uncapped profile and role assignment. No
+customer-specific variant is created. If a later agency uses the same CSO
+differently, its ceiling changes without rewriting the database assessment.
 
 \subsection{High confidentiality without H/H/H flattening}
 
@@ -832,7 +857,7 @@ An agency's applied information types and special factors aggregate to H/M/L. Th
 overall FIPS~199 impact level is High because one objective is High. The ceiling
 remains H/M/L.
 
-For a secrets service with H/H/H archetype requirements:
+For a secrets service with an H/H/H security-impact profile:
 \[
 R_{\mathrm{secrets}}^{\mathrm{eff}}
 =\min((H,H,H),(H,M,L))=(H,M,L).
@@ -993,7 +1018,8 @@ The record \rfckw{should} contain:
 \item system-level aggregation or critical-function adjustments;
 \item the per-agency and asset-scoped ceilings;
 \item the overall FIPS~199 impact label, stored separately from the vector;
-\item archetype requirements, effective requirements, and every capped objective;
+\item the uncapped asset security-impact profile, its derivation method and
+  rationale, the effective requirements, and every capped objective;
 \item multi-agency affected-scope basis;
 \item confidence, assumptions, manual-review items, effective date, and expiry;
 \item any vector approximation or downstream-CSP saturation approximation used.
@@ -1020,9 +1046,9 @@ Reassess the ceiling when:
   materially.
 \end{itemize}
 
-Archetype changes follow different triggers: component role, trust, privilege,
-dependency, or architectural consequence. Keeping the triggers separate is one of
-the model's principal governance benefits.
+Security-impact-profile changes follow different triggers: component role, trust,
+privilege, dependency, data handling, or architectural consequence. Keeping the
+triggers separate is one of the model's principal governance benefits.
 
 \section{Handoff contract}
 
@@ -1058,9 +1084,10 @@ or:
 cr-m_ir-h_ar-l
 \end{verbatim}
 
-The handoff must also identify the uncapped archetype vector, ceiling vector,
-ceiling source and scope, and whether any objective was capped. The downstream PAIN
-method then combines this effective requirements vector with vulnerability impact.
+The handoff must also identify the uncapped asset security-impact profile, its
+derivation method and source, the ceiling vector, ceiling source and scope, and
+whether any objective was capped. The downstream PAIN method then combines this
+effective requirements vector with vulnerability impact.
 
 If a Class~B or Class~C intended use contains a High objective, the adjacent
 governance record must also identify the agency attestation, Certification Class,
@@ -1119,11 +1146,11 @@ must be labeled and its source evidence retained.
 \subsection{The ceiling boundary}
 
 The intended-use vector is a cap, not a floor and not a product-capability score.
-Applying it can reduce an archetype requirement that exceeds the consequence
-supported by the agency's intended use; it cannot raise a low-role asset merely
-because the system contains more sensitive information. The uncapped archetype
-continues to describe the reusable role, while the effective vector describes that
-role in this system and agency context.
+Applying it can reduce a profile requirement that exceeds the consequence
+supported by the agency's intended use; it cannot raise a low-requirement asset
+merely because the system contains more sensitive information. The uncapped
+security-impact profile continues to describe the reusable asset assessment, while
+the effective vector describes that asset in this system and agency context.
 
 A lower effective requirement on one asset does not lower the FIPS~199 category of
 the system, remove applicable controls, or authorize a broader data use. It only
@@ -1231,16 +1258,17 @@ provisional, objective-specific evidence; FIPS~199 supplies dimensional aggregat
 and the overall system impact rule. Neither calls for replacing the resulting
 vector with one repeated High, Moderate, or Low label.
 
-Separating the intended-use ceiling from the asset archetype makes both judgments
-clearer. The archetype records what the component does in the CSO. The ceiling
-records what the definite agency use puts at stake. Their per-objective minimum
-becomes the effective CR/IR/AR vector handed to PAIN. Multi-agency components
-aggregate only the agencies they can affect. Generic technical capability does not
-authorize hypothetical data. CSP corporate consequences remain important but do
-not silently redefine government impact.
+Separating the intended-use ceiling from the asset security-impact profile makes
+both judgments clearer. The profile records the component's system-relative
+requirements inside the CSO, whether derived directly, through an archetype, or by
+another governed method. The ceiling records what the definite agency use puts at
+stake. Their per-objective minimum becomes the effective CR/IR/AR vector handed to
+PAIN. Multi-agency components aggregate only the agencies they can affect. Generic
+technical capability does not authorize hypothetical data. CSP corporate
+consequences remain important but do not silently redefine government impact.
 
-The result is a reusable architectural classification joined to an agency-specific,
-source-traceable federal consequence vector. Certification Class remains beside
+The result is a reusable, independently dimensional asset profile joined to an
+agency-specific, source-traceable federal consequence vector. Certification Class remains beside
 that vector as the provider's operational assurance commitment. When a High
 objective is proposed for a Class~B or Class~C offering, agency disclosure, CSP
 acceptance, the applicable response clocks, and any supplemental contract terms

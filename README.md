@@ -19,14 +19,16 @@ standardized form, as the **Environmental metric group of CVSS** (the CR/IR/AR
 Security Requirements and the Modified Impact Sub-Score). This work makes the mapping
 explicit, deterministic, and auditable. Before the vulnerability math begins, a
 separate intended-use derivation maps confirmed NIST SP 800-60 information types to
-a dimensional ceiling over each asset's reusable architectural requirements.
+a dimensional ceiling over each asset's independently assignable security-impact
+profile. CSPs may derive that profile through an archetype catalog, direct
+per-objective assessment, or another governed method.
 
 ## Documents
 
 | Source | PDF | What it is |
 |---|---|---|
-| [`vdr-pain-cvss.tex`](vdr-pain-cvss.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf) | **The method.** *A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization* — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example asset-archetype catalog. |
-| [`vdr-pain-security-requirements.tex`](vdr-pain-security-requirements.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf) | **The upstream derivation.** *Before the PAIN Equation: Deriving Security-Requirements Ceilings from Intended Federal Information Types* — maps confirmed CSO and agency intended use through NIST SP 800-60 and FIPS 199, preserves the full C/I/A vector, separates reusable architectural archetypes from agency consequence, handles affected multi-agency scope, and bounds the hyperscaler approximation. It also separates Certification Class as the provider's operational assurance commitment, defines the agency/CSP contract decision for High-objective use below Class D, and adds an Availability-specific assurance case connecting AR:H to uptime, RTO/RPO, disaster recovery, testing, and contract evidence without prescribing one architecture. |
+| [`vdr-pain-cvss.tex`](vdr-pain-cvss.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf) | **The method.** *A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization* — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example archetype-to-profile catalog. The formula requires an independently dimensional asset security-impact profile, not that taxonomy. |
+| [`vdr-pain-security-requirements.tex`](vdr-pain-security-requirements.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf) | **The upstream derivation.** *Before the PAIN Equation: Deriving Security-Requirements Ceilings from Intended Federal Information Types* — maps confirmed CSO and agency intended use through NIST SP 800-60 and FIPS 199, preserves the full C/I/A vector, separates the reusable asset security-impact profile from agency consequence, handles affected multi-agency scope, and bounds the hyperscaler approximation. It also separates Certification Class as the provider's operational assurance commitment, defines the agency/CSP contract decision for High-objective use below Class D, and adds an Availability-specific assurance case connecting AR:H to uptime, RTO/RPO, disaster recovery, testing, and contract evidence without prescribing one architecture. |
 | [`vdr-pain-calibration.tex`](vdr-pain-calibration.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-calibration.pdf) | **Calibration companion.** *Calibrating PAIN Without Abandoning CVSS: High-Centered Normalization and Standards-Anchored Thresholds* — corrects the Medium-centered normalization defect, derives all three PAIN word boundaries from stated consequence scenarios, treats compound dimensional impact as a transparent vulnerability-breadth proxy without adding CWE as a severity input, documents governed provider variation, exhaustively tests the 729-state lattice, and reports anonymized operational backtests. |
 | [`vdr-pain-compliance.tex`](vdr-pain-compliance.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-compliance.pdf) | **Addendum to the method.** *A Deterministic PAIN and Remediation Method for FedRAMP Compliance and Security-Benchmark Findings* — extends the PAIN method to security-benchmark and compliance findings (STIG, CIS, cloud configuration): a severity×asset effect matrix, an internet-exercisability test for remediation timeframes, and governed classifier artifacts — validated by adversarial review and a back-test against a real CIS GCP scan. |
 | [`vlev-proposal.tex`](vlev-proposal.tex) | [PDF](https://stackarmor.github.io/rfc-fedramp-vdr/vlev-proposal.pdf) | **Companion proposal.** *A Finer Exploitability Gradation (VLEV) for FedRAMP VDR/VER* — splits exploitability into three bands (NLEV / LEV / VLEV) aligned to CISA Vulnrichment's `none` / `poc` / `active` states, with the full six-column remediation grid per Certification Class. |
@@ -57,13 +59,17 @@ into [Overleaf](https://overleaf.com) (no install).
 ## Scope & status
 
 These are informational documents. The method memo specifies how to satisfy FedRAMP's
-existing VDR/VER requirements; the example archetype catalog and the remediation-day
-values are illustrative. Each Cloud Service Provider should own its architectural
-archetype mapping, while the agency-specific Security Requirements ceiling is derived
-separately from confirmed intended federal information use. The VLEV document is a forward-looking proposal for FedRAMP's
+existing VDR/VER requirements; the example archetype-to-profile catalog and the
+remediation-day values are illustrative. Each Cloud Service Provider should own its
+security-impact profile derivation, whether it uses archetypes, direct per-objective
+assessment, or another governed mapping. The agency-specific Security Requirements
+ceiling is derived separately from confirmed intended federal information use. The VLEV document is a forward-looking proposal for FedRAMP's
 consideration, intentionally separate from the method memo. The VEX/CycloneDX document
 is an implementation profile: one defensible way to satisfy the existing VER disposition
 and reporting requirements, with the choice of format left to the provider.
+
+Document history is maintained in Git rather than embedded version tables in the
+papers.
 
 ## Feedback & discussion
 

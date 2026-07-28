@@ -91,17 +91,21 @@ those impact values, Security Requirement multipliers, and aggregation form in a
 PAIN-specific normalization. We present a closed-form,
 reproducible mapping from FedRAMP's requirements onto CVSS Environmental metrics,
 derive PAIN and the remediation deadline from it, and give fully worked
-calculations. We recommend role-based ``asset archetypes'' as the preferred way to
-assign CR/IR/AR systematically. An archetype records what a system does and derives
-its requirements through a governed mapping; that is easier to verify than asking
-an owner to declare the system High, Medium, or Low value. Each Cloud Service
-Provider (CSP) \rfckw{should} derive its own archetype mapping from the role of each
-asset inside the offering. An intended-use Security Requirements ceiling, derived
+calculations. The required architectural input is an \emph{asset security-impact
+profile}: an uncapped CR/IR/AR vector whose three objectives remain independently
+assignable. A Cloud Service Provider (CSP) may derive that profile through a
+role-based asset-archetype catalog, direct per-objective assessment, or another
+governed and deterministic mapping. We recommend role-based archetypes as a strong
+starting point because they expose what a component does and why its requirements
+follow, but the taxonomy is an implementation choice rather than part of the
+formula. A scalar asset-value label is a permitted low-resolution shorthand, not a
+preferred model: it forces all three objectives to move together and retains less
+derivation evidence. An intended-use Security Requirements ceiling, derived
 independently from the offering's and deploying agency's confirmed federal
-information types, caps that archetype vector per objective before scoring. This
-keeps architectural roles reusable across agency deployments while preserving the
-agency-specific C/I/A consequence. A reference architecture and a sample scan
-complete the memo.
+information types, caps the profile per objective before scoring. This keeps the
+architectural assessment reusable across agency deployments while preserving the
+agency-specific C/I/A consequence. A reference architecture and a sample
+archetype-based scan complete the memo.
 \end{abstract}
 
 \tableofcontents
@@ -120,13 +124,14 @@ and \rfckw{may} are to be interpreted as described in RFC~2119.
 \item[PAIN] Potential Agency Impact, the FedRAMP N1--N5 rating of a finding.
 \item[CR/IR/AR] The CVSS Environmental Confidentiality / Integrity / Availability
   \emph{Requirements} of an asset after any intended-use ceiling is applied.
-\item[Archetype requirements] The uncapped CR/IR/AR vector derived from an asset's
-  role and consequence inside the Cloud Service Offering.
+\item[Asset security-impact profile] The uncapped, independently assignable
+  CR/IR/AR vector for an affected asset. A CSP may derive it from a role-based
+  archetype, direct per-objective assessment, or another governed method.
 \item[Security Requirements ceiling] The per-objective C/I/A upper bound supported
   by the confirmed information types intended for the offering and affected
   agency scope.
-\item[Effective requirements] The per-objective minimum of the archetype
-  requirements and the ceiling; these values enter the PAIN equation.
+\item[Effective requirements] The per-objective minimum of the asset
+  security-impact profile and the ceiling; these values enter the PAIN equation.
 \item[$U$] The pre-cap complement-product aggregate derived from CVSS v3.1 impact
   values and Security Requirement multipliers.
 \item[MISS] The CVSS v3.1 Modified Impact Sub-Score, $\min(U,0.915)$.
@@ -173,7 +178,7 @@ according to the criticality of the affected asset in \emph{its} environment.
 Asset data sensitivity / FIPS-199 C-I-A categorization & Security Requirements
 \code{CR}, \code{IR}, \code{AR} \\
 Confirmed CSO and agency intended information types & Per-objective Security
-Requirements ceiling over the asset archetype \\
+Requirements ceiling over the asset security-impact profile \\
 Magnitude of potential agency impact & CVSS-derived pre-cap impact aggregate ($U$) \\
 Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog membership /
 direct-IRV CVSS floor \\
@@ -187,7 +192,8 @@ deadline table \\
 \end{table}
 
 The consequence is that a conforming implementation need not invent a bespoke
-risk algebra. It need only (a) assign each asset an archetype CR/IR/AR vector,
+risk algebra. It need only (a) resolve each asset to an uncapped, independently
+dimensional CR/IR/AR security-impact profile,
 (b) resolve and apply the intended-use ceiling, and (c) evaluate the two VER axes.
 The arithmetic that turns the effective requirements into a defensible impact
 magnitude retains the published CVSS Environmental weights, Security Requirement
@@ -209,8 +215,9 @@ select the N-level.
 \begin{plain}
 \textbf{See the whole method interactively.}
 The \href{pain-playground.html}{PAIN \& Remediation Playground} shows how the
-inputs come together. Set the intended-use ceiling, choose an asset archetype,
-observe the resulting effective CR/IR/AR vector, and then follow vulnerability
+inputs come together. Set the intended-use ceiling, choose an illustrative
+role-based mapping for the asset security-impact profile, observe the resulting
+effective CR/IR/AR vector, and then follow vulnerability
 impact, agency scope, reachability, likelihood, Certification Class, and
 mitigation through to the PAIN word, N-level, and remediation deadline. The
 playground is an explanatory companion; governed evidence and configuration
@@ -220,17 +227,17 @@ remain the implementation's source of record.
 \section{Before severity: resolve effective Security Requirements}
 \label{sec:ceiling}
 
-An asset archetype and an agency's intended information use answer different
-questions. The archetype describes what compromise of the component can do inside
-the CSO architecture. The intended-use ceiling describes the greatest federal
-consequence supported by the information types that the offering is designed and
-authorized to process and that the affected agency intends and is authorized to
-place there.
+An asset security-impact profile and an agency's intended information use answer
+different questions. The profile describes what compromise of the component can do
+inside the CSO architecture. The intended-use ceiling describes the greatest
+federal consequence supported by the information types that the offering is
+designed and authorized to process and that the affected agency intends and is
+authorized to place there.
 
 \ceilingpaper{} specifies the full upstream derivation from NIST SP~800-60
 information types and FIPS~199 dimensional aggregation. For PAIN, its handoff is
-one vector per affected agency scope. Let $R_x(o)$ be asset $x$'s archetype
-requirement for objective $o\in\{C,I,A\}$ and let $E_x(o)$ be the resolved
+one vector per affected agency scope. Let $R_x(o)$ be asset $x$'s uncapped
+security-impact-profile requirement for objective $o\in\{C,I,A\}$ and let $E_x(o)$ be the resolved
 intended-use ceiling. The effective requirement is:
 \begin{equation}
 R_x^{\mathrm{eff}}(o)=\min\big(R_x(o),E_x(o)\big).
@@ -243,11 +250,12 @@ maximum across those agencies. An agency elsewhere in the offering does not rais
 the ceiling of an asset that cannot affect it.
 
 \begin{plain}
-The role says how important the component can be inside the service. The ceiling
-says what federal consequences are actually in scope for the affected customer or
-customers. PAIN uses the lower value on each of C, I, and A. A High ceiling never
-makes a Low archetype High, and a High archetype never manufactures High agency
-impact when the intended use is Moderate.
+The asset profile says how important each security objective can be for the
+component inside the service. The ceiling says what federal consequences are
+actually in scope for the affected customer or customers. PAIN uses the lower value
+on each of C, I, and A. A High ceiling never makes a Low profile requirement High,
+and a High profile requirement never manufactures High agency impact when the
+intended use is Moderate.
 \end{plain}
 
 The ceiling is dimensional. An overall FIPS~199 High system with category H/M/L
@@ -256,11 +264,11 @@ or integration capability does not add hypothetical information types that are
 outside the offering's and agency's intended, authorized use.
 
 An implementation that has not declared a ceiling may continue with the uncapped
-archetype vector as a conservative compatibility mode, because a ceiling can only
+asset security-impact profile as a conservative compatibility mode, because a ceiling can only
 lower a requirement. It \rfckw{must not} describe that result as an evidenced,
 agency-specific intended-use derivation. Reports \rfckw{should} retain the
-archetype vector, ceiling and source when present, effective vector, and whether
-any objective was capped.
+uncapped profile, its derivation method and source, the ceiling and its source when
+present, the effective vector, and whether any objective was capped.
 
 \section{Two threat inputs: EPSS and the CISA KEV catalog}
 \label{sec:enrichment}
@@ -331,7 +339,7 @@ Section~\ref{sec:cvss-divergence} delineates that boundary precisely.
   uptime (from the CVE's CVSS vector). None / Low / High become $0$ / $0.22$ / $0.56$.
 \item $\mathrm{CR},\mathrm{IR},\mathrm{AR}$ --- how much \emph{this system} needs
   secrecy, correctness, and uptime after Equation~\eqref{eq:effective-requirement}
-  caps the governed archetype or asset-value vector by the intended-use ceiling.
+  caps the governed asset security-impact profile by the intended-use ceiling.
   Low / Medium / High become $0.5$ / $1.0$ / $1.5$.
 \item $U$ --- the three dimensions combined into one pre-cap ``damage to this
   system'' aggregate.
@@ -554,7 +562,8 @@ carries no classification \rfckw{should} resolve to a deliberately conservative
 default (e.g.\ CR/IR/AR all High), which scores loudly and surfaces the asset for
 classification rather than hiding it. ``Unknown'' is treated as ``serious until
 proven otherwise'' --- silence never makes a problem look smaller than it is.
-Likewise, an absent intended-use ceiling leaves the resolved archetype uncapped;
+Likewise, an absent intended-use ceiling leaves the resolved security-impact
+profile uncapped;
 it does not supply a guessed Low or Moderate value. This is conservative
 compatibility behavior, not evidence that the agency-specific derivation was
 completed.
@@ -669,9 +678,12 @@ The same formula, run by hand on realistic cases. Watch the \emph{same}
 vulnerability land at very different N-levels depending only on which system it sits
 on --- that is the entire point of the method.
 \end{plain}
-We use $C,I,A$ for impacts. Each example separately states the uncapped archetype
-vector $R_x$, the intended-use ceiling $E_x$, and the effective CR/IR/AR vector
-$R_x^{\mathrm{eff}}=\min(R_x,E_x)$ that enters PAIN. All arithmetic follows
+We use $C,I,A$ for impacts. Each example separately states the uncapped asset
+security-impact profile $R_x$, the intended-use ceiling $E_x$, and the effective
+CR/IR/AR vector $R_x^{\mathrm{eff}}=\min(R_x,E_x)$ that enters PAIN. For
+concreteness, named roles in these examples use the illustrative archetype catalog
+in Appendix~\ref{app:catalog}; another conforming implementation can derive the
+same vectors without that taxonomy. All arithmetic follows
 Eqs.~\eqref{eq:u}--\eqref{eq:pain}.
 
 For reference, the severity word used in each example is assigned by:
@@ -702,7 +714,7 @@ m=1 \;\Rightarrow\; \boxed{\text{N5}}.
 \end{align*}
 
 \paragraph{Example 2 --- the same CVE and datastore under a Moderate ceiling.}
-Keep the vulnerability, H/H/H datastore archetype, and multi-agency scope from
+Keep the vulnerability, H/H/H datastore profile, and multi-agency scope from
 Example~1, but set $E_x=(M,M,M)$. The ceiling binds every dimension:
 \[
 R_x=(H,H,H),\qquad E_x=(M,M,M),\qquad
@@ -715,12 +727,13 @@ S &= 0.914816/0.995904 = 0.918578
 m=1 &\;\Rightarrow\; \boxed{\text{N4}}.
 \end{align*}
 The ceiling alone makes Debilitating unreachable for this otherwise unchanged
-finding. The high-role archetype remains reusable; the effective requirements
-reflect what the confirmed intended use puts at stake.
+finding. The high-role profile remains reusable; in this example it is derived
+from an archetype, while the effective requirements reflect what the confirmed
+intended use puts at stake.
 
 \paragraph{Example 3 --- the same CVE on a sandbox, single-agency.}
 $C\!=\!I\!=\!A\!=\!0.56$, $R_x=(L,L,L)$, and $E_x=(M,M,M)$.
-The ceiling is above the archetype and therefore does not raise it:
+The ceiling is above the security-impact profile and therefore does not raise it:
 $R_x^{\mathrm{eff}}=(L,L,L)$, with $m=0$.
 \begin{align*}
 U &= 1-(1-0.28)^3 = 1-0.72^3 = 0.626752, \\
@@ -958,11 +971,13 @@ reclassifying reachability on WAF evidence.
 
 \section{Reference architectures and sample scans}
 \subsection{Single-agency, Class C}
-Figure~\ref{fig:arch} shows a representative deployment with each component tagged
-by archetype. Table~\ref{tab:scan} shows the corresponding per-finding output for a
-fictional Class~C, single-agency offering. The PAIN column is computed by the method
-above; the Classical Severity column is the scanner's qualitative rating, shown to
-make the decoupling explicit.
+Figure~\ref{fig:arch} shows a representative deployment using the optional
+role-based archetype method to derive each component's security-impact profile.
+Table~\ref{tab:scan} shows the corresponding per-finding output for a fictional
+Class~C, single-agency offering. The examples deliberately reuse the catalog in
+Appendix~\ref{app:catalog}; the PAIN formula does not require those labels. The
+PAIN column is computed by the method above; the Classical Severity column is the
+scanner's qualitative rating, shown to make the decoupling explicit.
 
 \begin{figure}[H]
 \centering
@@ -1007,7 +1022,8 @@ make the decoupling explicit.
 \node[tag,below=0.5mm of siem.south] {security-tooling};
 \end{tikzpicture}%
 }
-\caption{Reference architecture; each node carries its \code{asset-archetype} tag.}
+\caption{Archetype-based reference implementation; each node carries an optional
+\code{asset-archetype} tag that resolves to an asset security-impact profile.}
 \label{fig:arch}
 \end{figure}
 
@@ -1168,59 +1184,77 @@ replaced by a derived signal --- while VEX carries the post-detection
 \emph{disposition} of each finding (Section~\ref{sec:vex}). Neither SSVC nor VEX is
 mandated by the rule by name.
 
-\section{Assigning CR/IR/AR: archetypes (an example, not a standard)}
+\section{Assigning the asset security-impact profile}
 \label{sec:archetypes}
 \begin{plain}
-Rather than ask an owner to rate every server High, Medium, or Low, we sort systems
-into a short list of \emph{archetypes} --- a database, a login service, a cache, a
-message bus, and so on. Each archetype comes with its security requirements
-pre-filled. Tag a system with its archetype and the scoring is automatic. Our list
-is only an \emph{example}: every provider should tailor its own to the roles its
-systems perform and the data they actually hold.
+The PAIN formula requires an uncapped, three-dimensional CR/IR/AR profile for each
+affected asset; it does not require a particular taxonomy or metadata key. A CSP
+can assign the three objectives directly, derive them from a role-based archetype
+catalog, or use another governed mapping. Whatever the method, it must preserve the
+ability to express mixed vectors such as H/M/L and retain why each objective was
+assigned.
 \end{plain}
 The model in Section~\ref{sec:math} is only as good as the CR/IR/AR assignment that
-feeds it. A direct value label asks the asset owner to state the conclusion: how
-important is this system? That answer can be difficult to obtain and difficult to
-challenge, especially when a High designation brings more work, cost, or scrutiny.
-An archetype asks narrower questions about facts that architecture and inventory
-can help verify: does the asset control other systems, hold credentials,
-authenticate users, store sensitive data, or support several services?
+feeds it. A conforming implementation \rfckw{must} resolve every affected asset to
+an asset security-impact profile, \rfckw{must} support independent CR, IR, and AR
+assignments, and \rfckw{should} retain the derivation method, source evidence,
+objective-specific rationale, policy version, and any override. This is the
+normative input contract. How a CSP produces the vector is provider-governed.
 
-The governed archetype mapping then turns those facts into an \emph{uncapped}
-CR/IR/AR vector. A reviewer can check both parts of the architectural decision:
-whether the asset performs the stated role and whether that role maps to the right
-requirements inside the CSO. Equation~\eqref{eq:effective-requirement} then applies
-the independently derived intended-use ceiling. Archetypes do not remove human
-judgment, but they make the role judgment visible and harder to manipulate.
-Tagging an asset with its archetype also avoids evaluating every asset in isolation
-and keeps the architectural rationale readily understandable and auditable. Not
-every asset will fit cleanly, so CSPs \rfckw{may} define custom archetypes or adjust
-the scoring of existing ones to map their estate accurately.
+\paragraph{Role-based archetype mapping.}
+One strong derivation method is to sort systems into a short list of
+\emph{archetypes} --- a database, a login service, a cache, a message bus, and so
+on. Each archetype maps to a pre-filled security-impact profile. The mapping asks
+narrow questions that architecture and inventory can help verify: does the asset
+control other systems, hold credentials, authenticate users, store sensitive data,
+or support several services?
+
+A reviewer can then check both parts of the decision: whether the asset performs
+the stated role and whether that role maps to the right CR/IR/AR requirements
+inside the CSO. Archetypes do not remove human judgment, but they make the
+architectural rationale visible, reusable, and harder to manipulate. Not every
+asset will fit cleanly, so a CSP using this method \rfckw{may} define custom roles,
+adjust its mappings, or make an evidenced per-asset override. The catalog in
+Appendix~\ref{app:catalog} is one example derivation, not the PAIN classification
+standard.
+
+\paragraph{Direct per-objective assignment.}
+A CSP \rfckw{may} instead assign CR, IR, and AR directly from a governed component
+assessment. Direct assignment is fully conforming when the three objectives remain
+independently selectable and the evidence and rationale are retained. It is
+especially useful where a component does not fit a reusable role class or where
+the provider already maintains an authoritative, objective-specific asset
+classification. The method does not force CR, IR, and AR to be equal.
 
 A simpler but less informative conforming implementation is to tag assets directly
-with an \code{asset-value} instead of an \code{asset-archetype}. Under that approach,
+with a scalar \code{asset-value}. Under that approach,
 \code{H} or \code{High} maps to static \code{CR:H/IR:H/AR:H}; \code{M},
 \code{Medium}, or \code{Moderate} maps to \code{CR:M/IR:M/AR:M}; and \code{L} or
 \code{Low} maps to \code{CR:L/IR:L/AR:L}. This schema is easy to implement and
 may be sufficient for smaller or more homogeneous estates. Its tradeoff is that it
 states the conclusion without recording why: every security requirement moves
 together, and the label does not separately explain the asset's confidentiality,
-integrity, and availability needs.
+integrity, and availability needs. A scalar value \rfckw{should not} be the only
+assignment interface: an implementation should permit an asset to graduate to an
+independent vector without changing the scoring method.
 
 
 \begin{quote}\itshape
-The archetype catalog in Appendix~\ref{app:catalog} is illustrative. A conforming
-implementation \rfckw{must} derive its archetype assignments from the roles,
-trust relationships, control functions, and consequences inside its own CSO
-architecture. It \rfckw{may} adopt the example catalog as a starting point, but
-each CSP \rfckw{should} own and justify its mapping. The agency-specific FIPS~199
+The archetype catalog in Appendix~\ref{app:catalog} illustrates one way to derive
+asset security-impact profiles. A conforming implementation does not have to use
+it, use the word ``archetype,'' or expose an \code{asset-archetype} key. If a CSP
+does use the catalog, it \rfckw{must} derive assignments from the roles, trust
+relationships, control functions, and consequences inside its own CSO architecture.
+Each CSP \rfckw{should} own and justify its mappings. The agency-specific FIPS~199
 and information-type context belongs in the separately governed Security
-Requirements ceiling. Two providers can legitimately assign the same software
-different archetypes because it performs different roles; two agency deployments
-can retain the same archetype while resolving different effective requirements.
+Requirements ceiling. Two providers can legitimately derive different profiles
+for the same software because it performs different roles; two agency deployments
+can retain the same uncapped profile while resolving different effective
+requirements.
 \end{quote}
 
-The classification rule we recommend is \emph{control-plane lens first}: if an
+For the illustrative role-based catalog, the classification rule we recommend is
+\emph{control-plane lens first}: if an
 asset can deploy, orchestrate, hold cross-estate credentials, or actuate
 configuration, classify it by that control function regardless of the data it
 stores; otherwise classify by the data it holds. The same physical software lands
@@ -1302,44 +1336,52 @@ suppression cannot outlive the condition that justified it.
 
 \section{Determinism, governance, and defensibility}
 \begin{itemize}[leftmargin=1.4em]
-\item \textbf{Determinism.} Given the same (CVE vector, archetype, VER axes), the
-  method yields the same PAIN and deadline on every run and for every analyst.
-\item \textbf{Two human inputs only.} An asset needs exactly two tags
-  (\code{asset-archetype}, \code{multi-agency}); everything else is derived.
+\item \textbf{Determinism.} Given the same (CVE vector, effective
+  security-impact profile, VER axes), the method yields the same PAIN and deadline
+  on every run and for every analyst.
+\item \textbf{Governed asset inputs.} An asset needs an uncapped
+  security-impact profile and an affected-agency scope. The profile may be assigned
+  directly or resolved from governed metadata such as an archetype; the
+  intended-use ceiling is resolved separately.
 \item \textbf{Governed calibration.} The High-centered PAIN normalization, word
   thresholds (Eq.~\eqref{eq:word}), and EPSS threshold are governed parameters and
   \rfckw{must} live in governed configuration, not in ad-hoc cluster state.
 \item \textbf{Auditability.} Each finding can carry the full derivation: the
-  resolved archetype and its source, CR/IR/AR, $S$, the word, the scope, and the
-  selected matrix cell.
+  uncapped profile, its derivation method, source and rationale, the ceiling,
+  effective CR/IR/AR, $S$, the word, the scope, and the selected matrix cell.
 \end{itemize}
 
 \section{Security Considerations}
 \label{sec:seccon}
-The method trusts the archetype tags on each system: if someone mislabels a critical
-system as trivial, its flaws will look smaller than they really are. Its integrity
-therefore depends on the trustworthiness of two inputs --- the asset archetype tags
-and the VER axes (EPSS / KEV membership / reachability). Tag spoofing that
-\emph{lowers} an archetype is a downgrade attack; the fail-safe default and governed
-calibration mitigate accidental under-classification, but tag assignment
-\rfckw{should} be controlled like any other security setting. Archetypes narrow but
-do not eliminate this risk: a claimed role can be compared with architecture, data
-flows, identity permissions, and inventory, while a direct value label provides
-less evidence to check. Finally, the method does not detect vulnerabilities; it
-prioritizes the output of a scanner and inherits that scanner's coverage and accuracy.
+The method trusts each asset's resolved security-impact profile: if someone
+understates a critical component, its flaws will look smaller than they really are.
+Its integrity therefore depends on the trustworthiness of the profile derivation
+and the VER axes (EPSS / KEV membership / reachability). Any assignment or override
+that improperly \emph{lowers} a profile is a downgrade attack; the fail-safe default
+and governed calibration mitigate accidental under-classification, but profile
+inputs \rfckw{should} be controlled like any other security setting. Role-based
+archetypes can narrow but do not eliminate this risk: a claimed role can be compared
+with architecture, data flows, identity permissions, and inventory. Direct
+per-objective assignment can be equally defensible when it retains that evidence;
+a scalar value label ordinarily provides less to check. Finally, the method does
+not detect vulnerabilities; it prioritizes the output of a scanner and inherits
+that scanner's coverage and accuracy.
 
 \section{Conclusion}
 FedRAMP VDR/VER specifies the vocabulary and the axes of vulnerability
 prioritization but leaves the classifier unspecified. That classifier need not be
 invented: the CVSS Environmental metric group already encodes ``re-weight impact by
 what is at stake,'' which is precisely the agency-impact question. By assigning each
-asset its CR/IR/AR and evaluating the two VER axes, a provider obtains a
+asset an independently dimensional security-impact profile and evaluating the two
+VER axes, a provider obtains a
 deterministic, auditable, and standards-grounded PAIN and remediation deadline for
-every finding. We recommend role-based archetypes as the starting point because
-they record what an asset does and expose how its requirements were derived. A
-direct asset-value label remains a conforming fallback, but it records the
+every finding. A CSP may use direct per-objective assessment, a governed
+classification system, or another deterministic method. We recommend role-based
+archetypes as a strong starting point because they record what an asset does and
+expose how its requirements were derived. A scalar asset-value label remains a
+conforming fallback, but it forces CR/IR/AR to move together and records the
 conclusion with less evidence behind it. We offer the example archetype catalog not
-as a standard but as an existence proof; we encourage each CSP to publish its own.
+as a required taxonomy or standard but as one existence proof.
 
 A companion proposal, \emph{A Finer Exploitability Gradation (VLEV) for FedRAMP
 VDR/VER}, separately explores tightening the exploitability axis. It is kept out of
@@ -1349,9 +1391,12 @@ FedRAMP VDR/VER Disposition and Response}, specifies the machine-readable format
 for the disposition step of Section~\ref{sec:vex}.
 
 \appendix
-\section{Example archetype catalog}
+\section{Example archetype-to-profile catalog}
 \label{app:catalog}
-Illustrative only (see Section~\ref{sec:archetypes}).
+Illustrative only (see Section~\ref{sec:archetypes}). This catalog demonstrates one
+role-based way to derive asset security-impact profiles. A CSP may use it as a
+starting point, define a different taxonomy, assign the three objectives directly,
+or use another governed method.
 
 \begin{table}[H]
 \centering
@@ -1360,7 +1405,7 @@ Illustrative only (see Section~\ref{sec:archetypes}).
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{l l c c c >{\raggedright\arraybackslash}p{0.34\textwidth}}
 \toprule
-\textbf{Archetype} & \textbf{Lens} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Typical members} \\
+\textbf{Example archetype} & \textbf{Lens} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Typical members} \\
 \midrule
 \code{cicd-pipeline}      & control & H & H & H & build/deploy runners, artifact signing, registries \\
 \code{orchestrator}       & control & H & H & H & control plane, etcd, scheduler, coordination \\
@@ -1555,28 +1600,25 @@ on. Each item below names the value we use, why, and the fact that an implementa
   (most-specific wins); there is no automatic per-archetype escalation. (The
   tempting shortcut --- auto-escalating ``shared-infrastructure'' archetypes to
   multi-agency --- is rejected in favor of explicit, operator-controlled tagging.)\par\smallskip
-\item \textbf{``Archetype'', not ``type'' --- and archetype is an
-  implementation choice.} The formula ultimately requires only a per-asset
-  effective Security Requirements vector (\code{CR/IR/AR}); it does not require
-  \code{asset-archetype}, or any particular metadata key. Any governed metadata
-  label or classification scheme can supply the uncapped asset vector if each
-  supported value maps deterministically to a documented security-requirements
-  gradient. We
-  recommend \code{asset-archetype} because classifying assets by their \emph{role/usage
-  pattern}, rather than asking an owner to state their value directly, provides
-  more granularity and a clearer, auditable reasoning chain. The same software can
-  therefore land in different archetypes by how it is used (an in-memory store is \code{app-tier}
-  as a cache, \code{identity-secrets} as a session store, or
-  \code{data-backbone} as a broker). ``Type'' would wrongly suggest an intrinsic
-  property of the software and collides with overloaded terms (e.g.\ Kubernetes
-  Service \code{type}); ``archetype'' names the pattern an asset matches in the
-  estate. An adopter \rfckw{may} instead use another metadata vocabulary, provided
-  its mappings and defaults are governed and auditable; if it retains an archetype
-  taxonomy, the role-not-kind semantics should be preserved.
-\item \textbf{The intended-use ceiling is separate from the archetype.}
-  Equation~\eqref{eq:effective-requirement} caps the asset's role-based vector by
+\item \textbf{The profile is required; an archetype is optional.} The formula
+  ultimately requires a per-asset effective Security Requirements vector
+  (\code{CR/IR/AR}); the upstream asset security-impact profile may come from direct
+  per-objective assessment, an archetype catalog, or any governed classification
+  scheme that maps deterministically to independently representable CR/IR/AR.
+  No implementation is required to expose \code{asset-archetype} or any particular
+  metadata key. We recommend role-based archetypes as one strong derivation method
+  because they provide granularity and a clear, auditable evidence chain. The same
+  software can therefore land in different example archetypes by how it is used
+  (an in-memory store is \code{app-tier} as a cache,
+  \code{identity-secrets} as a session store, or \code{data-backbone} as a broker).
+  A scalar asset-value label is permitted as shorthand but should not be the only
+  interface because it collapses all objectives to one repeated value. If an
+  adopter retains an archetype taxonomy, the role-not-software-kind semantics
+  should be preserved.
+\item \textbf{The intended-use ceiling is separate from the asset profile.}
+  Equation~\eqref{eq:effective-requirement} caps the asset's system-relative profile by
   the confirmed, dimensional federal consequence of the affected agency scope.
-  This lets one CSO reuse an archetype catalog across agency deployments without
+  This lets one CSO reuse its profile derivation policy across agency deployments without
   pretending that agency information types are intrinsic properties of a
   component. The preferred derivation retains confirmed NIST SP~800-60 information
   types; the simpler \code{min(SSO, ASO)} vector form is a documented
@@ -1595,12 +1637,14 @@ on. Each item below names the value we use, why, and the fact that an implementa
   $C/I/A$, at the cost of ignoring Subsequent-System impact; while NVD remains
   v3.1-dominant, an implementation \rfckw{should} prefer the v3.1 vector when both
   are available.
-\item \textbf{The archetype catalog and its CR/IR/AR values
+\item \textbf{The example archetype-to-profile catalog and its CR/IR/AR values
   (Appendix~\ref{app:catalog}).} Illustrative only --- each CSP \rfckw{should} derive
-  its own from component roles and consequences inside its CSO architecture, then
-  apply the separately governed intended-use ceiling. A 3PAO \rfckw{may} take on the role of
-  validating these mappings during an assessment; however, the CSP remains 
-  ultimately responsible if an asset is undertagged, a vulnerability is not 
+  its security-impact profiles from component roles, trust, privilege,
+  dependencies, data handling, and consequences inside its CSO architecture, then
+  apply the separately governed intended-use ceiling. A 3PAO \rfckw{may} take on the
+  role of validating the derivation policy and assignments during an assessment;
+  however, the CSP remains ultimately responsible if an asset profile is
+  understated, a vulnerability is not
   remediated in time, and it is subsequently exploited (just as in the 
   commercial world).
 \item \textbf{The remediation deadline values (Appendix~\ref{app:matrix}) are
@@ -1611,63 +1655,6 @@ on. Each item below names the value we use, why, and the fact that an implementa
   FedRAMP. Listed here only to mark the boundary between what we chose and what the
   rule dictates.
 \end{enumerate}
-
-\section{Document version history}
-\label{app:history}
-This memo is a living document. Table~\ref{tab:history} tracks its version history.
-
-\begin{table}[H]
-\centering
-\small
-\renewcommand{\arraystretch}{1.05}
-\begin{tabular}{lll>{\raggedright\arraybackslash}p{0.55\textwidth}}
-\toprule
-\textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Summary of Changes} \\
-\midrule
-1.0 & June 28, 2026 & M. Venne & Initial publication. \\
-1.1 & June 29, 2026 & M. Venne & Various readability updates. \\
-1.2 & July 9, 2026 & M. Venne & Added the optional \code{asset-value} assignment
-  scheme as a simpler alternative to \code{asset-archetype}. \\
-1.3 & July 10, 2026 & M. Venne & Expanded the mathematical walkthrough of
-  Eqs.~\eqref{eq:u}--\eqref{eq:s} and delineated departures from standard CVSS
-  v3.1 scoring. \\
-1.4 & July 13, 2026 & M. Venne & Changed the recommended EPSS
-  Likely-Exploitable threshold from $0.70$ to $0.50$ and updated the worked
-  remediation examples. Clarified that the scoring formula requires a per-asset
-  Security Requirements vector, while \code{asset-archetype} is an optional,
-  granular metadata mapping chosen for its auditable rationale. \\
-1.5 & July 15, 2026 & M. Venne & Refined the direct-IRV
-  unauthenticated-automation floor to \code{AV:N/AC:L/PR:N/UI:N}, while retaining
-  EPSS at or above $0.50$ and CISA KEV membership as independent LEV predicates. \\
-1.6 & July 15, 2026 & M. Venne & Split the edge archetype: \code{public-edge}
-  now names the TLS-terminating L7 edge (CR:M/IR:M/AR:H); added
-  \code{passthrough-edge} (CR:L/IR:L/AR:H) for edges that never terminate.
-  Expanded the catalog commentary with the reasoning. \\
-1.7 & July 20, 2026 & M. Venne & Recommended role-based archetypes over direct
-  asset-value labels because they expose the factual and governed basis for
-  CR/IR/AR while retaining asset value as a conforming fallback. \\
-1.8 & July 21, 2026 & M. Venne & Made the evidence-backed, High-centered PAIN
-  normalization and derived word thresholds operative throughout the method,
-  worked examples, and sample scans; linked the calibration companion and retained
-  the initial values as historical context. \\
-1.9 & July 27, 2026 & M. Venne & Added the intended-use Security Requirements
-  ceiling as the explicit upstream input to PAIN. Separated reusable,
-  system-relative archetype requirements from agency-specific federal information
-  types; effective CR/IR/AR is now their per-objective minimum. \\
-2.0 & July 27, 2026 & M. Venne & Defined Certification Class as the provider's
-  operational assurance commitment rather than an impact ceiling. Clarified that
-  compound dimensional impact is a governed proxy for vulnerability breadth,
-  excluded CWE ID as a PAIN severity input, and documented how CSPs may govern and
-  disclose alternate threshold calibrations. \\
-2.1 & July 27, 2026 & M. Venne & Clarified why genuinely FIPS~199 Low or Moderate
-  systems cannot reach Debilitating under the reference calibration while
-  Class~C High-objective uses can. Added the Availability-specific design,
-  recovery, and contract assurance case for AR:H use below Class~D. \\
-\bottomrule
-\end{tabular}
-\caption{Document version history.}
-\label{tab:history}
-\end{table}
 
 \section*{Acknowledgements}
 \addcontentsline{toc}{section}{Acknowledgements}
