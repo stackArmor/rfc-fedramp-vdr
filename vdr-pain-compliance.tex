@@ -133,7 +133,8 @@ and \rfckw{may} are to be interpreted as described in RFC~2119.
 \item[Customer effect] The FedRAMP effect word a finding lands on: Minimal, Narrow,
   Disruptive, or Debilitating.
 \item[CR/IR/AR] The CVSS Environmental Confidentiality / Integrity / Availability
-  \emph{Requirements} of the affected asset; the asset band summarizes them.
+  \emph{Requirements} of the affected asset after the intended-use ceiling is
+  applied; the profile-derived band summarizes them for this addendum.
 \item[LEV / IRV] Likely Exploitable / Internet-Reachable Vulnerability, the two VER
   axes that select the remediation column.
 \item[Internet-exercisable] This method's operational test for whether an
@@ -186,10 +187,12 @@ must work from a Pass/Fail and a category name, respect a governed severity when
 genuinely exists, and never invent one where none does.
 
 Two design commitments follow, and both are load-bearing. First, the method reuses
-the asset metadata the CVE method already requires --- the affected asset's CR/IR/AR
-(or an archetype that resolves to them), its multi-agency scope, and the offering's
-Certification Class --- and asks for no benchmark-specific metadata that ordinary
-scanners and inventory do not already provide. The only governed artifacts it adds
+the asset metadata the CVE method already requires --- the affected asset's
+independently dimensional security-impact profile, its multi-agency scope, and the
+offering's Certification Class --- and asks for no benchmark-specific metadata that
+ordinary scanners and inventory do not already provide. The profile may be assigned
+directly or derived from an archetype or another governed mapping. The only
+governed artifacts this addendum adds
 are a severity source registry and a small per-benchmark determination table, both
 described below. Second, exploitability and reachability stay on the axes FedRAMP
 built for them: they select the remediation \emph{column}, never the PAIN level. A
@@ -249,16 +252,16 @@ calculation against that changed condition; it does not rewrite the pre-mitigati
 score. Noise and exceptions are resolved one finding at a time against evidence,
 while the scoring method remains deterministic.
 
-\section{The asset-value band}
+\section{The profile-derived asset band}
 \label{sec:band}
 \begin{plain}
 The same weakness matters more on a crown-jewel system than on a scratch sandbox, so
-the first thing the method needs is a sense of how much the affected asset is worth.
-It reuses the CVE method's answer exactly: each asset already carries three
-criticality dials --- for secrecy, correctness, and uptime. We collapse those three
-into one word --- High, Medium, or Low --- and that word is the asset half of the
-score. If an asset has never been classified, it is treated as top-value until
-someone proves otherwise.
+the first thing the method needs is the affected asset's security-impact profile.
+It reuses the CVE method's answer exactly: each asset carries separate requirements
+for secrecy, correctness, and uptime. This addendum projects those three values into
+one High, Medium, or Low band for its benchmark-finding matrix. The projection is
+one-way: it never replaces the underlying vector. If an asset has never been
+classified, it is treated as High-band until someone proves otherwise.
 \end{plain}
 
 The affected asset's Security Requirements (CR, IR, AR) are the CVSS Environmental
@@ -284,13 +287,14 @@ Low and none is High; \textbf{Medium} in every other case. A single Low requirem
 demotes two Highs to Medium --- \code{HHL} is Medium, not High.
 \end{definitionbox}
 
-Mixed vectors like \code{HHL} are uncommon in practice. The three requirements tend
-to correlate --- an asset with genuinely High confidentiality and integrity but Low
-availability requirements is unusual --- so the demotion is a mathematical property of
-the mean rather than an expected operational case. Where a real asset is genuinely
-served poorly by the banding, direct CR/IR/AR assignment and affected-resource
-substitution (below) cover it: the band is a convenience for the common, correlated
-case, not the only path to a score.
+Mixed vectors like \code{HHL} are valid and must remain representable even when
+they are uncommon in a particular estate. This addendum uses the band only because
+benchmark findings ordinarily lack the C/I/A technical-impact vector needed for
+objective-by-objective alignment. A conforming implementation \rfckw{must} retain
+the independent CR/IR/AR profile, \rfckw{must not} reconstruct or overwrite that
+profile from the band, and \rfckw{should} expose the projection in its audit record.
+Direct per-objective assignment remains fully supported upstream; the band is a
+lossy convenience for this matrix, not an asset-classification system.
 
 Missing or unresolved asset metadata resolves to \code{HHH}${}\rightarrow{}$High.
 Asset classification is provider-controlled, so its absence fails safe and loud: an
@@ -299,10 +303,10 @@ classification rather than hiding. This is the same fail-safe doctrine the CVE m
 applies; the addendum inherits it unchanged.
 
 \paragraph{Affected-resource substitution.} A benchmark finding is often detected at
-one resource but really endangers a higher-value one. A finding that reasonably
-affects a higher-value dependent resource, an administrative plane, a shared
-credential store, backup or logging infrastructure with reach into higher-value
-assets, or a control plane is evaluated \emph{against that higher-value resource},
+one resource but really endangers a higher-band one. A finding that reasonably
+affects a higher-band dependent resource, an administrative plane, a shared
+credential store, backup or logging infrastructure with reach into higher-band
+assets, or a control plane is evaluated \emph{against that higher-band resource},
 not against the point of detection. Substitution is governed by that named trigger
 list so it is not an open-ended judgment. It carries a firm audit obligation: every
 substitution records the substituted resource and the rationale, and the decision is
@@ -403,13 +407,14 @@ genuinely under-claimed at its default grade, and now escalable on evidence.
 \section{Customer effect and PAIN}
 \label{sec:pain}
 \begin{plain}
-Now the two halves meet. The grade (how serious the check is) and the asset band (how
-much the system is worth) combine in a small lookup table to produce a plain-English
-effect word. That word, together with whether the system serves one agency or several,
-selects the N-level. The asset is a ceiling: a serious check on a throwaway box cannot
-climb higher than the box can support. And one boundary is drawn on purpose --- the
-line between an ``incident'' and ``maintenance'' sits exactly where it does to keep the
-routine flood out of the incident lane.
+Now the two halves meet. The grade (how serious the check is) and the
+profile-derived asset band (the aggregate strength of the asset's three
+requirements) combine in a small lookup table to produce a plain-English effect
+word. That word, together with whether the system serves one agency or several,
+selects the N-level. The band is a ceiling: a serious check on a low-requirement box
+cannot climb higher than the asset can support. And one boundary is drawn on
+purpose --- the line between an ``incident'' and ``maintenance'' sits exactly where
+it does to keep the routine flood out of the incident lane.
 \end{plain}
 
 The grade and the asset band select a customer-effect word:
@@ -493,7 +498,7 @@ scope.
 
 Second, \textbf{the Moderate/High cell is a disclosed calibration knob.} It reads
 Narrow, not Disruptive. The alternative --- Disruptive --- would put every CAT~II and
-every raw CIS \code{Fail} on a high-value multi-agency asset at N4, which is
+every raw CIS \code{Fail} on a High-band multi-agency asset at N4, which is
 incident-class in Class~D. That is precisely the flood this design exists to prevent,
 so the knob is set to Narrow deliberately and disclosed here rather than buried. The
 choice has a named residual risk, and the method owns it rather than papering over it:
@@ -564,7 +569,7 @@ applies to severity sources: it must be evidence-backed, and its logic for align
 the metric to the LEV/NLEV columns must be documented, versioned, and disclosed for
 assessor review. One qualification is doing real work in that sentence: the metric
 must actually measure \emph{exploit likelihood}. A score that is a function of
-internet reachability and asset value re-derives the two inputs this method already
+internet reachability and the profile-derived asset band re-derives the two inputs this method already
 computes deterministically, and adopting one substitutes an opaque restatement for
 the determination table without adding the missing ingredient. The metric value
 emitted at evaluation time is captured in the audit record as an input, so the column
@@ -741,7 +746,7 @@ the CVE memo's appendix. The complete N5--N2 matrix lives there and is not dupli
 \label{tab:n2row}
 \end{table}
 
-The anchor case ties the whole chain together. A CAT~II on a medium-value,
+The anchor case ties the whole chain together. A CAT~II on a Medium-band,
 internet-exercisable host is Moderate${}\times{}$Medium${}\rightarrow{}$Narrow
 ${}\rightarrow{}$N2, LEV+IRV, which is \textbf{24 days in Class~D} (48 in Class~C, 96
 in Classes~A/B) --- and 192 days if it were not exercisable. Exercisability moved the
@@ -753,10 +758,11 @@ mistaken for the strategy. Compliance findings overwhelmingly open at build and 
 time, not part-way through operations and maintenance: a bucket is created public, a
 firewall is opened, a role is over-granted. The practical lever for N4/N5 volume is
 therefore \emph{pre-deployment} --- infrastructure-as-code and policy analysis that
-evaluates the same two inputs this method needs (asset archetype $\times$ finding
-category) before the resource exists. A public bucket is an acceptable pattern in some
-designs; a public bucket bound to a data-sensitive archetype is precisely the thing to
-block at deploy time rather than remediate on a 12-hour clock afterward. The timeframe
+evaluates the same two inputs this method needs (asset security-impact profile
+$\times$ finding category) before the resource exists. A public bucket is an
+acceptable pattern in some designs; a public bucket with a High-band data profile
+is precisely the thing to block at deploy time rather than remediate on a 12-hour
+clock afterward. The timeframe
 matrix runs from completed evaluation and governs what escapes into production;
 prevention is what keeps the incident-class population near zero in the first place.
 The back-test that follows should be read in that light --- a small fast-clock count
@@ -773,12 +779,13 @@ every input and every judgment call, including the ones where the method chose
 \end{plain}
 
 Every output is reproducible from a single record. It captures: the benchmark and
-version; the rule or category identifier and the scanner result; the affected asset
-and its resolved archetype; the affected-resource substitution and rationale when
+version; the rule or category identifier and the scanner result; the affected asset,
+its uncapped security-impact profile, and the profile's derivation method, source,
+and rationale; the affected-resource substitution and rationale when
 applied, \emph{and} the substitution decision and basis when declined; the CR/IR/AR
 and derived band; the agency scope, with a ``defaulted'' marker if it was unknown; a
 tenancy basis (agencies served, plus evidence) for any single-agency assertion on a
-shared-service archetype; the severity and its provenance (the grade and why the
+shared-service asset; the severity and its provenance (the grade and why the
 source is governed or unscored); the customer effect and PAIN; the exercisability
 determination together with the determination-table content hash and the enumerated
 provider delta; an enforced-state evidence pointer for any affirmative
@@ -820,7 +827,7 @@ word.
 \paragraph{Example 2 --- public bucket (\cat{PUBLIC_BUCKET_ACL}).} Exposure-class in
 the determination table (matched on the \code{PUBLIC} token by the generator)
 ${}\rightarrow{}$ \textbf{LEV+IRV}. Governed SCC severity
-High ${}\rightarrow{}$ Major; on a High-value multi-agency data archetype the effect
+High ${}\rightarrow{}$ Major; on a High-band multi-agency data asset the effect
 is Debilitating ${}\rightarrow{}$ \textbf{N5} ${}\rightarrow{}$ \textbf{12 hours in
 Class~D}. That is an incident, and the method calls it one.
 
@@ -853,7 +860,7 @@ finding-by-finding.
 The real test of a calibration is whether it floods the incident queue on a genuine
 scan. It does not. Run against a real, sanitized CIS Google Cloud scan of nearly
 fourteen hundred findings --- and under the harshest asset assumption, treating every
-asset as top-value --- only fourteen findings land on a fast clock, and the incident
+asset as High-band --- only fourteen findings land on a fast clock, and the incident
 lane stays essentially empty. The bulk sits at the low, slow end, which is exactly
 where routine hardening gaps belong.
 \end{plain}
@@ -911,6 +918,13 @@ substitute for a full exploitability analysis, and it is never presented as one.
 The method's approximations are disclosed, not hidden:
 
 \begin{itemize}[leftmargin=1.4em,topsep=3pt]
+\item \textbf{The profile-derived band is intentionally lossy.} Benchmark findings
+  ordinarily do not carry a C/I/A technical-impact vector, so this addendum cannot
+  align a failed check independently to CR, IR, and AR as the CVE method does. The
+  band preserves a deterministic aggregate for the lookup matrix, but mixed
+  profiles can be represented imperfectly. The full profile remains authoritative
+  and the band must never overwrite it; a future finding format with dimensional
+  impact metadata could remove this approximation.
 \item \textbf{It over-prioritizes some non-exercisable findings on exposed surfaces.}
   The host proxy rides the admin-plane bit for the whole host, so a bastion's entire
   CAT~II set can ride LEV+IRV even though most of those findings are not individually

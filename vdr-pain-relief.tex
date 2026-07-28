@@ -90,10 +90,11 @@ read-only filesystems, and enforced runtime protection is measurably harder to
 harm than one that does not. Yet a raw scan scores an identical CVE identically
 on both. If secure configuration changes no number a provider must report, it is
 all cost and no credit, and the rational provider treats hardening as a burden.
-The PAIN method already refuses that outcome for one input --- asset criticality,
-through the CVSS Environmental requirements --- by re-weighting a vulnerability's
-impact by what is at stake on the specific asset. PAIN Relief extends the same
-principle from \emph{what the asset is} to \emph{what protects it}.
+The PAIN method already refuses that outcome for one input --- the asset's
+security-impact profile, expressed through the CVSS Environmental requirements ---
+by re-weighting a vulnerability's impact by what is at stake on the specific asset.
+PAIN Relief extends the same principle from \emph{what the asset requires} to
+\emph{what protects it}.
 
 \begin{plain}
 A scanner scores a flaw as if every system running it were equally exposed. Two
@@ -251,7 +252,8 @@ Edge auth (remote-access)  & (any)             & likelihood & defeats \code{FRD-
 \end{tabular}
 \caption{Illustrative PAIN Relief rows. The maintained catalog is proprietary and
 provider-governed; this sample is an existence proof, not a standard --- exactly
-the posture of the archetype catalog in the companion memo. Every applied credit
+the posture of the example archetype-to-profile catalog in the companion memo.
+Every applied credit
 ships its row identifier, rationale, and the catalog version in the finding's
 evidence.}
 \label{tab:catalog}

@@ -104,7 +104,7 @@ The operational method asks four questions.
 
 \item \textbf{Does the component receive internet-derived content, and is the
   trigger currently prevented?}
-  A coarse component archetype can answer the first half. Current assessment,
+  A coarse component class can answer the first half. Current assessment,
   DAST, remediation, and retest evidence can support the second half for the
   trigger or input-control classes they actually cover.
 
@@ -253,7 +253,7 @@ Log4Shell is the useful pattern. Before the trigger was understood, ordinary
 scanner output and web testing did not say that a string written to a log could
 activate a private library. Once the mechanism became known, the CVE-level
 indirect-trigger status could be promoted across every affected deployment
-archetype that received attacker-controlled log content.
+class that received attacker-controlled log content.
 
 That promotion is why trigger metadata belongs upstream. Research it once,
 publish it with provenance, and let every scanner and vulnerability-management

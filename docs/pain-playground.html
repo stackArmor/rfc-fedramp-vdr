@@ -21,10 +21,13 @@
   button{font-family:inherit}
 
   header{padding:24px clamp(18px,3vw,40px) 18px;border-bottom:1px solid var(--line)}
+  .header-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,520px);
+    gap:clamp(28px,5vw,76px);align-items:start;max-width:1360px;margin:0 auto}
+  .header-copy{min-width:0}
   .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
   header h1{font-size:clamp(21px,2.4vw,28px);font-weight:680;margin-top:4px;letter-spacing:-.02em}
   header p.sub{color:var(--muted);margin-top:4px;max-width:70ch;font-size:13.5px}
-  .examples{margin-top:14px;max-width:980px}
+  .examples{margin-top:14px}
   .examples summary{display:inline-flex;align-items:center;gap:8px;color:var(--ink);cursor:pointer;font-size:12.5px;
     padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
   .examples summary::marker{color:var(--accent)}
@@ -35,6 +38,9 @@
     padding:4px 11px;font-size:12px;cursor:pointer}
   .preset:hover{border-color:var(--accent-dim)}
   .preset .pn{color:var(--accent);font-family:var(--mono);font-size:10px;margin-right:4px}
+  @media(max-width:980px){
+    .header-grid{grid-template-columns:1fr;gap:18px}
+  }
 
   /* stepper */
   .stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 clamp(12px,3vw,40px);
@@ -148,6 +154,13 @@
   .req-H{color:#f2b8b0;background:rgba(192,57,43,.16);border-color:rgba(192,57,43,.5)}
   .req-M{color:#f7e6a2;background:rgba(241,196,15,.12);border-color:rgba(241,196,15,.4)}
   .req-L{color:#b4e6c8;background:rgba(39,174,96,.14);border-color:rgba(39,174,96,.45)}
+  .system-context{border:1px solid var(--accent-dim);border-radius:9px;padding:12px 13px 13px;
+    margin:0;min-width:0;background:rgba(217,164,65,.055)}
+  .system-context legend{padding:0 5px;color:var(--accent);font-family:var(--mono);
+    font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+  .system-context p{font-size:11.5px;color:var(--muted);margin:0 0 9px}
+  .system-context .context-link{display:block;margin-top:8px;color:var(--faint);font-size:10.5px}
+  .system-context .context-link a{color:var(--accent)}
 
   .cwe-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .cwechip{font-family:var(--mono);font-size:12px;padding:3px 9px;border-radius:5px;
@@ -329,13 +342,28 @@
 <body>
 
 <header>
-  <div class="eyebrow">FedRAMP VDR/VER &middot; CVSS-Environmental method</div>
-  <h1>PAIN &amp; Remediation Playground</h1>
-  <p class="sub">Four guided steps turn a CVE into a defensible PAIN level and remediation deadline. Your result updates as you go.</p>
-  <details class="examples">
-    <summary>Try a worked example <span>7 scenarios</span></summary>
-    <div class="presets" id="presets"></div>
-  </details>
+  <div class="header-grid">
+    <div class="header-copy">
+      <div class="eyebrow">FedRAMP VDR/VER &middot; CVSS-Environmental method</div>
+      <h1>PAIN &amp; Remediation Playground</h1>
+      <p class="sub">Four guided steps turn a CVE into a defensible PAIN level and remediation deadline. Your result updates as you go.</p>
+      <details class="examples">
+        <summary>Try a worked example <span>8 scenarios</span></summary>
+        <div class="presets" id="presets"></div>
+      </details>
+    </div>
+
+    <fieldset class="system-context">
+      <legend>System context</legend>
+      <p>Security-requirements ceiling from the agency-authorized, intended information types. Keep the full C/I/A vector; do not copy the overall FIPS 199 high-water mark into every dimension.</p>
+      <div class="triple" aria-label="System security-requirements ceiling">
+        <div class="cell"><label for="eCR"><b>Confidentiality</b> <span class="sym">C ceiling</span></label><select id="eCR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="eIR"><b>Integrity</b> <span class="sym">I ceiling</span></label><select id="eIR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="eAR"><b>Availability</b> <span class="sym">A ceiling</span></label><select id="eAR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+      </div>
+      <span class="context-link">One input for the assessment. <a href="vdr-pain-security-requirements.pdf">How to derive it</a>.</span>
+    </fieldset>
+  </div>
 </header>
 
 <nav class="stepper" id="stepper" aria-label="Assessment progress">
@@ -403,9 +431,9 @@
     <!-- STEP 2: the asset -->
     <section class="wstep" data-step="2" aria-labelledby="step2Title">
       <h2 id="step2Title" tabindex="-1">Where does it live?</h2>
-      <p class="lead">Choose the affected system&rsquo;s role. This sets how much it depends on secrecy, correctness, and uptime.</p>
+      <p class="lead">Resolve the affected asset&rsquo;s security-impact profile. This demo uses an illustrative role catalog; CSPs may instead assign CR/IR/AR directly or use another governed mapping. The reusable profile is capped by the System Context ceiling.</p>
 
-      <label class="fld" for="archetype">Role of the affected system <span class="tipicon" tabindex="0" data-tip="Each role carries pre-assigned Security Requirements (CR/IR/AR: Low = 0.5&times;, Medium = 1&times;, High = 1.5&times;). The catalog is the memo&rsquo;s worked example — each provider should derive its own from its system categorization. Untagged assets deliberately default to all-High so they score loudly.">?</span></label>
+      <label class="fld" for="archetype">Example role or custom profile <span class="tipicon" tabindex="0" data-tip="The example roles map to reusable, system-relative Security Requirements (CR/IR/AR: Low = 0.5&times;, Medium = 1&times;, High = 1.5&times;). The taxonomy is optional; the independently dimensional profile is the input. Unresolved assets default to all-High before the system ceiling is applied.">?</span></label>
       <select id="archetype"></select>
       <div class="reqchips" id="reqChips"></div>
       <div class="triple" id="customReqRow" style="display:none;margin-top:10px">
@@ -526,7 +554,7 @@
 </main>
 
 <footer>
-  <p>Built on <i>A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization</i>, its <i>High-Centered PAIN Calibration</i>, and <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog mirrors the governed VDR policy and remains provider policy, not a FedRAMP standard.</p>
+  <p>Built on <i>A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization</i>, its <i>High-Centered PAIN Calibration</i>, and <i>Internet Reachability at Scale under the FedRAMP VDR/VER Rules</i> (M. Venne, stackArmor, July 2026). Remediation day counts are FedRAMP&rsquo;s verbatim VDR-TFR-PVR values. Bundled CVE data are demo snapshots; &ldquo;Look up&rdquo; fetches live NVD + EPSS data. The role catalog is an illustrative way to derive asset security-impact profiles; it remains provider policy, not a required taxonomy or FedRAMP standard.</p>
 </footer>
 
 <script>
@@ -598,23 +626,27 @@ const CVE_LIB = [
   {id:'CVE-2017-5638',  name:'Struts2 Content-Type OGNL RCE',      v:'AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', cwes:['CWE-20'],            kev:true,  epss:0.97},
 ];
 
-/* Presets = the memo's worked examples. */
+/* Presets = the paper's worked examples plus companion policy scenarios. */
 const PRESETS = [
   {n:'Ex 1', label:'Log4Shell on a crown-jewel datastore',
    s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
-      arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
+      eCR:'H',eIR:'H',eAR:'H', arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
       exposed:true, gate3:false, j:'confirmed', c0:true, p0:false, mitC:false,mitI:false,mitA:false}},
-  {n:'Ex 2', label:'Same CVE on a dev sandbox',
+  {n:'Ex 2', label:'Same datastore under an M/M/M ceiling',
    s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
-      arch:'dev-test', m:false, cls:'C', epss:0.97, kev:true,
+      eCR:'M',eIR:'M',eAR:'M', arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
+      exposed:true, gate3:false, j:'confirmed', c0:true, p0:false, mitC:false,mitI:false,mitA:false}},
+  {n:'Ex 3', label:'Same CVE on a dev sandbox',
+   s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
+      eCR:'M',eIR:'M',eAR:'M', arch:'dev-test', m:false, cls:'C', epss:0.97, kev:true,
       exposed:false, gate3:false, j:'confirmed', c0:false, p0:false, mitC:false,mitI:false,mitA:false}},
-  {n:'Ex 3', label:'Parser DoS on the message backbone',
+  {n:'Ex 4', label:'Parser DoS on the message backbone',
    s:{cve:'CVE-2022-42003', C:'N',I:'N',A:'H', AV:'N',PR:'N',UI:'N', AC:'H', SC:'U', cwes:['CWE-502'],
-      arch:'data-backbone', m:false, cls:'C', epss:0.76, kev:false,
+      eCR:'M',eIR:'M',eAR:'H', arch:'data-backbone', m:false, cls:'C', epss:0.76, kev:false,
       exposed:false, gate3:false, j:'confirmed', c0:false, p0:false, mitC:false,mitI:false,mitA:false}},
-  {n:'Ex 4', label:'Info leak on metadata-only DNS',
+  {n:'Ex 5', label:'Info leak on metadata-only DNS',
    s:{cve:'CVE-2019-12415', C:'H',I:'N',A:'N', AV:'L',PR:'N',UI:'N', AC:'L', SC:'U', cwes:['CWE-611'],
-      arch:'platform-foundation', m:false, cls:'C', epss:0.08, kev:false,
+      eCR:'M',eIR:'M',eAR:'M', arch:'platform-foundation', m:false, cls:'C', epss:0.08, kev:false,
       exposed:false, gate3:false, j:'unknown', c0:false, p0:false, mitC:false,mitI:false,mitA:false}},
   {n:'FRD-IRV', label:'SQLi reaching a private datastore',
    s:{cve:'CVE-2023-34362', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'U', cwes:['CWE-89'],
@@ -635,6 +667,7 @@ const state = {
   step:1, ready:false, sourceLabel:'',
   cve:'', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'U',
   cwes:[], cveName:'', kevDue:null, cvssVer:'3.1',
+  eCR:'H',eIR:'H',eAR:'H',
   arch:'unclassified', cCR:'H',cIR:'H',cAR:'H', m:false, cls:'C',
   epss:0.30, kev:false,
   exposed:false, gate3:false, j:'unknown', c0:false, p0:false,
@@ -644,10 +677,23 @@ const state = {
 const INITIAL_STATE = JSON.parse(JSON.stringify(state));
 
 /* ============================== engine (High-centered PAIN calibration) ============================== */
-function requirements(){
+const LEVEL_RANK = {L:1,M:2,H:3};
+function archetypeRequirements(){
   if (state.arch==='custom') return {cr:state.cCR, ir:state.cIR, ar:state.cAR};
   const a = ARCHETYPES.find(x=>x.id===state.arch) || ARCHETYPES.find(x=>x.id==='unclassified');
   return {cr:a.cr, ir:a.ir, ar:a.ar};
+}
+function requirements(){
+  const archetype = archetypeRequirements();
+  const ceiling = {cr:state.eCR, ir:state.eIR, ar:state.eAR};
+  const cap = (value, limit) => LEVEL_RANK[value] <= LEVEL_RANK[limit] ? value : limit;
+  return {
+    cr:cap(archetype.cr,ceiling.cr),
+    ir:cap(archetype.ir,ceiling.ir),
+    ar:cap(archetype.ar,ceiling.ar),
+    archetype,
+    ceiling,
+  };
 }
 function compute(){
   const req = requirements();
@@ -683,7 +729,7 @@ function compute(){
   const col = lev ? (irv ? 0 : 1) : 2;
   const deadline = pain==='N1' ? null : MATRIX[state.cls][pain][col];
   const seedHits = state.cwes.filter(c=>SEED_CWES[c]);
-  return {req, cr,ir,ar, baseC,baseI,baseA, effC,effI,effA, mitCok,mitIok,mitAok,
+  return {req, archetypeReq:req.archetype, ceiling:req.ceiling, cr,ir,ar, baseC,baseI,baseA, effC,effI,effA, mitCok,mitIok,mitAok,
           pC,pI,pA, raw, cvssMiss, aboveCvssCap, S, word, pain,
           avDirectOk, D, indirect, irv, floor, byEpss, lev, col, deadline, seedHits};
 }
@@ -865,7 +911,13 @@ function stepPanel2(r){
       '<span class="track"><span class="fill" style="width:'+pct+'%;background:'+color+'"></span></span>'+
       '<span class="vv">'+trim0(prod)+'</span></div>';
   }).join('');
-  return (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe default</span>Untagged assets count as needing everything at High until someone classifies them.</div>' : '')
+  const vector = q => q.cr+'/'+q.ir+'/'+q.ar;
+  const capped = vector(r.archetypeReq)!==vector(r.req);
+  return (state.arch==='unclassified' ? '<div class="callout warn"><span class="ct">Fail-safe profile</span>Unresolved assets begin at H/H/H. The evidenced system ceiling still applies.</div>' : '')
+  + '<div class="callout note"><span class="ct">Effective requirements</span>'
+  + 'Uncapped profile <b>'+vector(r.archetypeReq)+'</b> &rarr; system ceiling <b>'+vector(r.ceiling)+'</b> &rarr; effective <b>'+vector(r.req)+'</b>. '
+  + (capped?'At least one asset requirement is capped before PAIN is calculated.':'The ceiling does not reduce this profile.')
+  + '</div>'
   + '<div class="card"><div class="head"><h3>Damage on <i>this</i> asset</h3><span class="cite">'+esc(state.arch)+'</span></div><div class="body">'
   + rows
   + '<div style="margin-top:14px;font-size:13px;color:var(--muted)">Combined impact scalar: <b style="color:var(--ink);font-family:var(--mono)">'+f3(r.S)+'</b> of 1.000'+(r.aboveCvssCap?' <span style="color:var(--accent)">(impact above CVSS&rsquo;s 0.915 MISS cap retained for PAIN)</span>':'')+' &rarr; <span class="badge word-'+r.word+'">'+r.word+'</span></div>'
@@ -925,6 +977,9 @@ function stepPanel5(r){
   const math =
     '<details class="math"><summary>Show the revised PAIN calibration math</summary><div class="inner"><div class="eq">'+
     '<div><span class="lbl">weights</span> C/I/A: None=0, Low=0.22, High=0.56 &nbsp; CR/IR/AR: L=0.5, M=1.0, H=1.5</div>'+
+    '<div><span class="lbl">requirements</span> profile '+r.archetypeReq.cr+'/'+r.archetypeReq.ir+'/'+r.archetypeReq.ar+
+    ' &cap; ceiling '+r.ceiling.cr+'/'+r.ceiling.ir+'/'+r.ceiling.ar+
+    ' = effective <span class="res">'+r.req.cr+'/'+r.req.ir+'/'+r.req.ar+'</span></div>'+
     dimRow('C&middot;CR', r.baseC, r.effC, r.mitCok, r.cr, r.pC)+
     dimRow('I&middot;IR', r.baseI, r.effI, r.mitIok, r.ir, r.pI)+
     dimRow('A&middot;AR', r.baseA, r.effA, r.mitAok, r.ar, r.pA)+
@@ -997,7 +1052,7 @@ function syncControls(r){
     (state.cvssVer==='4.0(mapped)'?' <span style="color:var(--high)">(v4.0 mapped onto v3.1 impacts per the memo)</span>':'');
   const req = r ? r.req : requirements();
   $('reqChips').innerHTML =
-    '<span style="font-size:12px;color:var(--faint)">Security Requirements:</span>'+
+    '<span style="font-size:12px;color:var(--faint)">Effective Requirements:</span>'+
     '<span class="reqchip req-'+req.cr+'">CR: '+REQ_WORD[req.cr]+'</span>'+
     '<span class="reqchip req-'+req.ir+'">IR: '+REQ_WORD[req.ir]+'</span>'+
     '<span class="reqchip req-'+req.ar+'">AR: '+REQ_WORD[req.ar]+'</span>';
@@ -1123,6 +1178,7 @@ function resetAssessment(){
   $('cveInput').focus();
 }
 function writeControls(){
+  $('eCR').value=state.eCR; $('eIR').value=state.eIR; $('eAR').value=state.eAR;
   $('mC').value=state.C; $('mI').value=state.I; $('mA').value=state.A;
   $('mAV').value=state.AV; $('mAC').value=state.AC; $('mPR').value=state.PR; $('mUI').value=state.UI;
   $('archetype').value=state.arch;
@@ -1169,6 +1225,7 @@ function wire(){
   });
   bind('mC','C'); bind('mI','I'); bind('mA','A');
   bind('mAV','AV'); bind('mAC','AC'); bind('mPR','PR'); bind('mUI','UI');
+  bind('eCR','eCR'); bind('eIR','eIR'); bind('eAR','eAR');
   bind('archetype','arch'); bind('cCR','cCR'); bind('cIR','cIR'); bind('cAR','cAR');
   bind('multiAgency','m','check');
   bind('epss','epss','num'); bind('kev','kev','check');
@@ -1233,6 +1290,7 @@ function applyPreset(p){
   state.cve=s.cve; state.cveName = lib?lib.name:''; state.cvssVer='3.1';
   state.C=s.C; state.I=s.I; state.A=s.A; state.AV=s.AV; state.PR=s.PR; state.UI=s.UI;
   state.AC=s.AC; state.SC=s.SC;
+  state.eCR=s.eCR||'H'; state.eIR=s.eIR||'H'; state.eAR=s.eAR||'H';
   state.cwes=s.cwes.slice(); state.arch=s.arch; state.m=s.m; state.cls=s.cls;
   state.epss=s.epss; state.kev=s.kev; state.kevDue=null;
   state.exposed=s.exposed; state.gate3=s.gate3; state.j=s.j; state.c0=s.c0; state.p0=s.p0;

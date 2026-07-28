@@ -23,6 +23,7 @@
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\rfckw}[1]{\textsc{#1}}
 \newcommand{\origpaper}{\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}{the initial PAIN publication}}
+\newcommand{\ceilingpaper}{\href{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf}{\emph{Before the PAIN Equation}}}
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 
@@ -57,7 +58,7 @@
 High-Centered Normalization and\\
 Standards-Anchored Thresholds}
 \author{Matthew Venne \\ \small Chief Technology Officer, stackArmor}
-\date{July 2026\\\small Version 1.0}
+\date{July 2026}
 
 \begin{document}
 \maketitle
@@ -95,7 +96,11 @@ lowest possible compound catastrophic combination ($0.933423$). Exhaustive testi
 of all 729 discrete impact/requirement combinations and backtesting against two
 anonymized evaluation datasets support the result. All three boundaries are therefore
 anchored to stated consequence scenarios and empirically tested, not fitted to a
-desired histogram.
+desired histogram. The compound condition is a transparent proxy for the breadth of
+the vulnerability's potential effect, not a CWE-based vulnerability classifier.
+The resulting thresholds are the reference calibration used by this method; another
+CSP may adopt different governed values after defining its semantics, re-enumerating
+the state space, validating the consequences, and disclosing the policy version.
 \end{abstract}
 
 \tableofcontents
@@ -122,9 +127,13 @@ likely-exploitable logic, internet-reachability logic, multi-agency handling, VE
 dispositions, and evidence-gated Modified impact reductions remain outside its
 scope.
 
-The governed asset-archetype catalog is also an external input to this calibration.
-This paper does not define or revise archetype CR/IR/AR assignments; it holds the
-adopted catalog constant while comparing scoring methods.
+The governed asset security-impact profile and any intended-use Security
+Requirements ceiling are also external inputs to this calibration. This paper does
+not derive either input. It holds the effective CR/IR/AR vector constant while
+comparing scoring methods. \ceilingpaper{} specifies the upstream derivation that
+caps a system-relative profile---whether derived from an archetype, direct
+per-objective assessment, or another governed method---by the confirmed federal
+information types in the affected agency scope.
 
 \begin{plain}
 The original model asked the right question but used the wrong ruler at the top of
@@ -193,29 +202,30 @@ The review applied five criteria before accepting a change:
 \item \textbf{Preserve CVSS-derived inputs.} The official $0.56/0.22/0$ impact
   weights, $1.5/1.0/0.5$ Security Requirement weights, and complement-product form
   should remain unless evidence demonstrates that a particular input is unsuitable.
-\item \textbf{Keep tagging usable.} A regular operator should select an asset's role
-  from a short governed catalog without navigating a cross-product of profiles,
-  lenses, deployment modes, and impact exceptions.
+\item \textbf{Keep profile assignment usable.} A regular operator should resolve an
+  asset's independently dimensional profile through a manageable governed workflow
+  without navigating a cross-product of roles, modifiers, deployment modes, and
+  impact exceptions.
 \item \textbf{Preserve dimensional information.} Low impacts, Moderate requirements,
   and accumulation across C/I/A should continue to affect the scalar rather than
   disappear behind a boolean count.
 \item \textbf{Remain deterministic and auditable.} Given the same effective impact
-  vector and archetype, every implementation must produce the same result, retain
-  full-precision intermediate values, and expose the policy version.
+  vector and effective CR/IR/AR profile, every implementation must produce the same
+  result, retain full-precision intermediate values, and expose the policy version.
 \end{enumerate}
 
 \section{Alternatives evaluated}
 \label{sec:alternatives}
 
-\subsection{Additional asset sub-profiles}
+\subsection{Additional context modifiers}
 
-One approach was to retain broad archetypes but add environment-specific variants,
+One approach was to retain broad role classes but add environment-specific variants,
 such as internal-only orchestration, administrator-only CI/CD, redundant control
-planes, or restricted security tooling. A primary archetype label could have been
-combined with a second profile label, or the catalog could have introduced parallel
-archetypes for each context.
+planes, or restricted security tooling. A primary role label could have been
+combined with a second context modifier, or the catalog could have introduced
+parallel role classes for each context.
 
-Reviewing the underlying archetype taxonomy was still necessary: some broad High
+Reviewing the underlying role taxonomy was still necessary: some broad High
 assignments warranted clearer, role-based treatment. But taxonomy correction and
 scoring calibration solve different problems. Reclassification is justified only
 when the asset's actual mission role supports a different CR/IR/AR vector. Even a
@@ -225,15 +235,16 @@ Relying exclusively on re-categorizing assets would therefore move the calibrati
 problem into operator tagging, reward under-classification, and leave the underlying
 arithmetic unchanged.
 
-\paragraph{Illustrative profile model.}
+\paragraph{Illustrative two-label model.}
 The two-label form would be straightforward at first:
 
 \begin{verbatim}
 asset-archetype: orchestrator
-asset-impact-profile: redundant-admin-only
+deployment-context: redundant-admin-only
 \end{verbatim}
 
-The second label would alter the requirement vector supplied by the first. Table~\ref{tab:profile-complexity}
+The second label would alter the security-impact profile supplied by the first.
+Table~\ref{tab:profile-complexity}
 shows representative outcomes considered during the design discussion. They are
 illustrative rejected alternatives, not normative archetype assignments.
 
@@ -243,7 +254,7 @@ illustrative rejected alternatives, not normative archetype assignments.
 \renewcommand{\arraystretch}{1.14}
 \begin{tabularx}{\textwidth}{@{}P{0.19\textwidth}P{0.29\textwidth}cccY@{}}
 \toprule
-\textbf{Archetype} & \textbf{Impact profile} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Distinction encoded} \\
+\textbf{Primary role} & \textbf{Context modifier} & \textbf{CR} & \textbf{IR} & \textbf{AR} & \textbf{Distinction encoded} \\
 \midrule
 \code{orchestrator} & service-critical control plane & M & M & H & Sustained loss stops service delivery. \\
 \code{orchestrator} & redundant, administrator-only & M & M & M & Failover limits the availability consequence. \\
@@ -255,15 +266,15 @@ illustrative rejected alternatives, not normative archetype assignments.
 \code{identity-secrets} & replicated ephemeral token cache & H & M & L & Replication and regeneration reduce availability need. \\
 \bottomrule
 \end{tabularx}
-\caption{Illustrative, non-normative sub-profile mappings considered and rejected.}
+\caption{Illustrative, non-normative two-label mappings considered and rejected.}
 \label{tab:profile-complexity}
 \end{table}
 
-Even this small example requires rules for whether every profile is valid for every
-archetype, what an omitted profile means, whether a profile replaces or modifies the
-base vector, and whether a direct CR/IR/AR override takes precedence. Eight
-archetypes and three profiles expose up to 24 apparent choices before exceptions;
-adding a fourth profile adds another eight combinations and their documentation,
+Even this small example requires rules for whether every modifier is valid for
+every role, what an omitted modifier means, whether a modifier replaces or changes
+the base vector, and whether a direct CR/IR/AR override takes precedence. Eight
+roles and three modifiers expose up to 24 apparent choices before exceptions;
+adding a fourth modifier adds another eight combinations and their documentation,
 validation, tests, and migration behavior.
 
 This could produce the desired numerical result because it moves more dimensions
@@ -272,7 +283,7 @@ from High to Moderate or Low before scoring. It was not selected for three reaso
 \begin{itemize}[leftmargin=1.5em]
 \item Two independent metadata axes create a cross-product of valid and invalid
   combinations and make precedence rules necessary.
-\item Parallel archetypes cause catalog growth, ambiguous choices, and drift as
+\item Parallel role classes cause catalog growth, ambiguous choices, and drift as
   teams interpret nearly identical labels differently.
 \item The approach moves calibration pressure into asset tagging. Operators can
   obtain a more favorable deadline by choosing a less severe profile even when the
@@ -333,6 +344,32 @@ after deriving a semantic boundary from the finite impact/requirement state spac
 The lower thresholds are likewise re-derived from stated Minimal, Narrow, and
 Disruptive anchor scenarios rather than inherited or percentile-fitted. The observed
 histogram is used to test the consequence, not select any threshold.
+
+\subsection{Restoring round thresholds with another normalization}
+
+The review also considered retaining visually simple thresholds such as
+$(0.25,0.55,0.80)$ by dividing the final score by an additional constant. No single
+constant can preserve the three adopted semantic boundaries. If
+$S'=S_H/k$, mapping the adopted boundaries to those three values would require,
+respectively,
+\[
+k=\frac{0.2811515969}{0.25}\approx1.125,\qquad
+k=\frac{0.5623031939}{0.55}\approx1.022,\qquad
+k=\frac{0.933}{0.80}=1.16625.
+\]
+Because these are different constants, another uniform normalization cannot
+perform all three mappings. Selecting the top-boundary value alone would move the
+lower boundaries and compress the maximum possible score below one.
+
+A piecewise or nonlinear monotone transformation could force all three display
+values while preserving the current classifications, but only by introducing
+another governed function whose sole purpose is cosmetic. Likewise, some rounded
+cut points happen to fall inside empty intervals in the present 729-state lattice,
+but they would no longer state the scenario anchors directly and could behave
+differently if a future method admitted intermediate impact values. The method
+therefore retains the directly derived $S_H$ scale and thresholds. Implementations
+may round values for display, but must classify with the governed full-precision
+parameters.
 
 \subsection{Strict two-dimension alignment gate}
 
@@ -517,6 +554,40 @@ For derivation only, define a \emph{compound catastrophic} state as one containi
   requirement.
 \end{enumerate}
 
+\paragraph{What the compound predicate approximates.}
+The first condition preserves the required dimensional alignment: at least one
+security property must combine a complete technical loss with a catastrophic
+agency requirement. The second condition is a breadth test. It asks whether the
+same vulnerability can also cause complete technical loss on another property whose
+loss is at least serious. The reference calibration treats that multidimensional
+shape as a reasonable proxy for a broader and generally more consequential class
+of vulnerability.
+
+This is not an arbitrary rule that High/High alignment is unimportant. A lone
+High/High pair is the strongest possible one-objective loss and remains Disruptive
+under the reference calibration. Likely exploitability, internet reachability, and
+Certification Class can still place it on a demanding remediation clock. The
+additional component is required only before the method uses the much narrower
+word \emph{Debilitating}.
+
+\paragraph{Why CWE is not an input.}
+The method deliberately does not infer this breadth from a CWE identifier. CWE is
+a root-cause taxonomy: entries occur at different abstraction levels, mappings can
+be absent or imprecise, and MITRE's own mapping guidance calls for careful,
+specific review rather than assuming accurate mapping at scale
+\mbox{[CWE-RCM]}. A weakness category does not determine which C/I/A properties a
+particular exploit can affect in a particular deployment. Turning CWE IDs into
+PAIN multipliers or gates would therefore require a large provider-authored lookup
+table with uncertain precedence for multiple, missing, or differently abstracted
+mappings.
+
+CWE remains useful outside the PAIN scalar for root-cause analysis, remediation
+ownership, secure-development trends, detection strategy, and finding grouping.
+PAIN instead uses the CVSS-derived impact dimensions already attached to the
+vulnerability and combines them with the effective requirements of the affected
+asset. The approximation is imperfect, but its inputs and failure modes are visible
+and reproducible.
+
 This definition is not implemented as a gate. It partitions the finite input space
 so that a scalar boundary can be derived.
 
@@ -576,13 +647,175 @@ thresholds. Rounded values are for display only. The parameter set must be versi
 as governed PAIN policy.
 \end{decisionbox}
 
+\subsection{Reference calibration and provider variation}
+
+FedRAMP defines the PAIN words and requires providers to estimate them, but it does
+not prescribe this scalar or these cut points. The values above are the governed
+reference calibration for this method, not a claim that $0.933$ is the only
+defensible risk policy.
+
+Table~\ref{tab:theta-lenses} illustrates other top-boundary viewpoints while holding
+the CVSS-derived weights, denominator, and lower thresholds constant:
+
+\begin{table}[H]
+\centering
+\small
+\renewcommand{\arraystretch}{1.16}
+\begin{tabularx}{0.96\textwidth}{@{}P{0.19\textwidth}P{0.10\textwidth}YP{0.13\textwidth}@{}}
+\toprule
+\textbf{Policy lens} & \textbf{$\theta_3$} & \textbf{Meaning in the 729-state lattice}
+& \textbf{Top-band states} \\
+\midrule
+High-objective dominant & 0.919 & Every qualifying state contains at least one
+H/H alignment, but compound High impact is not required. & 88 \\
+Reference compound catastrophic & 0.933 & At least one H/H alignment plus another
+High impact on a Moderate-or-High requirement. & 70 \\
+Strict two-objective catastrophic & 0.976 & At least two H/H dimensional
+alignments. & 25 \\
+Complete CIA catastrophic & 1.000 & Three H/H dimensional alignments. & 1 \\
+\bottomrule
+\end{tabularx}
+\caption{Illustrative, non-normative Debilitating lenses.}
+\label{tab:theta-lenses}
+\end{table}
+
+An exact policy that makes \emph{every} isolated H/H state Debilitating cannot be
+represented by one scalar threshold on this aggregation. The weakest isolated H/H
+state scores $0.843455$, while complete High technical impact against all-Moderate
+requirements scores $0.918578$ without any H/H pair. A provider that needs an exact
+single-alignment rule must add a categorical predicate rather than disguise it as a
+normalization constant.
+
+A CSP \rfckw{may} adopt a different threshold set based on its own documented risk
+evaluation, but it \rfckw{should}:
+
+\begin{itemize}[leftmargin=1.5em]
+\item define the intended meaning of each word before examining the resulting
+  distribution;
+\item enumerate the full supported input lattice and test the boundary cases;
+\item validate the operational consequences against rated scenarios or findings;
+\item govern and version the denominator and thresholds as one calibration set;
+\item disclose the active policy to affected agencies and retain it in finding
+  audit output; and
+\item avoid changing thresholds per finding, customer, or Certification Class after
+  observing the deadline outcome.
+\end{itemize}
+
+Certification Class belongs downstream: it determines the operational timeframe
+for the already-derived PAIN result. Varying $\theta_3$ by Class would make the same
+agency consequence change meaning merely because the provider selected a different
+assurance tier.
+
+\section{Ceiling-constrained reachability}
+\label{sec:ceiling-reachability}
+
+The 729-state proof above describes the unconstrained Cartesian product of every
+CVSS impact vector and every effective Security Requirements vector. A particular
+deployment may expose only a subset of those states after its intended-use ceiling
+is applied.
+
+Let the uncapped asset security-impact-profile requirement be $R_x(o)$ and the
+intended-use ceiling be
+$E_x(o)$. The PAIN calculation receives:
+\[
+R_x^{\mathrm{eff}}(o)=\min\big(R_x(o),E_x(o)\big).
+\]
+The ceiling derivation is upstream of this calibration; see \ceilingpaper{}. This
+section examines only what the adopted PAIN arithmetic does with that input.
+
+\subsection{Low- and Moderate-impact ceilings}
+
+If a ceiling contains no High objective, then every effective requirement is at
+most Moderate, regardless of the uncapped profile. The largest possible pre-cap aggregate
+occurs with High technical impact on all three Moderate requirements:
+\begin{align}
+U_{\max,\le M}
+  &=1-(1-0.56)^3=0.914816,\\
+S_{\max,\le M}
+  &=\frac{0.914816}{0.995904}=0.918578\ldots
+\end{align}
+This is below the adopted Debilitating threshold:
+\[
+0.918578\ldots < 0.933.
+\]
+Therefore no state permitted by an all-Low/Moderate ceiling reaches Debilitating
+under this calibration. All 70 Debilitating states in the unconstrained lattice
+require at least one effective High requirement and are removed by such a ceiling.
+
+\begin{cautionbox}
+This is a consequence of the PAIN method's retained CVSS weights,
+High-centered denominator, and $0.933$ threshold. NIST SP~800-60 and FIPS~199 do
+not independently define this reachability result. A different PAIN aggregation
+or threshold could classify the same effective requirements differently.
+\end{cautionbox}
+
+FIPS~199 separately establishes that any High system objective makes the
+information system High overall. Combining that categorization rule with this
+methodology-specific result means that a genuinely Low- or Moderate-impact
+information system cannot reach the Debilitating word \emph{under the adopted PAIN
+calibration}. The dimensional vector must still be retained: an overall High
+system may be H/M/L, and the label High does not turn it into H/H/H.
+
+\subsection{What a High ceiling does not prove}
+
+A High objective makes Debilitating reachable in the deployment's state space; it
+does not make every vulnerability Debilitating. The finding still needs:
+
+\begin{enumerate}[leftmargin=1.7em]
+\item a High technical impact aligned with an effective High requirement; and
+\item another High technical impact aligned with an effective Moderate-or-High
+  requirement.
+\end{enumerate}
+
+Certification Class does not change this reachability result. A Class~C
+certification is not a Moderate-impact ceiling: current FedRAMP guidance allows a
+Class~C package to provide adequate information for some High security objectives
+\mbox{[FEDRAMP-CLASS]}. For a Class~B or Class~C use, however, any High objective handed
+to this calculation must be affirmatively identified and justified by the deploying
+agency; it must not be inferred from generic product capabilities or hypothetical
+content. If that agency-identified objective remains High after the asset profile
+and intended-use ceiling are intersected, the High requirement remains in scope for
+PAIN.
+
+Class is nevertheless operationally consequential. It states the provider's
+reusable level of assurance and selects the standard vulnerability-response and
+incident-communication commitments supplied for the already-derived consequence.
+A Class~C service supporting a High objective therefore supplies Class~C
+commitments unless a tighter contract or higher Class applies. The agency and CSP
+must evaluate and record whether those commitments, service design, supplemental
+controls, and any agency-managed safeguards are adequate. They must not express an
+assurance shortfall by lowering the effective requirement or the PAIN result.
+
+\begin{plain}
+A genuinely FIPS~199 Low- or Moderate-impact system cannot produce Debilitating
+under the reference calibration because it has no effective High requirement.
+Class~C is not a synonym for FIPS Moderate. If an agency-identified High objective
+remains High on the affected asset, Debilitating becomes mathematically possible,
+while the Class~C level of assurance still governs the standard operational
+commitment. Possibility, classification, and assurance are separate judgments.
+\end{plain}
+
+These layered conditions make a Class~B or Class~C Debilitating result exceptional
+by construction, not impossible. The calibration establishes the necessary
+reachability conditions; it does not claim a universal empirical frequency.
+Certification Class selects the applicable remediation timeframe only after the
+PAIN word and agency scope have been determined; the upstream paper specifies how
+the agency and CSP document the resulting assurance fit or divergence.
+
+The asset security-impact profile can also keep a dimension below the ceiling
+because the ceiling is only a cap. Finally, multi-agency scope maps an already
+derived customer-effect word to the N-level; it does not create the Debilitating
+word.
+
 \section{Worked scenarios}
 \label{sec:scenarios}
 
 Tables~\ref{tab:lower-boundaries} and~\ref{tab:scenarios} apply the final arithmetic
-to boundary and ordinary cases. Requirement vectors are explicit scenario inputs
-supplied by the governed asset catalog. Results assume a single-agency resource;
-the separate agency-scope mapping can promote qualifying words to N4 or N5.
+to boundary and ordinary cases. Requirement vectors are explicit effective inputs:
+the governed asset assessment supplies the uncapped security-impact profile and any
+intended-use ceiling caps it before these calculations. Results assume a
+single-agency resource; the separate agency-scope mapping can promote qualifying
+words to N4 or N5.
 
 \begin{table}[H]
 \centering
@@ -771,8 +1004,10 @@ The final method is preferable because it obtains the compound-gate result witho
 executing a gate. It keeps Low impacts and all three requirement levels inside one
 continuous calculation, retains the official metric weights, and makes the top
 threshold reproducible from the input lattice. It also keeps the operator-facing
-model simple: one role-based archetype tag supplies CR/IR/AR; no additional scoring
-profile is required.
+model simple: one independently dimensional asset security-impact profile supplies
+the reusable architectural vector, and one scope-resolved intended-use ceiling
+supplies the federal consequence cap. A role-based archetype catalog is one
+optional way to derive the first input. Neither input changes per finding.
 
 \section{Implementation and governance}
 
@@ -837,7 +1072,7 @@ from any asset-catalog revision.
 The default for an unclassified asset remains conservative $HHH$. The final method
 reduces single-dimension findings on that default to N3, but two- and three-High
 impact findings readily remain N4. Classification coverage should be monitored so
-that the fail-safe does not become the dominant production archetype.
+that the fail-safe does not become the dominant production profile.
 
 \section{Limitations and future work}
 
@@ -845,15 +1080,19 @@ that the fail-safe does not become the dominant production archetype.
 \item The exact $0.933$ separation depends on the discrete
   $\{N,L,H\}\times\{L,M,H\}$ domain and the retained CVSS v3.1 weights. It must be
   re-derived if those inputs change.
+\item The finding that an all-Low/Moderate ceiling cannot reach Debilitating is a
+  consequence of this calibration, not an independent NIST or FedRAMP rule. It
+  must be re-evaluated if the aggregation, weights, denominator, or thresholds
+  change.
 \item Native CVSS v4 subsequent-system impacts and Safety are not included in the
   three-dimension proof. A future PAIN version may add them, but doing so requires a
   new denominator and threshold analysis rather than silently extending this one.
 \item The two backtests establish observed consequences, not statistical
   generalizability. Additional production datasets and analyst-rated scenario sets
   should be evaluated before broad standardization.
-\item A scalar cannot replace architecture review. Archetype assignment, Modified
-  impact evidence, agency scope, and vulnerability applicability remain governed
-  inputs.
+\item A scalar cannot replace architecture review. Security-impact-profile
+  assignment and its derivation evidence, Modified impact evidence, intended-use
+  ceiling, agency scope, and vulnerability applicability remain governed inputs.
 \item The threshold's narrow mathematical gap is safe for deterministic software
   using full precision but unsuitable for manual classification from rounded
   dashboard values.
@@ -897,6 +1136,9 @@ with
 This preserves the CVSS-derived evidence chain while giving PAIN a more defensible
 meaning at its most consequential boundary: N4 and N5 are reserved for impact that
 is not only severe, but compound and catastrophic in the affected environment.
+When an intended-use ceiling has no High objective, the adopted formula makes that
+boundary unreachable; this is a transparent property of the PAIN calibration,
+not a categorization rule imported from NIST or FedRAMP.
 
 \clearpage
 \section*{References}
@@ -907,6 +1149,10 @@ is not only severe, but compound and catastrophic in the affected environment.
 \item[{[PAIN]}] M.~Venne, \emph{A Deterministic, CVSS--Environmental Method for
   FedRAMP VDR/VER Vulnerability Prioritization}, stackArmor, July 2026.
   \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-cvss.pdf}.
+\item[{[CEILING]}] M.~Venne, \emph{Before the PAIN Equation: Deriving
+  Security-Requirements Ceilings from Intended Federal Information Types},
+  stackArmor, July 2026.
+  \url{https://stackarmor.github.io/rfc-fedramp-vdr/vdr-pain-security-requirements.pdf}.
 \item[{[CVSS31]}] FIRST, \emph{Common Vulnerability Scoring System v3.1:
   Specification Document}. Environmental Security Requirements, MISS formula, and
   metric values. \url{https://www.first.org/cvss/v3.1/specification-document}.
@@ -920,11 +1166,20 @@ is not only severe, but compound and catastrophic in the affected environment.
   \emph{Standards for Security Categorization of Federal Information and
   Information Systems}, FIPS PUB 199.
   \url{https://csrc.nist.gov/pubs/fips/199/final}.
+\item[{[SP800-60]}] National Institute of Standards and Technology,
+  \emph{Guide for Mapping Types of Information and Information Systems to Security
+  Categories}, SP 800-60 Volumes I and II, Revision 1.
+  \url{https://csrc.nist.gov/pubs/sp/800/60/r1/final}.
 \item[{[FEDRAMP]}] FedRAMP, \emph{Potential Agency Impact Definitions},
   Notice 0012, and \emph{Vulnerability Evaluation and Reporting}, Consolidated
   Rules 2026.
   \url{https://www.fedramp.gov/notices/0012/};
-  \url{https://www.fedramp.gov/2026/reference/rev5/b/vulnerability-evaluation-and-reporting/}.
+  \url{https://www.fedramp.gov/2026/providers/20x/rules/vulnerability-evaluation-and-reporting/}.
+\item[{[FEDRAMP-CLASS]}] FedRAMP,
+  \emph{Choosing a Certification Class}, Consolidated Rules 2026.
+  \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
+\item[{[CWE-RCM]}] MITRE, \emph{CVE to CWE Root Cause Mapping Guidance}.
+  \url{https://cwe.mitre.org/documents/cwe_usage/guidance.html}.
 \end{itemize}
 }
 
@@ -950,6 +1205,8 @@ Minimum compound $S_H$ & 0.93342330184435 \\
 States at or above $0.933$ & 70 \\
 State counts Minimal/Narrow/Disruptive/Debilitating & 90 / 218 / 351 / 70 \\
 Predicate/threshold mismatches & 0 \\
+Maximum $S_H$ with every requirement $\le M$ & 0.918578497526 \\
+Debilitating states after an all-Low/Moderate ceiling & 0 \\
 \bottomrule
 \end{tabular}
 \end{center}

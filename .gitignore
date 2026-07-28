@@ -1,5 +1,6 @@
-# Rendered PDFs are published as GitHub release assets, not tracked here.
+# Root build PDFs are release assets; rendered copies under docs/ feed GitHub Pages.
 *.pdf
+!docs/*.pdf
 
 # LaTeX build artifacts
 *.aux
