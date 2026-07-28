@@ -88,7 +88,7 @@
     <div class="card featured">
       <span class="badge">Primary document</span>
       <h3>The Method</h3>
-      <p class="sub">A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example asset-archetype catalog. The companions below build on it.</p>
+      <p class="sub">A Deterministic, CVSS-Environmental Method for FedRAMP VDR/VER Vulnerability Prioritization — closed-form PAIN derivation, the VDR-TFR-PVR remediation matrix, worked examples, a reference architecture, and an example archetype-to-profile catalog. The formula requires an independently dimensional asset security-impact profile, not that taxonomy. The companions below build on it.</p>
       <div class="actions">
         <a class="btn primary" href="vdr-pain-cvss.pdf">View PDF</a>
         <a class="btn ghost" href="vdr-pain-cvss.pdf" download>Download</a>
@@ -98,7 +98,7 @@
     <div class="card featured">
       <span class="badge">Upstream derivation</span>
       <h3>Before the PAIN Equation</h3>
-      <p class="sub">Deriving Security-Requirements Ceilings from Intended Federal Information Types — maps confirmed CSO and agency intended use through NIST SP 800-60 and FIPS 199, preserves the full C/I/A vector, and keeps architectural archetypes reusable across agencies. It also treats Certification Class as the provider's operational assurance commitment, defines the agency/CSP contract decision for High-objective use below Class D, and adds an Availability-specific assurance case connecting AR:H to uptime, RTO/RPO, disaster recovery, testing, and contract evidence without prescribing one architecture.</p>
+      <p class="sub">Deriving Security-Requirements Ceilings from Intended Federal Information Types — maps confirmed CSO and agency intended use through NIST SP 800-60 and FIPS 199, preserves the full C/I/A vector, and keeps the asset security-impact profile reusable across agencies. CSPs may derive that profile from an archetype, direct per-objective assessment, or another governed method. It also treats Certification Class as the provider's operational assurance commitment, defines the agency/CSP contract decision for High-objective use below Class D, and adds an Availability-specific assurance case connecting AR:H to uptime, RTO/RPO, disaster recovery, testing, and contract evidence without prescribing one architecture.</p>
       <div class="actions">
         <a class="btn primary" href="vdr-pain-security-requirements.pdf">View PDF</a>
         <a class="btn ghost" href="vdr-pain-security-requirements.pdf" download>Download</a>
@@ -191,7 +191,7 @@ tectonic internet-reachability-companion-blog.tex # -&gt; plain-language PDF
 <footer class="wrap">
   <p>Source: <a href="https://github.com/stackArmor/rfc-fedramp-vdr">github.com/stackArmor/rfc-fedramp-vdr</a> ·
   Feedback &amp; questions: <a href="https://github.com/stackArmor/rfc-fedramp-vdr/discussions">GitHub Discussions</a>.
-  Informational; each Cloud Service Provider should derive remediation-day values and the archetype catalog from its own system categorization.</p>
+  Informational; each Cloud Service Provider should own its security-impact profile derivation and remediation-day values. Document history is tracked in <a href="https://github.com/stackArmor/rfc-fedramp-vdr/commits">Git</a>, not embedded in the papers.</p>
 </footer>
 </body>
 </html>

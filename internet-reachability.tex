@@ -263,7 +263,7 @@ the CVSS vector or an assertion that every matching CVE is proven remote code
 execution.
 
 \subsection{Deployment applicability and prevention evidence}
-The current profile needs governed assertions about which component archetypes
+The current profile needs governed assertions about which component classes
 receive internet-derived content and which tested trigger classes are prevented
 before vulnerable processing. FedRAMP assessment and ConMon already produce a
 recurring evidence stream for the latter: web-application scan scope and
@@ -308,7 +308,7 @@ validation control is harder. The pieces exist across
 infrastructure code, telemetry, tests, and CI/CD records, but vulnerability
 systems cannot yet combine them into a standard, continuously valid
 reachability record. The recommended method therefore uses governed component
-and control archetypes today. A higher-resolution claim still needs a verified
+and control classes today. A higher-resolution claim still needs a verified
 prevention point on every relevant path before the vulnerable operation; not
 every edge must sanitize the data.
 \end{plain}
@@ -358,11 +358,11 @@ the following available, governed predicates and relationships:
   \code{indirect\_}\allowbreak\code{internet\_}\allowbreak\code{trigger}
   status: confirmed, ruled out, or unknown.
 \item $C_0(a)$ asserts that component $a$ receives internet-derived content,
-  derived from an asset archetype, an imported or observed flow, or a governed
+  derived from an asset class, an imported or observed flow, or a governed
   operator assertion.
 \item $P_0(v,a)$ asserts that current assessment and ConMon evidence covers the
   relevant trigger or control class and supports prevention before vulnerable
-  processing. It is resolved by application or deployment archetype rather than
+  processing. It is resolved by application or deployment class rather than
   independently for every asset.
 \item $E_0(u)$ is the CVE-level chainable-entry-point status for upstream CVE
   $u$: high confidence, possible, or none, with reason codes and policy
@@ -757,7 +757,7 @@ threat intelligence changes.
 
 \section{Optional Deployment-Evidence Refinement}
 \label{sec:evidence-plane}
-The current $C_0(a)$ predicate may come from a service archetype or governed
+The current $C_0(a)$ predicate may come from a service class or governed
 assertion; that is sufficient for Equation~\ref{eq:operational}. A provider or
 tool developer may elect to refine $C_0(a)$ with a graph whose directed edges
 describe actual content handoffs. Where used, declared policy and observed
@@ -952,7 +952,7 @@ boundary validation, and re-evaluation are the controls for that residual
 risk. The paper does not characterize either presumption as proof.
 
 The standing-control presumption is that a current $P_0$ remains valid for
-its documented interface, application archetype, and tested control class.
+its documented interface, application class, and tested control class.
 Recurring scans and remediation refresh it. A relevant finding, material
 change, scope gap, new trigger technique, or contrary threat intelligence
 revokes or narrows it. This is what makes convergence conditional and
@@ -962,11 +962,11 @@ Evaluation should be amortized across
 
 \[
 (\mathrm{CVE},\ \mathrm{product/version\ family},\
-\mathrm{deployment\ archetype},\ \mathrm{input/control\ archetype})
+\mathrm{deployment\ class},\ \mathrm{input/control\ class})
 \]
 
 rather than repeated for every instance. One reviewed trigger profile can
-serve thousands of scanner findings; one deployment archetype can supply the
+serve thousands of scanner findings; one deployment class can supply the
 same path and standing-control conclusion to a fleet of identically managed
 assets. Instance-level exceptions remain possible and must break out of the
 group.
@@ -1042,7 +1042,7 @@ because the request reaches that component before the login logic runs.
 \item \textbf{Known indirect logging trigger.}
 Threat intelligence establishes that a crafted string can trigger a logging
 library after crossing process boundaries. The CVE-level $J(v)$ is promoted
-once. Every asset archetype tagged $C_0(a)=1$ and running the affected library
+once. Every asset class tagged $C_0(a)=1$ and running the affected library
 enters the IRV candidate group. Ordinary SQL-injection or cross-site-scripting
 DAST coverage does not establish $P_0$ for a logging-expression trigger, so the
 finding remains IRV unless a targeted control and its current evidence cover
@@ -1159,7 +1159,7 @@ evidence graph is not required by the operational method recommended here.
 The operational profile in this paper is intentionally modest. It computes the
 direct branch, uses CVSS attack vector for direct matching and entry-point
 eligibility without rewriting the downstream vector, promotes known indirect
-triggers once per CVE, and joins them to coarse content-receipt archetypes. It
+triggers once per CVE, and joins them to coarse content-receipt classes. It
 separately promotes co-resident \code{AV:L} findings when a
 canonical execution boundary contains a directly reachable, high-confidence
 entry point, while retaining the downstream vector and upstream provenance. It

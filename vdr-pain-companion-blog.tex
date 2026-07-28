@@ -119,7 +119,7 @@ you multiply two numbers:
 \begin{enumerate}[leftmargin=1.8em]
 \item \emph{How badly does this flaw break it?} (from the CVE's own CVSS vector)
 \item \emph{How much does this particular system depend on it?} (from the asset's
-  criticality)
+  security-impact profile)
 \end{enumerate}
 
 Combine those three into a single damage score from 0 to 1, then translate that
@@ -151,41 +151,54 @@ government operations, federal assets, and affected individuals. The CSP may car
 more about the same event for brand or corporate-reputation reasons, but that
 separate business risk does not silently raise the agency's PAIN inputs.
 
-\section*{But where does an asset's criticality come from? Archetypes.}
-Everything above hinges on that second number --- \emph{how much does this system
-depend on secrecy, correctness, and uptime?} That's the CR/IR/AR. So the obvious
-question is: who decides that, and how do you keep it from becoming the same
-analyst-by-analyst guesswork the method was trying to escape?
+\section*{But where does the asset profile come from?}
+Everything above hinges on that second set of numbers --- \emph{how much does this
+system depend on secrecy, correctness, and uptime?} That's the uncapped CR/IR/AR
+\textbf{asset security-impact profile}. The profile is the required input; the
+method does not require one taxonomy for producing it.
 
-The architectural answer is \textbf{asset archetypes.} Instead of hand-rating every server in
-isolation, you sort each asset into a short catalog of roles based on \textbf{what
-it does inside the service} --- a database, a login service, a cache, a
-message bus, a CI/CD runner, a public load balancer, and so on. Each archetype
-comes with an uncapped CR/IR/AR profile \emph{pre-filled and justified}. Tag an
-asset with its archetype, and its architectural profile is inherited
-automatically.
+A provider can assign the three objectives directly from an evidenced component
+assessment, derive them through a role-based archetype catalog, or use another
+governed mapping. The important rules are that CR, IR, and AR can differ, the same
+evidence produces the same vector, and the record explains why each objective was
+chosen.
 
-The reason this matters isn't just convenience --- it's the \textbf{chain of
-thought}. If you hand-score a host as ``CR: Low, IR: High, AR: Low,'' six months
-later nobody remembers why. But if you tag it as a \emph{data-backbone message
-broker}, the rationale is right there in the label, readily auditable, and
-consistent with every other broker in the estate.
+\textbf{Asset archetypes remain a strong example.} Instead of hand-rating every
+server in isolation, a provider can sort assets into a short catalog of roles based
+on \textbf{what they do inside the service} --- a database, a login service, a
+cache, a message bus, a CI/CD runner, a public load balancer, and so on. Each role
+maps to a pre-filled and justified profile. Tag an asset with its archetype, and the
+profile is inherited automatically. The original PAIN paper uses this approach in
+its worked architectures because it makes the examples concrete; it is not a
+required CSP taxonomy.
 
-One subtlety the method is opinionated about: \textbf{you classify by role, not by
-software.} The same in-memory store is one archetype when it's a throwaway cache
-(low criticality), a much higher one when it's holding session tokens (an
-identity/secrets role), and different again when it's acting as a job broker.
-\emph{How it's used} drives the score, not \emph{what it is}. The method even
-recommends a ``control-plane lens first'' rule: if an asset can deploy,
+The benefit is the \textbf{auditable derivation trail}. A bare ``CR: Low, IR: High,
+AR: Low'' assignment can be hard to reconstruct six months later. A
+\emph{data-backbone message broker} role makes one possible rationale visible and
+consistent with comparable brokers. A direct assignment can be just as defensible
+when it retains the architecture, trust, privilege, dependency, data-handling, and
+consequence evidence behind each objective.
+
+For providers using archetypes, classify by role, not software kind. The same
+in-memory store can be a throwaway cache, a session-token store, or a job broker;
+\emph{how it is used} drives the profile, not \emph{what product it is}. The example
+catalog recommends a ``control-plane lens first'' rule: if an asset can deploy,
 orchestrate, hold cross-estate credentials, or actuate configuration, classify it
 by that powerful control function regardless of the data it happens to store.
+
+A scalar asset-value label is a permitted shortcut: Low becomes L/L/L, Moderate
+becomes M/M/M, and High becomes H/H/H. It is also deliberately cautioned against
+as the only interface. It forces all three objectives to move together and records
+the conclusion with less evidence, so an implementation should always permit an
+independent CR/IR/AR profile.
 
 So the full pipeline reads top to bottom like this:
 
 \begin{plain}
 \textbf{Derive intended-use ceiling} --- which federal information types and
-consequences are in scope $\rightarrow$ \textbf{classify the asset (archetype)}
---- what it does inside the service $\rightarrow$ \textbf{take the lower value
+consequences are in scope $\rightarrow$ \textbf{resolve the asset security-impact
+profile} --- by direct assessment, an archetype, or another governed method
+$\rightarrow$ \textbf{take the lower value
 on each objective} --- effective CR/IR/AR for confidentiality, integrity, and
 availability $\rightarrow$ \textbf{feed the CVSS
 Environmental impact math} --- re-weighting the CVE's raw impact by what's at stake
@@ -193,28 +206,26 @@ Environmental impact math} --- re-weighting the CVE's raw impact by what's at st
 the reachability and exploitation facts, a concrete deadline.
 \end{plain}
 
-Two important guardrails on the archetype catalog:
+Two important guardrails on any profile derivation:
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{It's an example, not a standard.} The proposal publishes a sample
-  catalog as an \emph{existence proof} --- but every provider should derive its own
-  from its own architecture, roles, trust relationships, and control functions.
+\item \textbf{The archetype list is an example, not a standard.} The proposal
+  publishes a sample catalog as an \emph{existence proof}. Every provider may use
+  its own taxonomy, direct objective assessment, or another governed mapping.
   Agency FIPS-199 and information-type context belongs in the separate ceiling.
-  Two providers using the same software for different roles can legitimately
-  assign different archetypes; two agencies can retain the same archetype while
-  receiving different effective requirements.
 \item \textbf{Mislabeling is a downgrade attack.} Because the whole score rides on
-  the tag, tagging an asset \emph{down} makes its flaws look smaller than they are.
-  So archetype tags should be controlled and reviewed like any other security
-  setting --- and unclassified assets fail loud at maximum criticality (see below),
-  never quiet.
+  the profile, assigning an asset \emph{down} makes its flaws look smaller than
+  they are. Profile assignments, mappings, and overrides should be controlled and
+  reviewed like any other security setting --- and unresolved assets fail loud at
+  H/H/H (see below), never quiet.
 \end{itemize}
 
 \section*{The same flaw, two very different verdicts}
 This is the part worth internalizing, because it's the entire point of the method.
 Take one identical remote-code-execution CVE:
 \begin{itemize}[leftmargin=1.5em]
-\item \textbf{On a crown-jewel datastore whose archetype and intended-use ceiling
-  retain the necessary High requirements, holding multiple agencies' data:} scores
+\item \textbf{On a crown-jewel datastore whose security-impact profile and
+  intended-use ceiling retain the necessary High requirements, holding multiple
+  agencies' data:} scores
   Debilitating, multi-agency $\rightarrow$ \textbf{N5}, remediate in hours.
 \item \textbf{On a single-agency throwaway sandbox:} same CVE, scores Disruptive
   $\rightarrow$ \textbf{N3}, a much longer clock.
@@ -262,9 +273,9 @@ a dimension the CVE doesn't touch.
 
 \section*{Fail loud, not quiet}
 A critical design choice: \textbf{missing information never makes a problem look
-smaller.} An asset that hasn't been classified yet defaults to maximum criticality
---- so it scores loudly and surfaces itself for classification, rather than hiding
-in the noise. ``Unknown'' is treated as ``serious until proven otherwise.''
+smaller.} An asset whose security-impact profile is unresolved defaults to H/H/H
+--- so it scores loudly and surfaces itself for assessment, rather than hiding in
+the noise. ``Unknown'' is treated as ``serious until proven otherwise.''
 
 \section*{Scoring isn't the end --- disposition is}
 A scanner hit isn't a confirmed problem. The flagged code might not be present,
@@ -298,7 +309,7 @@ You can summarize the entire proposal in four claims:
   encode ``re-weight impact by what's at stake'' --- which \emph{is} the
   agency-impact question.
 \item \textbf{With governed inputs} --- an intended-use ceiling, the asset's
-  archetype, and a one-agency-or-many affected scope --- every finding gets a
+  security-impact profile, and a one-agency-or-many affected scope --- every finding gets a
   deterministic, auditable N-level and a concrete deadline. The inputs change
   when use, architecture, or tenancy changes; the finding math does not.
 \item \textbf{It's defensible.} Same inputs, same output, every time --- with the
@@ -307,8 +318,9 @@ You can summarize the entire proposal in four claims:
 \end{enumerate}
 
 The deeper paper has the worked examples, the exact formulas, the reference
-architectures, and a sample archetype catalog (offered as an example, \emph{not} a
-standard --- every provider should own its own mapping). But the idea you came for
+architectures, and a sample archetype-to-profile catalog. The catalog is one
+illustrative derivation method, \emph{not} a required taxonomy or standard. But the
+idea you came for
 is simple: \textbf{stop asking ``how bad is this CVE?'' and start asking ``how bad
 is this CVE \emph{here}?'' --- and let a formula everyone can check answer it the
 same way every time.}
