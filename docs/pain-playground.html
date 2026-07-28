@@ -21,10 +21,13 @@
   button{font-family:inherit}
 
   header{padding:24px clamp(18px,3vw,40px) 18px;border-bottom:1px solid var(--line)}
+  .header-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(400px,520px);
+    gap:clamp(28px,5vw,76px);align-items:start;max-width:1360px;margin:0 auto}
+  .header-copy{min-width:0}
   .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
   header h1{font-size:clamp(21px,2.4vw,28px);font-weight:680;margin-top:4px;letter-spacing:-.02em}
   header p.sub{color:var(--muted);margin-top:4px;max-width:70ch;font-size:13.5px}
-  .examples{margin-top:14px;max-width:980px}
+  .examples{margin-top:14px}
   .examples summary{display:inline-flex;align-items:center;gap:8px;color:var(--ink);cursor:pointer;font-size:12.5px;
     padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
   .examples summary::marker{color:var(--accent)}
@@ -35,6 +38,9 @@
     padding:4px 11px;font-size:12px;cursor:pointer}
   .preset:hover{border-color:var(--accent-dim)}
   .preset .pn{color:var(--accent);font-family:var(--mono);font-size:10px;margin-right:4px}
+  @media(max-width:980px){
+    .header-grid{grid-template-columns:1fr;gap:18px}
+  }
 
   /* stepper */
   .stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0 clamp(12px,3vw,40px);
@@ -149,7 +155,7 @@
   .req-M{color:#f7e6a2;background:rgba(241,196,15,.12);border-color:rgba(241,196,15,.4)}
   .req-L{color:#b4e6c8;background:rgba(39,174,96,.14);border-color:rgba(39,174,96,.45)}
   .system-context{border:1px solid var(--accent-dim);border-radius:9px;padding:12px 13px 13px;
-    margin-bottom:24px;background:rgba(217,164,65,.055)}
+    margin:0;min-width:0;background:rgba(217,164,65,.055)}
   .system-context legend{padding:0 5px;color:var(--accent);font-family:var(--mono);
     font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
   .system-context p{font-size:11.5px;color:var(--muted);margin:0 0 9px}
@@ -336,13 +342,28 @@
 <body>
 
 <header>
-  <div class="eyebrow">FedRAMP VDR/VER &middot; CVSS-Environmental method</div>
-  <h1>PAIN &amp; Remediation Playground</h1>
-  <p class="sub">Four guided steps turn a CVE into a defensible PAIN level and remediation deadline. Your result updates as you go.</p>
-  <details class="examples">
-    <summary>Try a worked example <span>8 scenarios</span></summary>
-    <div class="presets" id="presets"></div>
-  </details>
+  <div class="header-grid">
+    <div class="header-copy">
+      <div class="eyebrow">FedRAMP VDR/VER &middot; CVSS-Environmental method</div>
+      <h1>PAIN &amp; Remediation Playground</h1>
+      <p class="sub">Four guided steps turn a CVE into a defensible PAIN level and remediation deadline. Your result updates as you go.</p>
+      <details class="examples">
+        <summary>Try a worked example <span>8 scenarios</span></summary>
+        <div class="presets" id="presets"></div>
+      </details>
+    </div>
+
+    <fieldset class="system-context">
+      <legend>System context</legend>
+      <p>Security-requirements ceiling from the agency-authorized, intended information types. Keep the full C/I/A vector; do not copy the overall FIPS 199 high-water mark into every dimension.</p>
+      <div class="triple" aria-label="System security-requirements ceiling">
+        <div class="cell"><label for="eCR"><b>Confidentiality</b> <span class="sym">C ceiling</span></label><select id="eCR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="eIR"><b>Integrity</b> <span class="sym">I ceiling</span></label><select id="eIR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+        <div class="cell"><label for="eAR"><b>Availability</b> <span class="sym">A ceiling</span></label><select id="eAR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
+      </div>
+      <span class="context-link">One input for the assessment. <a href="vdr-pain-security-requirements.pdf">How to derive it</a>.</span>
+    </fieldset>
+  </div>
 </header>
 
 <nav class="stepper" id="stepper" aria-label="Assessment progress">
@@ -356,17 +377,6 @@
 <main class="layout">
   <!-- ============================ WIZARD ============================ -->
   <div class="controls">
-
-    <fieldset class="system-context">
-      <legend>System context</legend>
-      <p>Security-requirements ceiling from the agency-authorized, intended information types. Keep the full C/I/A vector; do not copy the overall FIPS 199 high-water mark into every dimension.</p>
-      <div class="triple" aria-label="System security-requirements ceiling">
-        <div class="cell"><label for="eCR"><b>Confidentiality</b> <span class="sym">C ceiling</span></label><select id="eCR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
-        <div class="cell"><label for="eIR"><b>Integrity</b> <span class="sym">I ceiling</span></label><select id="eIR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
-        <div class="cell"><label for="eAR"><b>Availability</b> <span class="sym">A ceiling</span></label><select id="eAR"><option value="L">Low</option><option value="M">Medium</option><option value="H" selected>High</option></select></div>
-      </div>
-      <span class="context-link">One input for the assessment. <a href="vdr-pain-security-requirements.pdf">How to derive it</a>.</span>
-    </fieldset>
 
     <!-- STEP 1: the flaw -->
     <section class="wstep" data-step="1" aria-labelledby="step1Title">
@@ -421,7 +431,7 @@
     <!-- STEP 2: the asset -->
     <section class="wstep" data-step="2" aria-labelledby="step2Title">
       <h2 id="step2Title" tabindex="-1">Where does it live?</h2>
-      <p class="lead">Choose the affected asset&rsquo;s architectural role. Its reusable requirements are capped by the system ceiling above.</p>
+      <p class="lead">Choose the affected asset&rsquo;s architectural role. Its reusable requirements are capped by the System Context ceiling.</p>
 
       <label class="fld" for="archetype">Role of the affected asset <span class="tipicon" tabindex="0" data-tip="Each role carries reusable, system-relative Security Requirements (CR/IR/AR: Low = 0.5&times;, Medium = 1&times;, High = 1.5&times;). Derive roles from component function and architecture, independently of agency information types. Untagged assets default to all-High before the system ceiling is applied.">?</span></label>
       <select id="archetype"></select>
@@ -616,23 +626,27 @@ const CVE_LIB = [
   {id:'CVE-2017-5638',  name:'Struts2 Content-Type OGNL RCE',      v:'AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H', cwes:['CWE-20'],            kev:true,  epss:0.97},
 ];
 
-/* Presets = the memo's worked examples. */
+/* Presets = the paper's worked examples plus companion policy scenarios. */
 const PRESETS = [
   {n:'Ex 1', label:'Log4Shell on a crown-jewel datastore',
    s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
-      arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
+      eCR:'H',eIR:'H',eAR:'H', arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
       exposed:true, gate3:false, j:'confirmed', c0:true, p0:false, mitC:false,mitI:false,mitA:false}},
-  {n:'Ex 2', label:'Same CVE on a dev sandbox',
+  {n:'Ex 2', label:'Same datastore under an M/M/M ceiling',
    s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
-      arch:'dev-test', m:false, cls:'C', epss:0.97, kev:true,
+      eCR:'M',eIR:'M',eAR:'M', arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
+      exposed:true, gate3:false, j:'confirmed', c0:true, p0:false, mitC:false,mitI:false,mitA:false}},
+  {n:'Ex 3', label:'Same CVE on a dev sandbox',
+   s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
+      eCR:'M',eIR:'M',eAR:'M', arch:'dev-test', m:false, cls:'C', epss:0.97, kev:true,
       exposed:false, gate3:false, j:'confirmed', c0:false, p0:false, mitC:false,mitI:false,mitA:false}},
-  {n:'Ex 3', label:'Parser DoS on the message backbone',
+  {n:'Ex 4', label:'Parser DoS on the message backbone',
    s:{cve:'CVE-2022-42003', C:'N',I:'N',A:'H', AV:'N',PR:'N',UI:'N', AC:'H', SC:'U', cwes:['CWE-502'],
-      arch:'data-backbone', m:false, cls:'C', epss:0.76, kev:false,
+      eCR:'M',eIR:'M',eAR:'H', arch:'data-backbone', m:false, cls:'C', epss:0.76, kev:false,
       exposed:false, gate3:false, j:'confirmed', c0:false, p0:false, mitC:false,mitI:false,mitA:false}},
-  {n:'Ex 4', label:'Info leak on metadata-only DNS',
+  {n:'Ex 5', label:'Info leak on metadata-only DNS',
    s:{cve:'CVE-2019-12415', C:'H',I:'N',A:'N', AV:'L',PR:'N',UI:'N', AC:'L', SC:'U', cwes:['CWE-611'],
-      arch:'platform-foundation', m:false, cls:'C', epss:0.08, kev:false,
+      eCR:'M',eIR:'M',eAR:'M', arch:'platform-foundation', m:false, cls:'C', epss:0.08, kev:false,
       exposed:false, gate3:false, j:'unknown', c0:false, p0:false, mitC:false,mitI:false,mitA:false}},
   {n:'FRD-IRV', label:'SQLi reaching a private datastore',
    s:{cve:'CVE-2023-34362', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'U', cwes:['CWE-89'],
@@ -646,10 +660,6 @@ const PRESETS = [
    s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
       arch:'data-sensitive', m:true, cls:'C', epss:0.97, kev:true,
       exposed:true, gate3:false, j:'confirmed', c0:true, p0:false, mitC:true,mitI:true,mitA:true}},
-  {n:'Ceiling', label:'All-High flaw under an M/M/M ceiling',
-   s:{cve:'CVE-2021-44228', C:'H',I:'H',A:'H', AV:'N',PR:'N',UI:'N', AC:'L', SC:'C', cwes:['CWE-502','CWE-400'],
-      eCR:'M',eIR:'M',eAR:'M', arch:'unclassified', m:false, cls:'C', epss:0.97, kev:true,
-      exposed:true, gate3:false, j:'confirmed', c0:true, p0:false, mitC:false,mitI:false,mitA:false}},
 ];
 
 /* ============================== state ============================== */

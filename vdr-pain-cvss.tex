@@ -206,6 +206,17 @@ effective CR/IR/AR. \textbf{SCOPE} answers ``how many agencies' data does the as
 word (Minimal, Narrow, Disruptive, Debilitating); the word and scope together
 select the N-level.
 
+\begin{plain}
+\textbf{See the whole method interactively.}
+The \href{pain-playground.html}{PAIN \& Remediation Playground} shows how the
+inputs come together. Set the intended-use ceiling, choose an asset archetype,
+observe the resulting effective CR/IR/AR vector, and then follow vulnerability
+impact, agency scope, reachability, likelihood, Certification Class, and
+mitigation through to the PAIN word, N-level, and remediation deadline. The
+playground is an explanatory companion; governed evidence and configuration
+remain the implementation's source of record.
+\end{plain}
+
 \section{Before severity: resolve effective Security Requirements}
 \label{sec:ceiling}
 
@@ -658,7 +669,9 @@ The same formula, run by hand on realistic cases. Watch the \emph{same}
 vulnerability land at very different N-levels depending only on which system it sits
 on --- that is the entire point of the method.
 \end{plain}
-We use $C,I,A$ for impacts and CR/IR/AR for requirements; all arithmetic follows
+We use $C,I,A$ for impacts. Each example separately states the uncapped archetype
+vector $R_x$, the intended-use ceiling $E_x$, and the effective CR/IR/AR vector
+$R_x^{\mathrm{eff}}=\min(R_x,E_x)$ that enters PAIN. All arithmetic follows
 Eqs.~\eqref{eq:u}--\eqref{eq:pain}.
 
 For reference, the severity word used in each example is assigned by:
@@ -679,15 +692,36 @@ W(S) \;=\;
 \]
 
 \paragraph{Example 1 --- RCE on a crown-jewel datastore, multi-agency.}
-$C\!=\!I\!=\!A\!=\!0.56$ (High), CR=IR=AR=$1.5$ (High), $m=1$.
+$C\!=\!I\!=\!A\!=\!0.56$ (High), $R_x=(H,H,H)$,
+$E_x=(H,H,H)$, and therefore
+$R_x^{\mathrm{eff}}=(H,H,H)$, with $m=1$. The ceiling does not bind:
 \begin{align*}
 U &= 1-(1-0.84)^3 = 0.995904, \\
 S &= 0.995904/0.995904 = 1.000 \;\Rightarrow\; W=\text{Debilitating}, \\
 m=1 \;\Rightarrow\; \boxed{\text{N5}}.
 \end{align*}
 
-\paragraph{Example 2 --- the same CVE on a sandbox, single-agency.}
-$C\!=\!I\!=\!A\!=\!0.56$, CR=IR=AR=$0.5$ (Low), $m=0$.
+\paragraph{Example 2 --- the same CVE and datastore under a Moderate ceiling.}
+Keep the vulnerability, H/H/H datastore archetype, and multi-agency scope from
+Example~1, but set $E_x=(M,M,M)$. The ceiling binds every dimension:
+\[
+R_x=(H,H,H),\qquad E_x=(M,M,M),\qquad
+R_x^{\mathrm{eff}}=(M,M,M).
+\]
+\begin{align*}
+U &= 1-(1-0.56)^3 = 0.914816, \\
+S &= 0.914816/0.995904 = 0.918578
+   \;\Rightarrow\; W=\text{Disruptive}, \\
+m=1 &\;\Rightarrow\; \boxed{\text{N4}}.
+\end{align*}
+The ceiling alone makes Debilitating unreachable for this otherwise unchanged
+finding. The high-role archetype remains reusable; the effective requirements
+reflect what the confirmed intended use puts at stake.
+
+\paragraph{Example 3 --- the same CVE on a sandbox, single-agency.}
+$C\!=\!I\!=\!A\!=\!0.56$, $R_x=(L,L,L)$, and $E_x=(M,M,M)$.
+The ceiling is above the archetype and therefore does not raise it:
+$R_x^{\mathrm{eff}}=(L,L,L)$, with $m=0$.
 \begin{align*}
 U &= 1-(1-0.28)^3 = 1-0.72^3 = 0.626752, \\
 S &= 0.626752/0.995904 = 0.629330 \;\Rightarrow\; \text{Disruptive} \;\Rightarrow\; \boxed{\text{N3}}.
@@ -695,9 +729,10 @@ S &= 0.626752/0.995904 = 0.629330 \;\Rightarrow\; \text{Disruptive} \;\Rightarro
 Identical vulnerability, opposite ends of the matrix --- the asset half of the
 score (CR/IR/AR) is doing the work.
 
-\paragraph{Example 3 --- availability-only DoS on a message backbone.}
+\paragraph{Example 4 --- availability-only DoS on a message backbone.}
 A CVE with $C\!=\!0,\ I\!=\!0,\ A\!=\!0.56$ (e.g.\ a parser DoS), on an asset with
-CR=IR=AR=$1.5$, $m=0$. EPSS $=0.76$. The vulnerable parser sits on the
+$R_x=(H,H,H)$ and an agency-supported $E_x=(M,M,H)$. The effective vector is
+$R_x^{\mathrm{eff}}=(M,M,H)$, with $m=0$ and EPSS $=0.76$. The vulnerable parser sits on the
 inter-broker replication surface, which receives no internet-derived data, so the
 finding is not internet-reachable (surface-excluded under the companion model ---
 had the flaw been in \emph{message-payload} parsing it would be transitively IRV).
@@ -711,8 +746,10 @@ Remediation: LEV (EPSS $\ge 0.50$) $\land$ NIRV; at Class C this is
 $M[\text{C}][\text{N3}][\text{LEV+NIRV}] = 32$ days. Note this finding may carry a
 \emph{Low} vendor severity --- PAIN is decoupled from the qualitative label.
 
-\paragraph{Example 4 --- information disclosure on a metadata-only service.}
-$C\!=\!0.56,\ I\!=\!0,\ A\!=\!0$, on an asset with CR=$0.5$ (Low), IR=AR=$1.5$.
+\paragraph{Example 5 --- information disclosure on a metadata-only service.}
+$C\!=\!0.56,\ I\!=\!0,\ A\!=\!0$, on an asset with
+$R_x=(L,H,H)$ and $E_x=(M,M,M)$. The resulting
+$R_x^{\mathrm{eff}}=(L,M,M)$ retains Low CR:
 \begin{align*}
 U &= 1-(1-0.28)(1)(1) = 0.28, \\
 S &= 0.28/0.995904 = 0.281152 \;\Rightarrow\; W=\text{Narrow} \;\Rightarrow\; \boxed{\text{N2}}.
@@ -992,7 +1029,8 @@ CVE-2026-xxx6 & coredns \tagn{(platform-foundation)}& \cellcolor{med!35}MEDIUM  
 \bottomrule
 \end{tabular}
 \caption{Sample VDR scan output (fictional data, placeholder CVE IDs; Class~C, single-agency). PAIN is
-computed from the archetype's CR/IR/AR and the CVE impact vector; the deadline is
+computed from the effective CR/IR/AR after the intended-use ceiling is applied
+and the CVE impact vector; the deadline is
 $M[\text{C}][\text{PAIN}][\text{column}]$. The IRV column is evaluated \emph{per
 finding} via the companion finding-level model; (t) marks transitive payload
 exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
@@ -1000,7 +1038,7 @@ exposure. CVE-2026-xxx2 is FedRAMP's canonical case: a content-triggered
 still IRV because this sample assumes no current $P_0$ prevention assertion,
 tightening the deadline to 4 days. CVE-2026-xxx4 --- a \emph{Low}
 vendor severity that yields N3 (a single availability High/High alignment;
-Example~3) --- stays NIRV because its
+Example~4) --- stays NIRV because its
 vulnerable parser sits on the inter-broker replication surface, which receives no
 internet-derived data.}
 \label{tab:scan}
