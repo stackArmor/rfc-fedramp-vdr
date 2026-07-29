@@ -64,11 +64,15 @@ direct finding-level reachability, adds a
 reusable CVE-level \code{indirect\_internet\_trigger} promotion when vendor
 guidance, threat intelligence, exploit analysis, agentic enrichment, or
 analyst review establishes a transitive trigger, and identifies a separate
-chained-access case: a directly reachable, high-confidence network entry point
-on a runtime boundary can supply the local execution prerequisite for
-co-resident \code{AV:L} findings. The downstream CVSS vector does not change;
-the finding-level IRV determination records the upstream CVE and promotion
-reason. A coarse asset assertion
+chained-access case: the CAPEC relationships already linked through the
+findings' CWEs can identify a candidate upstream attack pattern that explicitly
+precedes a candidate downstream pattern. When the upstream finding is directly
+reachable, both findings occupy the same canonical execution boundary, and a
+review confirms that the downstream pattern's prerequisites are compatible,
+the downstream finding may be treated as IRV for remediation timelines. The
+downstream CVSS vector does not change; the finding-level IRV determination
+records the upstream CVE, both CWE--CAPEC mappings, the CAPEC relationship, and
+the applicability decision. A coarse asset assertion
 identifies components that receive internet-derived content. Existing
 assessment and continuous-monitoring evidence supplies a standing, revocable
 prevention assertion for the input-control classes it actually tests. For
@@ -79,7 +83,7 @@ application-wide data-flow graph. This is the paper's present recommendation,
 not an interim step contingent on a future provider capability. It causes the
 operational IRV set to converge toward the directly accessible surface, plus
 known indirect triggers not covered by the standing assertion and local
-findings behind governed, high-confidence entry points. A separate
+findings reached through governed CAPEC-supported chains. A separate
 full-information equation documents how
 structured trigger profiles and optional deployment-edge evidence could refine
 the result if the vulnerability-intelligence ecosystem later supplies them. It
@@ -179,20 +183,22 @@ The practical answer today is an explicitly metadata-constrained
 approximation: compute direct reachability from available evidence, promote
 known indirect-trigger CVEs through a reusable enrichment, and apply the
 standing prevention evidence already produced through assessment and
-continuous monitoring. It also promotes local findings within a canonical
-execution boundary when that boundary contains a directly reachable,
-high-confidence chainable entry point. In set terms,
+continuous monitoring. It also promotes a downstream finding when an active,
+directly reachable upstream finding in the same canonical execution boundary
+maps through CWE to a CAPEC pattern that explicitly precedes the downstream
+finding's CAPEC pattern, and deployment review confirms the relationship is
+applicable. In set terms,
 
 \[
-R_{\mathrm{operational}}=D\cup(K\setminus\mathcal P_0)\cup G_0,
+R_{\mathrm{operational}}=D\cup(K\setminus\mathcal P_0)\cup G_C,
 \]
 
 where $D$ is the set of directly triggerable findings and $K$ is the set of
 findings promoted by known indirect-trigger intelligence. $\mathcal P_0$ is the
 subset for which $P_0(v,a)=1$ under a current assessment- and ConMon-backed
-prevention assertion. $G_0$ is the set of active local findings promoted by an
-active, directly reachable, high-confidence entry point in the same canonical
-execution boundary. The
+prevention assertion. $G_C$ is the set of active findings promoted through an
+applicable CAPEC chaining relationship from an active, directly reachable
+upstream finding in the same canonical execution boundary. The
 true set may also contain triggerable members of an unresolved population $U$
 and depends on whether the asserted controls actually prevent the trigger:
 
@@ -218,17 +224,19 @@ entry point. Today's workable compromise starts with the direct surface, adds
 known indirect cases once per CVE, and records narrowly governed chained
 promotions within a verified execution boundary. Existing assessment and
 recurring web testing then remove the cases for which the relevant input
-control is currently supported. The missing cases and heuristic chain
-promotions remain disclosed limitations, and better upstream metadata is the
-durable fix.
+control is currently supported. The missing cases and chain-candidate review
+remain disclosed limitations. CAPEC provides a stronger signal than an
+\code{AV:N}-plus-CWE rule, but it still describes attack-pattern relationships
+rather than a deployment-specific exploit proof; better upstream metadata is
+the durable fix.
 \end{plain}
 
 \section{Current Inputs and Optional Refinement}
 \label{sec:gaps}
-The recommended method joins vulnerability trigger and entry-point metadata
-with deployment evidence at the resolution available today. Trigger and
-entry-point status are chiefly vulnerability-level facts; exposure,
-co-residency, execution boundary, and prevention are provider-level facts.
+The recommended method joins vulnerability trigger and CAPEC chain metadata
+with deployment evidence at the resolution available today. Trigger and CAPEC
+mapping are chiefly vulnerability-level facts; exposure, co-residency,
+execution boundary, chain applicability, and prevention are provider-level facts.
 Neither requires a provider to construct a complete application-wide taint or
 data-flow proof.
 
@@ -248,19 +256,27 @@ description whose purpose is detection and remediation, not a complete exploit
 contract. A CWE can route research toward a family of mechanisms; it cannot
 stand in for the exact trigger of a CVE.
 
-\subsection{Chainable entry-point metadata}
-An upstream CVE can be useful as a chainable entry point only when its finding
-is directly reachable and exploitation plausibly establishes a local execution
-context. The preferred input is authoritative technical-impact or exploit
-evidence. Where that metadata is absent, the operational profile below uses a
-governed, versioned classifier over CVSS attack vector, vulnerable-system
-impact, and narrow CWE seed sets. The record must retain the status (high
-confidence, possible, or none), exact reason codes, source facts, policy
-version, and any analyst override. Where a rule depends on where code executes,
-it must also retain a governed execution context (server/runtime, client, or
-unknown) and its provenance. This is a triage classification, not a change to
-the CVSS vector or an assertion that every matching CVE is proven remote code
-execution.
+\subsection{CAPEC-supported chain metadata}
+CAPEC supplies machine-readable \code{CanPrecede} and \code{CanFollow}
+relationships between attack patterns and machine-readable \code{Related
+Weaknesses} links to CWE. The two relationship directions are normalized into
+one directed edge: if pattern $q$ \code{CanFollow} pattern $p$, then $p$ is
+treated as \code{CanPrecede} $q$. Only active Standard or Detailed patterns are
+eligible; Meta patterns and entries marked Deprecated or Obsolete are excluded
+from automatic use. The corpus version is retained with every result.
+\cite{capec-schema,capec-catalog}
+
+A CVE's CWE therefore maps it to a set of eligible CAPEC patterns. A pair of
+findings becomes a chain candidate only when a CAPEC pattern for the upstream
+CVE has an explicit directed edge to a CAPEC pattern for the downstream CVE.
+CAPEC prerequisites and execution-flow text help a reviewer decide whether the
+candidate applies to the deployed products, privileges, and execution context.
+They are not a formal machine-checkable \emph{provides/requires} contract, and
+the CWE--CAPEC association is many-to-many and unweighted. CAPEC ATT\&CK
+taxonomy mappings may label the likely adversary stage, but a shared tactic is
+context rather than proof that two findings compose. This is a governed triage
+relationship, not a change to either CVSS vector or proof that every mapped
+pair forms an exploitable chain.
 
 \subsection{Deployment applicability and prevention evidence}
 The current profile needs governed assertions about which component classes
@@ -289,7 +305,7 @@ refinement, not as a prerequisite for using the recommended method.
 
 \begin{keybox}
 \centering
-\textbf{Trigger and Entry-Point Profile}
+\textbf{Trigger and CAPEC Chain Mapping}
 \quad$+$\quad
 \textbf{Exposure, Boundary, and Standing Control Evidence}
 \quad$=$\quad
@@ -364,28 +380,35 @@ the following available, governed predicates and relationships:
   relevant trigger or control class and supports prevention before vulnerable
   processing. It is resolved by application or deployment class rather than
   independently for every asset.
-\item $E_0(u)$ is the CVE-level chainable-entry-point status for upstream CVE
-  $u$: high confidence, possible, or none, with reason codes and policy
-  version. Only high confidence is eligible for automatic promotion.
+\item $W(v)$ is the set of specific CWE identifiers assigned to CVE $v$, and
+  $A(v)$ is the set of eligible CAPEC patterns reached from those CWEs through
+  CAPEC \code{Related Weaknesses} mappings.
+\item $p\rightarrow_C q$ means that eligible CAPEC pattern $p$ explicitly
+  \code{CanPrecede} eligible pattern $q$, after normalizing an inverse
+  \code{CanFollow} statement. $H_C(u,v)=1$ when such a pair exists for
+  $p\in A(u)$ and $q\in A(v)$.
 \item $B(a)$ is the canonical local-execution boundary containing component
   $a$, and $\mathcal F(B(a))$ is the set of active findings within that
   boundary. A host and its kernel are the ordinary case; a repository, account,
   cluster label, or unbound container image is not such a boundary by itself.
+\item $L_0(u,v,x,a)$ is the governed applicability decision for the proposed
+  chain. It is 1 only when the findings are active in the same boundary and a
+  review confirms that the source outcome and target prerequisites are not
+  contradicted by the deployed products, privileges, architecture, sandbox, or
+  execution context. It retains evidence and reviewer provenance.
 \end{itemize}
 
-$G_0(v,a)$ is the binary, chain-based promotion indicator for downstream
+$G_C(v,a)$ is the binary, CAPEC-supported chain-promotion indicator for downstream
 finding $(v,a)$ under the current operational profile. It is 1 when the finding
 is promoted into IRV through a qualifying upstream entry point and 0 otherwise;
 it is not a CVSS score and does not alter the downstream vector. The precise
 test is
 
 \begin{equation}
-G_0(v,a)=
-\ind[\mathrm{AV}(v)=\mathrm{L}]
-\cdot
+G_C(v,a)=
 \ind\!\left[
 \exists (u,x)\in\mathcal F(B(a)):
-D(u,x)=1\land E_0(u)=\mathrm{high}
+D(u,x)=1\land H_C(u,v)=1\land L_0(u,v,x,a)=1
 \right].
 \label{eq:chain}
 \end{equation}
@@ -399,21 +422,25 @@ $\mathcal F(B(a))$ means the active findings inside the same local-execution
 boundary as component $a$. The symbol $\exists$ reads ``there exists at least
 one,'' $\in$ reads ``in,'' the colon reads ``such that,'' and $\land$ reads
 ``and.'' Each $\ind[\text{condition}]$ is a yes-or-no indicator: 1 when its
-condition is true and 0 otherwise. Multiplication requires both indicators to
-be 1.
+condition is true and 0 otherwise.
 
-In plain terms: set $G_0(v,a)=1$ when the downstream finding is \code{AV:L}
-\emph{and} at least one active finding in the same execution boundary is both
-directly internet-reachable and classified as a high-confidence chainable
-entry point. Otherwise set $G_0(v,a)=0$.
+In plain terms: set $G_C(v,a)=1$ when at least one active, directly
+internet-reachable finding in the same execution boundary maps to a CAPEC
+pattern that explicitly precedes a CAPEC pattern mapped to the downstream CVE,
+and the deployment review confirms that this particular transition applies.
+Otherwise set $G_C(v,a)=0$.
 \end{plain}
 
 An active upstream finding must itself match a public network surface, not
-merely carry an \code{AV:N} vector. The downstream finding remains
-\code{AV:L}; $G_0$ changes its deployment-specific IRV value and records every
-qualifying upstream CVE and reason. When the last qualifying entry point is
-resolved, loses direct exposure, or leaves the execution boundary, $G_0$ is
-recomputed and only the chain-derived promotion is withdrawn.
+merely carry an \code{AV:N} vector. The downstream finding may be
+\code{AV:L}, \code{AV:A}, \code{AV:P}, or even a separately exposed
+\code{AV:N} finding; $G_C$ evaluates the chain independently and never rewrites
+that vector. The record preserves the source and target CVEs and CWEs, source
+and target CAPEC IDs, normalized relationship, canonical boundary, CAPEC corpus
+version, applicability evidence, reviewer, and policy version. When the last
+qualifying upstream finding is resolved, loses direct exposure, leaves the
+execution boundary, or no longer satisfies the reviewed prerequisites,
+$G_C$ is recomputed and only the chain-derived promotion is withdrawn.
 
 The recommended equation is
 
@@ -427,7 +454,7 @@ D(v,a)
 \cdot\left(1-P_0(v,a)\right)
 \right)
 \;\lor\;
-G_0(v,a).
+G_C(v,a).
 \label{eq:operational}
 \end{equation}
 \end{keybox}
@@ -438,51 +465,48 @@ presumption, not proof of non-reachability. Vendor guidance, a CNA update,
 threat intelligence, exploit analysis, agentic enrichment, or analyst review
 can promote $J(v)$ once and apply the result across every affected finding.
 
-\paragraph{Chained entry-point classification.}
-The preferred high-confidence reason is authoritative or reproducible evidence
-that exploitation of $u$ supplies local code or command execution. When that
-evidence is absent, the current operational policy requires \code{AV:N} and
-automatically assigns high confidence when the CVE maps to one of the strict
-execution-semantics seeds \code{CWE-78}, \code{CWE-94}, \code{CWE-95},
-\code{CWE-96}, \code{CWE-98}, \code{CWE-553}, \code{CWE-624}, or
-\code{CWE-917}.\cite{cwe-catalog}
+\paragraph{CAPEC chain classification.}
+The enrichment table is built offline from the CAPEC XML rather than by live
+per-finding traversal. For each CWE, it records the eligible CAPEC IDs and all
+normalized outgoing and incoming chain relationships. At ingest, each CVE's
+specific CWE assignments are joined to that table. Candidate finding pairs are
+generated only within the same canonical execution boundary and only when the
+upstream finding satisfies $D(u,x)=1$. The pair is eligible for a positive
+$L_0$ review only when an explicit CAPEC edge exists; sharing a CAPEC pattern,
+an ATT\&CK tactic, or a broad weakness family is insufficient.
 
-Full vulnerable-system impact is corroborating evidence, not a standalone
-high-confidence reason. Let \emph{full impact} mean CVSS v3
-\code{C:H/I:H/A:H} or the CVSS v4 vulnerable-system equivalent
-\code{VC:H/VI:H/VA:H}. In addition to the strict set, the policy assigns high
-confidence when \code{AV:N} and full impact occur together with either
-\code{CWE-97} (server-side include injection) or \code{CWE-494} (download and
-execution of code without an integrity check). It also permits the combination
-with \code{CWE-1336} or \code{CWE-829} only when governed evidence establishes
-that the template directives or included functionality execute in the affected
-server/runtime context rather than in a client. The reason record preserves
-both signals and, where applicable, the execution-context evidence.
+The CAPEC edge answers ``does MITRE describe this attack-pattern ordering?''
+It does not answer ``does exploiting this exact source CVE produce everything
+this exact target CVE requires on this deployment?'' CAPEC prerequisites,
+execution-flow steps, consequences, vendor guidance, exploit analysis, and the
+deployed execution context supply that second decision. Many-to-many or
+ambiguous mappings remain in \emph{Chain review} until a reviewer selects a
+specific defensible path. Only a positive, provenance-backed $L_0$ decision
+sets $G_C=1$ and therefore uses the IRV remediation column for the downstream
+finding.
 
-Without those combinations, full impact by itself and an \code{AV:N} mapping to
-\code{CWE-97}, \code{CWE-1336}, \code{CWE-494}, \code{CWE-829}, or
-\code{CWE-470} each produce a non-promoting \emph{possible} status for review.
-Full impact plus \code{CWE-470} remains possible because unsafe reflection can
-select unexpected existing code without necessarily supplying arbitrary local
-execution. Full impact plus \code{CWE-1336} or \code{CWE-829} also remains
-possible while execution context is unknown; a confirmed client-side context
-does not qualify as a server/runtime entry point. Full confidentiality,
-integrity, and availability impact can arise through authentication bypass,
-complete data compromise, destructive denial of service, or another mechanism
-that supplies no local execution prerequisite.
+\begin{keybox}
+\textbf{Operational chain mapping.}
+\[
+\mathrm{CVE}_u\rightarrow\mathrm{CWE}_u\rightarrow\mathrm{CAPEC}_p
+\xrightarrow{\mathrm{CanPrecede}}
+\mathrm{CAPEC}_q\leftarrow\mathrm{CWE}_v\leftarrow\mathrm{CVE}_v
+\]
+The CAPEC XML supplies both CWE joins and the directed pattern edge. The
+provider then adds the facts the catalog cannot know:
+\[
+D(u,x)=1\quad\land\quad B(x)=B(a)\quad\land\quad
+\mathrm{prerequisites\ reviewed}\quad\Longrightarrow\quad G_C(v,a)=1.
+\]
+The result means ``chain-derived IRV for remediation timing,'' not ``the
+downstream CVE has become \code{AV:N}.''
+\end{keybox}
 
-Broad command languages, argument injection, dangerous upload,
-deserialization, exposed dangerous functions, and memory-corruption families
-likewise require explicit CVE-level execution evidence; their CWE alone does
-not establish a chainable entry point. MITRE itself cautions that code
-execution is a consequence of many root-cause weaknesses and is not, by itself,
-a reason to map a CVE to \code{CWE-94}.\cite{cwe-catalog}
-
-The seed sets, combination rules, and execution-context determinations are
-governed routing policy, not semantic definitions of remote code execution.
-They must be versioned, auditable, and replaceable by stronger CNA, vendor,
-Vulnrichment, exploit, or approved analyst evidence. A possible entry point
-remains visible for filtering and review but does not set $G_0=1$.
+For an easier first implementation, \code{AV:N} plus co-residency, high impact,
+or a selected CWE may seed the review queue. Such a rule has materially more
+false positives because it does not identify a target pattern or an ordering
+relationship. It must never set $G_C=1$ by itself. \code{AV:N} remains useful
+in its proper role as evidence for the direct-network test $D$.
 
 \paragraph{CWE-seeded mandatory review.}
 A CWE is a routing signal, not proof of $J(v)$, but selected CWE mappings should
@@ -556,9 +580,9 @@ Let $Q(B(a))$ be the set of attacker execution capabilities established inside
 $a$'s canonical boundary by directly reachable upstream findings, including
 effective identity, privilege, syscall access, architecture, sandbox, and
 namespace. Let $X_Q(v)$ be the local capabilities and preconditions required
-to exploit $v$. This separates a demonstrated compatible chain from the
-operational $G_0$ presumption that treats active \code{AV:L} findings within a
-qualifying boundary as reachable pending contrary evidence.
+to exploit $v$. This separates a demonstrated capability match from the
+operational $G_C$ decision, which uses CAPEC as a candidate transition and a
+reviewed $L_0$ decision as the deployment-specific compatibility gate.
 
 The full-information reference form is
 
@@ -617,8 +641,9 @@ finding is IRV.
 Current tools generally cannot populate these detailed content descriptions and
 transformations. That is why the recommended operational profile uses the
 coarser CVE promotion $J(v)$, content-receipt tag $C_0(a)$, and standing
-prevention assertion $P_0(v,a)$, plus the governed entry-point status $E_0(u)$
-and boundary-scoped chain branch $G_0(v,a)$. The full-information form shows
+prevention assertion $P_0(v,a)$, plus the CAPEC candidate $H_C(u,v)$,
+applicability decision $L_0(u,v,x,a)$, and boundary-scoped chain branch
+$G_C(v,a)$. The full-information form shows
 how richer metadata could improve precision later; it does not make a complete
 data-flow or exploit-chain graph a present requirement.
 \end{plain}
@@ -924,12 +949,13 @@ The model retains more internal state than FedRAMP's binary reported field:
 \begin{description}[leftmargin=10em,style=nextline]
 \item[Confirmed IRV] A direct match exists, or a promoted indirect trigger
   applies and is not covered by current prevention evidence, or the finding is
-  promoted by a high-confidence entry point in the same execution boundary.
+  promoted by an applicable CAPEC-supported chain from a directly reachable
+  finding in the same execution boundary.
 \item[Provisional IRV] An applicable trigger is known, but deployment or
   prevention evidence is incomplete.
-\item[Chain review] A possible entry point or an execution-relevant CVE with
-  incomplete outcome evidence is retained for review but does not automatically
-  promote downstream findings.
+\item[Chain review] A CAPEC edge exists, or a lower-confidence fallback rule
+  suggests a pair, but the exact mapping, prerequisites, execution context, or
+  boundary evidence is incomplete. It does not promote the downstream finding.
 \item[Evidenced NIRV] The direct branch is empty and each promoted indirect
   trigger is ruled out or covered by a current $P_0$ assertion, and no active
   chain branch applies.
@@ -942,11 +968,12 @@ operational presumptions. Defaulting every unreviewed \code{AV:L/A/P}
 vulnerability to IRV would recover maximal propagation and defeat scalability.
 The present profile therefore treats an unknown indirect trigger as not
 promoted while preserving that status for risk-ranked enrichment. It promotes
-\code{AV:L} only inside a canonical
-execution boundary that currently contains a directly reachable,
-high-confidence entry point. This can temporarily miss an undocumented trigger
-or chain and can over-promote a local finding when the entry-point heuristic
-does not actually establish compatible execution. Threat-intelligence
+a downstream finding only when a directly reachable source finding in the same
+canonical execution boundary has an explicit, eligible CAPEC transition to the
+target finding and the deployment-specific applicability review is positive.
+This can temporarily miss an undocumented CAPEC edge or chain and can still
+over-promote when the pattern-level relationship is broader than the two CVEs'
+actual exploit semantics. Threat-intelligence
 monitoring, KEV handling, vendor updates, agentic proposals, analyst review,
 boundary validation, and re-evaluation are the controls for that residual
 risk. The paper does not characterize either presumption as proof.
@@ -1002,21 +1029,26 @@ uploaded document invokes the vulnerable local parser, $J(v)$ becomes
 confirmed and the indirect branch is evaluated across all affected assets. A
 generic web scan does not set $P_0=1$ for that parser unless its validated scope
 actually exercises the relevant upload and parser trigger class. Mere public
-co-residency still does not set $G_0=1$ when no active high-confidence entry
-point exists.
+co-residency still does not set $G_C=1$ when no explicit, applicable CAPEC
+transition exists.
 
-\item \textbf{Network entry point chained to a local kernel finding.}
-The public web service has an active CVE whose finding satisfies $D(u,x)=1$.
-Its vector is \code{AV:N/C:H/I:H/A:H} and it maps to \code{CWE-97}, so the
-governed combined-signal rule assigns $E_0(u)=\mathrm{high}$ and retains both
-facts as its reason. The same host/kernel boundary has an active \code{AV:L}
-kernel finding. Equation~\ref{eq:chain} sets $G_0(v,a)=1$, making the kernel
-finding IRV without changing its \code{AV:L} vector. The record identifies the
-upstream CVE that caused the promotion. The same full-impact vector without a
-corroborating execution signal is possible-only. A possible-only entry point,
-an unexposed \code{AV:N} package, a resolved upstream finding, or a finding in a
-different runtime boundary does not produce the automatic promotion. Removal
-of the last qualifying upstream finding triggers recomputation.
+\item \textbf{CAPEC-supported chain inside one execution boundary.}
+A public service has active source CVE $u$ and $D(u,x)=1$. Its assigned CWE
+maps to eligible CAPEC pattern $p$. A second active finding $v$ in the same
+canonical boundary maps through its CWE to eligible CAPEC pattern $q$, and the
+catalog explicitly states $p\rightarrow_C q$. The pair enters \emph{Chain
+review}. Vendor and exploit evidence confirm that exploiting $u$ establishes
+the privilege and execution context listed in $q$'s prerequisites, so the
+reviewer records $L_0(u,v,x,a)=1$. Equation~\ref{eq:chain} then sets
+$G_C(v,a)=1$, making $v$ IRV for remediation timelines without changing its
+original CVSS vector. The record identifies both CVEs, both CWE--CAPEC paths,
+the directed CAPEC edge, the boundary, and the review evidence.
+
+If the patterns merely share an ATT\&CK tactic, no explicit CAPEC edge exists,
+the prerequisites conflict, the source is not actually exposed, or the
+findings occupy different boundaries, the pair does not promote. An
+\code{AV:N}-plus-CWE fallback may still surface it for review, but cannot set
+$G_C=1$. Removal of the last qualifying source finding triggers recomputation.
 
 \item \textbf{SSH CVE on a public web host.}
 The host exposes HTTPS publicly, but SSH is reachable only through a path that
@@ -1101,15 +1133,15 @@ remain outside $R_{\mathrm{operational}}$. The method trades exhaustive recall
 for operational scale and makes that trade visible through the \code{unknown}
 state. Its second limitation is that $P_0$ is only as reliable as the validated
 scope, currency, coverage, remediation, and change-invalidation discipline of
-the assessment and ConMon program. Its third is the chain classifier: pairing
-full vulnerable-system H/H/H impact with a corroborating CWE reduces the noise
-of either signal alone, but the conjunction still does not prove that an
-upstream CVE supplies compatible local execution. Server/runtime context can
-also be absent or wrong, and $G_0$ presumes compatibility for active
-\code{AV:L} findings inside the verified boundary. This can over-classify until
-stronger exploit-outcome and local-precondition metadata populate the
-full-information $Q\cap X_Q$ comparison; conversely, requiring corroboration
-can miss real execution reached through another root-cause CWE.
+the assessment and ConMon program. Its third is CAPEC coverage and abstraction.
+CVE-to-CWE and CWE-to-CAPEC mappings are incomplete, many-to-many, and
+unweighted; explicit chain edges are sparse and pattern-level prerequisites are
+prose. Filtering out Meta and retired patterns improves precision but reduces
+coverage. Even an explicit CAPEC edge does not prove that one specific CVE
+supplies another CVE's exact local prerequisites, which is why $L_0$ is a
+required gate. Mapping gaps can miss real chains; broad mappings or weak review
+can over-classify them. Stronger exploit-outcome and local-precondition metadata
+would permit the full-information $Q\cap X_Q$ comparison.
 
 The claim that undocumented indirect-trigger vulnerabilities are exceptional
 should be measured rather than asserted. A reference implementation should be
@@ -1120,10 +1152,12 @@ should report:
 
 \begin{itemize}[leftmargin=1.5em,nosep]
 \item false-negative and false-positive rates for indirect-trigger promotion;
-\item precision and recall of high-confidence and possible entry-point status;
-\item false-positive and false-negative rates for boundary-scoped $G_0$
-  promotion, broken out by strict-CWE, combined-signal, execution-context, and
-  evidence-confirmed reasons;
+\item coverage and ambiguity of CVE--CWE--CAPEC joins after abstraction and
+  status filtering;
+\item precision and recall of explicit CAPEC chain candidates $H_C$;
+\item false-positive and false-negative rates for boundary-scoped $G_C$
+  promotion, broken out by CAPEC edge, prerequisite review, execution context,
+  and optional \code{AV:N}-plus-CWE review-queue seeds;
 \item the proportion of CVEs left unknown;
 \item agreement across analysts, agents, model versions, and repeated runs;
 \item provenance coverage and the authority of cited sources;
@@ -1151,18 +1185,21 @@ problem upstream of any individual provider. Direct reachability can be
 computed reasonably well from network, runtime, and scanner evidence. The
 primary obstacle to scalable transitive classification is that today's
 vulnerability sources and scanners do not reliably identify which CVEs have an
-indirect internet-content trigger or which remotely reachable findings establish
-a local execution capability. More detailed deployment evidence can refine
+indirect internet-content trigger or exactly which exploit outcomes satisfy a
+second CVE's prerequisites. CAPEC supplies a useful, existing bridge from CVE
+through CWE to directed attack-pattern relationships, but does not resolve that
+deployment-specific compatibility by itself. More detailed deployment evidence can refine
 where a known trigger or chain applies, but a complete application-wide
 evidence graph is not required by the operational method recommended here.
 
 The operational profile in this paper is intentionally modest. It computes the
-direct branch, uses CVSS attack vector for direct matching and entry-point
-eligibility without rewriting the downstream vector, promotes known indirect
+direct branch and uses CVSS attack vector for direct matching without rewriting
+the downstream vector, promotes known indirect
 triggers once per CVE, and joins them to coarse content-receipt classes. It
-separately promotes co-resident \code{AV:L} findings when a
-canonical execution boundary contains a directly reachable, high-confidence
-entry point, while retaining the downstream vector and upstream provenance. It
+separately promotes a finding when an explicit CAPEC transition connects it to
+a directly reachable source finding in the same canonical execution boundary
+and a deployment review confirms compatible prerequisites, while retaining the
+downstream vector and full chain provenance. It
 also reuses assessment- and ConMon-backed prevention assertions for the
 input-control classes already tested. The resulting operational set therefore
 converges toward the directly accessible surface, plus known uncovered indirect
@@ -1170,14 +1207,14 @@ triggers and governed chained-access promotions. That is a conditional
 operational convergence, not a semantic claim that internet reachability and
 internet accessibility are identical.
 
-Three explicit presumptions make the method scalable. Unknown indirect triggers
+Three explicit rules make the method scalable. Unknown indirect triggers
 are not promoted until upstream intelligence or review identifies them; a
 current $P_0$ assertion is trusted within its validated scope until contrary
-evidence or change revokes it; and $G_0$ treats an active \code{AV:L} finding
-inside a boundary with a directly reachable high-confidence entry point as
-chain-reachable. These create residual risk from missing trigger metadata,
-incomplete or stale control evidence, and false-positive or false-negative
-entry-point and boundary classification. Threat intelligence, KEV handling,
+evidence or change revokes it; and $G_C$ treats an explicit CAPEC edge as a
+candidate that promotes only after a positive applicability decision. These
+create residual risk from missing trigger metadata, incomplete or stale control
+evidence, sparse or broad CAPEC mappings, and false-positive or false-negative
+applicability and boundary classification. Threat intelligence, KEV handling,
 recurring DAST, finding remediation and retest, change detection, agentic
 proposals, selective analyst review, provenance, and rapid recomputation
 control those risks.
@@ -1192,12 +1229,13 @@ triage purpose. Existing DAST and remediation evidence is sufficient for the
 paper's scoped standing-control presumption; the optional graph would improve
 precision, not create the premise from nothing. The durable near-term
 improvement is upstream: publish
-provenance-backed trigger profiles once and carry them through scanners so
-providers can promote exceptional indirect cases consistently. Agentic
+provenance-backed trigger and exploit-outcome profiles once and carry them
+through scanners so providers can promote exceptional indirect cases and
+validate CAPEC chain candidates consistently. Agentic
 enrichment can bridge that gap, but it does not become the authority for facts
 no source has disclosed.
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{11}
 \bibitem{fedramp-definitions}
 FedRAMP, \emph{FedRAMP Definitions: Internet-Reachable Vulnerability},
 Consolidated Rules for 2026.\\
@@ -1229,6 +1267,17 @@ MITRE, \emph{Common Weakness Enumeration}, Version 4.20, weakness definitions,
 common consequences, and vulnerability-mapping notes.\\
 \href{https://cwe.mitre.org/data/downloads}{CWE 4.20 catalog}
 
+\bibitem{capec-schema}
+MITRE, \emph{CAPEC Schema Documentation}, related weaknesses, related attack
+patterns, chaining relationships, prerequisites, execution flow, and taxonomy
+mappings.\\
+\href{https://capec.mitre.org/documents/schema/schema_v3.0.html}{CAPEC schema documentation}
+
+\bibitem{capec-catalog}
+MITRE, \emph{Common Attack Pattern Enumeration and Classification}, Version
+3.9 catalog and machine-readable downloads.\\
+\href{https://capec.mitre.org/data/index.html}{CAPEC 3.9 catalog}
+
 \bibitem{cyclonedx}
 OWASP CycloneDX, \emph{CycloneDX v1.7 Specification Reference}, impact
 analysis states and justifications.\\
@@ -1244,6 +1293,7 @@ limitations of automated testing.\\
 \begin{center}
 \footnotesize
 \begin{tabular}{>{\ttfamily}p{0.08\linewidth}p{0.34\linewidth}>{\ttfamily}p{0.08\linewidth}p{0.34\linewidth}}
+CAPEC & Common Attack Pattern Enumeration and Classification & ATT\&CK & Adversarial Tactics, Techniques, and Common Knowledge \\
 3PAO & Third-Party Assessment Organization & ALPN & Application-Layer Protocol Negotiation \\
 CISA & Cybersecurity and Infrastructure Security Agency & CNA & CVE Numbering Authority \\
 ConMon & Continuous Monitoring & CPE & Common Platform Enumeration \\
