@@ -1,9 +1,9 @@
-# FedRAMP VDR/VER — PAIN scoring method, VLEV & VEX proposals
+# FedRAMP VDR/VER — deterministic PAIN scoring & remediation
 
-A deterministic, standards-grounded method for prioritizing vulnerabilities under
-FedRAMP **VDR** (Vulnerability Detection and Response) and **VER** (Vulnerability
-Evaluation Requirements), plus companion proposals to refine the exploitability axis
-and to carry per-finding disposition as VEX.
+A deterministic, auditable method for PAIN scoring and remediation under FedRAMP
+**VDR** (Vulnerability Detection and Response) and **VER** (Vulnerability Evaluation
+Requirements), with standards-grounded guidance for security-impact profiles,
+calibration, reachability, compliance findings, VLEV, and VEX.
 
 📄 **[Read the PDFs](https://stackarmor.github.io/rfc-fedramp-vdr/)** — rendered on GitHub Pages.
 🧪 **[Development preview](https://stackarmor.github.io/rfc-fedramp-vdr/dev/)** —
