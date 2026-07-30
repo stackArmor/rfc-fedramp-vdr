@@ -183,7 +183,8 @@ Magnitude of potential agency impact & CVSS-derived pre-cap impact aggregate ($U
 Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog membership /
 direct-IRV CVSS floor \\
 Internet reachable (VER) & \code{IRV}: per-finding payload reachability (companion method) \\
-Single- vs.\ multi-agency blast radius & scope multiplier on the PAIN tier \\
+Single- vs.\ multi-agency blast radius & finding-specific affected-agency scope
+selects the PAIN tier \\
 Provider Certification Class & operational-assurance tier selecting the remediation
 deadline table \\
 \bottomrule
@@ -206,11 +207,15 @@ We define PAIN as a function of a \emph{severity} term and a \emph{scope} term:
 \text{PAIN}(\text{finding}) \;=\; f\big(\,\text{SEVERITY},\ \text{SCOPE}\,\big).
 \]
 \textbf{SEVERITY} answers ``how badly does this vulnerability's impact land on
-\emph{this} asset?'' --- the CVE's impact metrics re-weighted by the asset's
-effective CR/IR/AR. \textbf{SCOPE} answers ``how many agencies' data does the asset hold?''
---- single (1) or multiple ($>1$). SEVERITY is mapped to a FedRAMP customer-effect
-word (Minimal, Narrow, Disruptive, Debilitating); the word and scope together
-select the N-level.
+the agency in this deployment?'' --- the CVE's impact metrics re-weighted by the
+effective CR/IR/AR of the component on which each evidenced consequence lands.
+Ordinarily that component is the asset carrying the vulnerable code; a supported
+cross-component effect can make another component's consequence profile relevant.
+\textbf{SCOPE} answers whether the finding's evidenced effect reaches one definite
+agency or several. It is a property of the finding in its deployed architecture,
+not merely a count of customers or data attached to the vulnerable asset. SEVERITY
+is mapped to a FedRAMP customer-effect word (Minimal, Narrow, Disruptive,
+Debilitating); the word and affected-agency scope together select the N-level.
 
 \begin{plain}
 \textbf{See the whole method interactively.}
@@ -472,11 +477,15 @@ implementation \rfckw{must} treat the thresholds as governed configuration rathe
 than an in-band, ad-hoc setting.
 
 \paragraph{Scope and the N-level.}
-Let $m \in \{0,1\}$ be the asset's multi-agency flag, resolved from governed
-asset metadata using the most-specific applicable value. Scope is purely
-hierarchical --- an asset is multi-agency only if the asset itself, a containing
-boundary, or the provider default is tagged multi-agency. The N-level follows
-from the word and scope:
+Let $m \in \{0,1\}$ be the finding's affected-agency flag: $m=0$ when its
+evidenced effect is confined to one definite agency and $m=1$ when it can affect
+several. Governed asset metadata, resolved from the most-specific applicable
+asset or containing-boundary value, supplies a practical baseline. The semantic
+input remains the scope of the finding's \emph{effect}. A finding on shared
+infrastructure can remain single-agency when tenant containment is demonstrated;
+a finding whose effect can traverse a shared control plane or dependency can be
+multi-agency even when the vulnerable process itself stores no agency data. The
+N-level follows from the word and that affected-agency scope:
 \begin{equation}
 \text{PAIN} =
 \begin{cases}
@@ -488,6 +497,40 @@ from the word and scope:
 \end{cases}
 \label{eq:pain}
 \end{equation}
+
+\paragraph{Scope selects consequences; it is not a generic severity multiplier.}
+A security-boundary crossing has no independent PAIN weight. It matters when it
+changes the agency information, functions, assets, or missions that exploitation
+can affect; the objectives on which those consequences land; or the number of
+definite agencies exposed. Indiscriminately raising PAIN for every Changed-Scope
+vector, shared asset, or architectural edge would conflate topology with
+consequence and create noise. Likewise, asset count alone is not an impact
+measure: one database holding high-consequence information can matter more than
+many disposable replicas. Several affected assets matter when their combined
+effect changes the supported customer-effect word, not because their cardinality
+is multiplied into Equation~\eqref{eq:u}.
+
+\paragraph{Cross-component consequence attribution.}
+When exploitation on one component produces a confidentiality, integrity, or
+availability consequence on another, the assessment follows the consequence.
+For example, if SQL injection in an application exposes records held by a
+database, the confidentiality consequence is governed by the database information
+and the applicable intended-use ceiling, not solely by the application process
+that contains the vulnerable code. The application does not automatically inherit
+the database's complete security-impact profile: a read-only, tenant-scoped
+credential can project confidentiality without projecting database-wide
+integrity, availability, or multi-agency scope.
+
+Stable architectural authority --- such as an application role with durable,
+broad read access --- should be represented in the upstream component's governed,
+independently dimensional security-impact profile. A vulnerability-specific or
+conditional path can instead support an evidenced per-finding profile override.
+Data-flow, trust, privilege, and vulnerability metadata are relevant evidence for
+either decision. The present reference calculation still consumes one effective
+CR/IR/AR vector and one affected-agency flag per finding; it does not standardize
+automatic aggregation across an arbitrary graph of downstream assets. A future
+multi-target extension must define target resolution and consequence aggregation
+explicitly rather than introduce an uncalibrated scope factor.
 
 \clearpage
 \subsection{Where this departs from standard CVSS scoring}
@@ -541,10 +584,37 @@ metric. CVSS Scope asks whether exploitation can affect resources governed by a
 security authority beyond the vulnerable component's authority; it is not limited
 to sandbox or privilege-boundary escape, and Modified Scope can reflect the local
 environment. FedRAMP's blast-radius concern here asks a different question:
-whether the affected asset carries one agency's data or several agencies' data.
-The multi-agency flag in Eq.~\eqref{eq:pain} carries that concern directly. Because
-the two concepts are not semantically interchangeable, the CVSS Scope machinery is
-omitted rather than renamed or repurposed.
+whether the finding's supported effect reaches one agency or several. The
+multi-agency flag in Eq.~\eqref{eq:pain} carries that concern directly, while the
+cross-component attribution above determines which consequence profile is
+relevant. Because these concepts are not semantically interchangeable, the CVSS
+Scope machinery is omitted rather than renamed or repurposed.
+
+\paragraph{CVSS v4.0 makes impact location explicit without defining PAIN
+attribution.}
+CVSS v4.0 retires the Scope metric and separately represents impact to the
+Vulnerable System (\code{VC/VI/VA}) and to Subsequent Systems
+(\code{SC/SI/SA}). ``Subsequent System'' is the term of art; it means a different
+system whose security policy is violated as a result of exploitation, not simply
+another subcomponent touched by the data flow. FIRST's user guidance therefore
+notes that SQL injection does not ordinarily create Subsequent-System impact when
+the application and database share credentials and operate within the same
+security scope. That CVSS classification does not erase the database's agency
+consequence: PAIN may still need the database information context when the
+application's authorized path exposes it. CVSS system-boundary semantics and PAIN
+consequence attribution answer related but different questions
+\mbox{[CVSS40, CVSS40-UG]}.
+
+The distinction is directionally useful but this memo does not yet prescribe a
+v4-native cross-system PAIN aggregation rule. Subsequent-System impact metrics
+should be retained as evidence for affected-asset and security-impact-profile
+analysis rather than silently discarded. Mapping a v4.0-only
+\code{VC/VI/VA} vector onto the present $C/I/A$ inputs is a limited compatibility
+path; non-None \code{SC/SI/SA}, or deployment evidence that the consequence lands
+elsewhere, calls for explicit target review. A future extension may combine
+data-flow and trust evidence with Modified Vulnerable- and Subsequent-System
+impact metrics, but it must state how each consequence is associated with the
+effective requirements of the system on which it lands.
 
 The result is not a conformant CVSS Environmental Score. It preserves CVSS's
 impact values, requirement multipliers, and aggregation form, but retains the
@@ -774,33 +844,113 @@ reconnaissance, not a debilitating breach --- captured by the low CR.
 \label{sec:ladder}
 \begin{plain}
 FedRAMP does not demand that every flaw be \emph{fixed} inside its deadline --- it
-demands that the potential damage come \emph{down the ladder} on schedule. There are
-two ways to climb down: make the flaw hurt less if it fires (its \emph{row} drops to
-a lower N-level), or make it harder to reach or exploit (its \emph{column} moves to a
-slower clock). Every step down must be backed by evidence somebody signed, every step
-is recorded, and no step may claim the damage is exactly zero --- ``zero'' is a
-different kind of claim with its own paperwork (VEX).
+demands measurable vulnerability-response progress on schedule. Its tables express
+that progress through a PAIN row and a reachability/exploitability column. A provider
+can make the flaw hurt less if it fires (the row drops), or make it harder to reach
+or exploit (the column moves to a slower clock). An explicitly labeled proxy is
+also needed because FedRAMP asks providers to express mitigation progress through
+lower PAIN ratings even when the causal change is likelihood. The same control may
+therefore update the proxy and the separately required reachability or
+exploitability field. Every step must be backed by evidence somebody signed, every
+step is recorded, and no partial step may claim the residual risk is exactly zero
+--- complete blocking is a different claim with its own disposition evidence.
 \end{plain}
 
 FedRAMP's response model is a ladder, not a binary. \code{VER-RPT-VDT} requires
 reporting the ``time and Potential Agency Impact N-rating of each completed and
 evaluated reduction in Potential Agency Impact N-rating'' and the ``estimated time
 and target Potential Agency Impact N-rating of next reduction in Potential Agency
-Impact N-rating'' --- the rule \emph{expects} PAIN to be re-estimated downward as
-mitigations land --- and the \code{VDR-TFR-PVR} timeframes are satisfied by partial
-mitigation to a lower N-rating (Appendix~\ref{app:matrix}). A deterministic
-classifier therefore needs a deterministic \emph{lever}: a governed way to recompute
-PAIN when a mitigation changes the facts.
+Impact N-rating.'' \code{VDR-TFR-PVR} likewise expresses timely partial mitigation
+as movement to a lower N-rating (Appendix~\ref{app:matrix}). The definitions are
+broader: \code{FRD-PMV} and \code{FRD-FMV} recognize a vulnerability as partially or
+fully mitigated when either its likelihood of exploitation \emph{or} its PAIN has
+been reduced. A deterministic response method therefore needs both a governed way
+to recompute consequence when impact changes and a governed way to represent
+material likelihood reduction in the lower-N-rating workflow, whether or not the
+same reduction also changes a binary column.
 
-\paragraph{The lever is the other half of CVSS Environmental.} Section~\ref{sec:math}
+\subsection{A semantic weakness in the mitigation ladder}
+\label{sec:pain-proxy}
+\code{VER-EVA-EPA} defines a vulnerability's PAIN by the customer effect that
+exploitation could be expected to cause: Minimal, Narrow, Disruptive, or
+Debilitating, combined with affected-agency scope. Read literally, this is
+\emph{conditional impact} --- what happens if exploitation succeeds --- rather
+than the probability that exploitation succeeds. Most compensating controls do
+not change that conditional consequence. A WAF rule, an authentication gate,
+network segmentation, exploit prevention, or sandbox enforcement usually changes
+whether the exploit reaches or completes on the vulnerable component. If the
+control fails and exploitation succeeds, the same agency consequence may remain.
+Controls that genuinely bound consequence --- least privilege, tenant or
+data-store partitioning, read-only credentials, constrained egress that limits
+the result of code execution, or fault-tolerant design that limits outage --- are
+real but form a narrower set.
+
+That produces a potential weakness in the rule language. FedRAMP defines partial
+and full mitigation over \emph{likelihood or PAIN}, but its timeframe and reporting
+workflow asks providers to express mitigation progress as a lower PAIN rating.
+Requiring every partial mitigation to prove lower conditional impact would deny
+credit to many of the controls most readily available after detection, especially
+when timely source remediation is impossible. Treating every likelihood control
+as if it literally changed impact would solve the workflow problem only by
+misstating the PAIN definition \mbox{[VER, VDR, DEF]}.
+
+\paragraph{Recommended reconciliation: retain PAIN and label the proxy.}
+The original and current \emph{consequence PAIN} should remain the estimate of
+customer effect conditional on successful exploitation. When remediation is not
+yet possible, an evidenced partial mitigation that materially reduces the local
+likelihood of successful exploitation \rfckw{should} be eligible to produce a
+\emph{residual-response PAIN proxy}: a lower N-level used to represent progress on
+the FedRAMP mitigation ladder even when the conditional consequence is unchanged.
+The proxy is not a claim that the affected information, mission, or agency scope
+became less important. It is a controlled translation of verified residual-risk
+reduction into the N-level vocabulary the response workflow requires.
+
+The record \rfckw{should} retain, side by side: the historical consequence PAIN;
+the current consequence PAIN; the residual-response proxy when used; the control
+and causal mechanism; the affected path and scope; evidence, validation time, and
+expiry; the size and calibration basis of the proxy reduction; and the remaining
+remediation plan. ``One control equals one N-level'' is not a rule. The reduction
+must be governed, proportional to the demonstrated likelihood change, and
+reversible when its evidence expires or the deployment changes.
+
+\paragraph{One mitigation may update multiple required fields.}
+FedRAMP requires providers to report PAIN, internet reachability, and likely
+exploitability as separate fields even though its mitigation definitions and
+lower-PAIN workflow overlap them. If one evidenced control materially reduces
+local likelihood and also changes IRV to NIRV or LEV to NLEV, that same control
+\rfckw{may} support both the residual-response proxy and the updated column. This
+is correlated reporting of one mitigation through two FedRAMP-required outputs,
+not a claim that two independent controls or two independent reductions occurred.
+The records should reference the same control, evidence, scope, validation, and
+expiry so a reviewer can see the coupling. The evidence is counted once within
+each calculation; it is not duplicated as additional defense-in-depth, stacked
+again, or represented as a second independent residual factor. Neither output
+edits the published CVSS vector, EPSS probability, KEV status, or the independent
+CISA KEV deadline.
+
+\paragraph{Complete blocking is a disposition, not another partial rung.}
+This proxy applies only while residual exploitation risk remains. When current,
+scoped evidence demonstrates that the relevant exploit is completely blocked or
+neutralized, the finding moves to the full-mitigation/applicability path instead
+of taking additional proxy reductions. A signed VEX \code{not\_affected}
+disposition can carry the applicable justification --- for example, a bypass-free
+perimeter rule, prevention-mode EDR control, or enforced sandbox that blocks the
+specific exploit path --- while retaining the would-be PAIN for audit and
+re-evaluation. Mere product presence, alert-only detection, incomplete rule
+coverage, or an untested control is not complete blocking. Remediation remains the
+separate state in which the vulnerability is eliminated and no longer detected.
+
+\paragraph{The native impact lever is the other half of CVSS Environmental.}
+Section~\ref{sec:math}
 uses one half of the Environmental group, the Security Requirements (CR/IR/AR). The
 other half is the \emph{Modified Base} metrics, which the CVSS specification provides
 precisely for capturing mitigations, configurations, and compensating controls
 present in a specific environment. The two halves split cleanly along the model's
 own seam:
 \begin{itemize}[leftmargin=1.4em,nosep,topsep=3pt]
-\item \textbf{Asset side --- static.} CR/IR/AR and the multi-agency flag describe
-  what the asset \emph{is}. They never move to make a deadline.
+\item \textbf{Consequence side --- static unless architecture changes.} CR/IR/AR
+  and affected-agency scope describe what is at stake. They never move merely to
+  make a deadline.
 \item \textbf{Vulnerability side --- dynamic.} The Modified impact metrics
   (\code{MC}/\code{MI}/\code{MA}) describe what the flaw can still do \emph{here},
   given the controls actually deployed. They are evidence-gated and move as
@@ -930,11 +1080,17 @@ mitigations do not touch the impact metrics at all --- they move the finding's
 \emph{column}. Network segmentation that verifiably cuts the payload path, or a
 current prevention assertion under the companion model, can flip IRV to NIRV; a
 qualifying remote-access boundary (the companion model's Gate~3) defeats the
-\code{FRD-LEV} unauthenticated-automation floor. \code{VDR-TFR-PVR} is satisfied by landing on
-\emph{any} longer clock, whether the step down was a row or a column. The textual
-hook for the column half is \code{FRD-PMV}/\code{FRD-FMV}: FedRAMP defines
-mitigation over \emph{likelihood or} PAIN, and an evidence-backed reachability or
-exploitability reduction is the likelihood half.
+\code{FRD-LEV} unauthenticated-automation floor. The matrix supplies a longer clock
+when either binary classification changes. The textual hook is
+\code{FRD-PMV}/\code{FRD-FMV}: FedRAMP defines mitigation over \emph{likelihood or}
+PAIN, and an evidence-backed reachability or exploitability reduction is the
+likelihood half. The column move and the separately labeled residual-response
+proxy may coexist because FedRAMP asks for both current column fields and
+lower-N-rating mitigation progress. They must carry the same provenance and be
+identified as correlated outputs of one control. Where the mitigation materially
+reduces local likelihood but crosses neither binary boundary, the proxy can still
+represent that progress. In neither case does the proxy pretend that conditional
+impact changed.
 
 \paragraph{Where the ladder ends.} The descent is bounded, not endless. It
 terminates in one of four states: \emph{remediation}; \emph{full mitigation}
@@ -1340,9 +1496,11 @@ suppression cannot outlive the condition that justified it.
   security-impact profile, VER axes), the method yields the same PAIN and deadline
   on every run and for every analyst.
 \item \textbf{Governed asset inputs.} An asset needs an uncapped
-  security-impact profile and an affected-agency scope. The profile may be assigned
-  directly or resolved from governed metadata such as an archetype; the
-  intended-use ceiling is resolved separately.
+  security-impact profile, and each finding needs an affected-agency scope. The
+  profile may be assigned directly or resolved from governed metadata such as an
+  archetype; the intended-use ceiling is resolved separately. Finding-specific
+  cross-component evidence may identify a different consequence context without
+  changing the published CVE vector.
 \item \textbf{Governed calibration.} The High-centered PAIN normalization, word
   thresholds (Eq.~\eqref{eq:word}), and EPSS threshold are governed parameters and
   \rfckw{must} live in governed configuration, not in ad-hoc cluster state.
@@ -1564,6 +1722,16 @@ on. Each item below names the value we use, why, and the fact that an implementa
   select the remediation column instead of influencing the PAIN row.
   Section~\ref{sec:cvss-divergence} enumerates this choice and every downstream CVSS
   component the method omits.
+\item \textbf{Likelihood-only partial mitigation may use a labeled PAIN proxy.}
+  FedRAMP defines partial mitigation as reducing likelihood or PAIN, while its
+  timeframe and reporting workflow expresses progress through lower N-ratings.
+  Section~\ref{sec:pain-proxy} retains consequence PAIN and permits a separately
+  labeled residual-response proxy for verified local likelihood reduction. The
+  same mitigation may also update the separately required IRV/LEV column; both
+  outputs carry common provenance and are disclosed as correlated expressions of
+  one control, not independent reductions. This reconciliation is ours, not a
+  FedRAMP formula, and the proxy needs governed, disclosed calibration before
+  operational use.
 \item \textbf{CISA Vulnrichment is deliberately excluded.} Two CISA Vulnrichment
   SSVC values are natural candidate inputs: the exploitation state (as a
   LEV input) and the technical impact (as an impact floor). We adopt neither. The
@@ -1595,11 +1763,13 @@ on. Each item below names the value we use, why, and the fact that an implementa
   shares. An adopter \rfckw{may} tighten this (citation everywhere) or, at its
   own risk, relax the reachability carve-out; either choice belongs in governed
   configuration with the residual documented.
-\item \textbf{Scope is purely hierarchical.} An asset is multi-agency only if the
-  asset itself, a containing boundary, or the provider default is tagged so
-  (most-specific wins); there is no automatic per-archetype escalation. (The
-  tempting shortcut --- auto-escalating ``shared-infrastructure'' archetypes to
-  multi-agency --- is rejected in favor of explicit, operator-controlled tagging.)\par\smallskip
+\item \textbf{Scope is finding-specific; hierarchical metadata is the baseline.}
+  Asset, containing-boundary, and provider-default tags resolve most-specific-first
+  as the operational starting point. Evidence that a finding is tenant-contained
+  can keep a shared asset single-agency; evidence that its effect traverses a
+  shared control plane or dependency can establish multi-agency scope. There is no
+  automatic per-archetype escalation and no generic scope multiplier. The
+  affected-agency basis remains explicit and operator-controlled.\par\smallskip
 \item \textbf{The profile is required; an archetype is optional.} The formula
   ultimately requires a per-asset effective Security Requirements vector
   (\code{CR/IR/AR}); the upstream asset security-impact profile may come from direct
@@ -1633,10 +1803,11 @@ on. Each item below names the value we use, why, and the fact that an implementa
   explicit CR/IR/AR multipliers. CVSS v4.0 retains CR/IR/AR but feeds them into a
   lookup-based MacroVector rather than the v3.1 formula, and it splits impact into
   Vulnerable-System (\code{VC/VI/VA}) and Subsequent-System (\code{SC/SI/SA})
-  metrics. A v4.0-only finding can be approximated by mapping \code{VC/VI/VA} onto
-  $C/I/A$, at the cost of ignoring Subsequent-System impact; while NVD remains
-  v3.1-dominant, an implementation \rfckw{should} prefer the v3.1 vector when both
-  are available.
+  metrics. A v4.0-only finding can use the limited compatibility mapping from
+  \code{VC/VI/VA} onto $C/I/A$, but Subsequent-System metrics remain reviewable
+  evidence and must not disappear from the derivation record. This memo does not
+  define automatic multi-target aggregation. While NVD remains v3.1-dominant, an
+  implementation \rfckw{should} prefer the v3.1 vector when both are available.
 \item \textbf{The example archetype-to-profile catalog and its CR/IR/AR values
   (Appendix~\ref{app:catalog}).} Illustrative only --- each CSP \rfckw{should} derive
   its security-impact profiles from component roles, trust, privilege,
@@ -1676,8 +1847,9 @@ various other team members at stackArmor who helped make it possible.
   \texttt{VER-RPT-AVI}. Pinned permalink: \vercite{} (commit of 2026-06-24).
   Accessed 2026-07-01.
 \item[{[DEF]}] FedRAMP, \emph{FedRAMP Definitions}. Definitions cited:
-  \texttt{FRD-IRV}, \texttt{FRD-LEV}. Pinned permalink: \defcite{} (commit of
-  2026-06-24). Accessed 2026-07-01.
+  \texttt{FRD-IRV}, \texttt{FRD-LEV}, \texttt{FRD-PAI},
+  \texttt{FRD-PMV}, \texttt{FRD-FMV}, and \texttt{FRD-RMV}. Pinned permalink:
+  \defcite{} (commit of 2026-06-24). Accessed 2026-07-01.
 \item[{[EGR]}] M.~Venne, \emph{Internet Reachability at Scale under the FedRAMP
   VDR/VER Rules}, stackArmor,
   July 2026. Companion paper specifying the reachability determination used here.
@@ -1695,6 +1867,12 @@ various other team members at stackArmor who helped make it possible.
   input; \texttt{VDR-TFR-KEV} schedule.
 \item[{[CVSS]}] FIRST, \emph{CVSS v3.1 Specification} --- Environmental metric group
   and Modified Impact Sub-Score.
+\item[{[CVSS40]}] FIRST, \emph{Common Vulnerability Scoring System v4.0:
+  Specification Document}. Vulnerable- and Subsequent-System impact metrics.
+  \url{https://www.first.org/cvss/v4.0/specification-document}.
+\item[{[CVSS40-UG]}] FIRST, \emph{CVSS v4.0 User Guide}. Vulnerable-System and
+  Subsequent-System boundary guidance, including the SQL-injection example.
+  \url{https://www.first.org/cvss/user-guide.html}.
 \item[{[EPSS]}] FIRST, \emph{Exploit Prediction Scoring System}.
 \item[{[CLASS]}] FedRAMP, \emph{Choosing a Certification Class}, Consolidated
   Rules for 2026.
