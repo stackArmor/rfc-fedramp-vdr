@@ -180,8 +180,7 @@ Asset data sensitivity / FIPS-199 C-I-A categorization & Security Requirements
 Confirmed CSO and agency intended information types & Per-objective Security
 Requirements ceiling over the asset security-impact profile \\
 Magnitude of potential agency impact & CVSS-derived pre-cap impact aggregate ($U$) \\
-Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog membership /
-direct-IRV CVSS floor \\
+Likely exploitable (VER) & \code{LEV}: EPSS threshold / CISA KEV catalog membership \\
 Internet reachable (VER) & \code{IRV}: per-finding payload reachability (companion method) \\
 Single- vs.\ multi-agency blast radius & finding-specific affected-agency scope
 selects the PAIN tier \\
@@ -309,8 +308,7 @@ Two governed threat inputs feed the exploitability column:
 \item \emph{EPSS moves the clock statistically.} The same N3 finding, not in the KEV
   catalog but with EPSS $0.85$ ($\ge \theta_{\text{epss}} = 0.50$), is LEV on
   likelihood alone and lands on the same 16/32-day clocks.
-\item \emph{Neither present.} Sub-threshold EPSS, not in the KEV catalog, and not
-  caught by the \code{FRD-LEV} unauthenticated-automation floor
+\item \emph{Neither present.} Sub-threshold EPSS and not in the KEV catalog
   (Section~\ref{sec:remediation}) $\rightarrow$ the finding is scored purely on its
   CVSS vector and stays in the slow column at its base tier.
 \end{itemize}
@@ -679,17 +677,9 @@ axes:
 where, for a provider-selected EPSS threshold $\theta_{\text{epss}}$ (this memo uses
 $0.50$):
 \begin{align*}
-\text{LEV} \;&=\; \big(\text{EPSS} \ge \theta_{\text{epss}}\big)\ \lor\ \big(\text{CVE} \in \text{KEV}\big)\\
-&\quad\lor\ \big(\text{IRV}_{\text{direct}} \land \text{\code{AV:N}} \land \text{\code{AC:L}} \land \text{\code{PR:N}} \land \text{\code{UI:N}}\big),\\
+\text{LEV} \;&=\; \big(\text{EPSS} \ge \theta_{\text{epss}}\big)\ \lor\ \big(\text{CVE} \in \text{KEV}\big),\\
 \text{IRV} \;&=\; \text{the \emph{finding} is internet-reachable (evaluated per vulnerability, not per asset).}
 \end{align*}
-The third LEV disjunct implements the \code{FRD-LEV} floor note that ``any
-vulnerability that an automated unauthenticated system can exploit over the internet
-is a likely exploitable vulnerability.'' The deterministic operational profile maps
-that floor to a finding that is IRV via \emph{direct} exposure and whose CVSS vector
-permits low-complexity, unauthenticated automation
-(\code{AV:N/AC:L/PR:N/UI:N}). A finding outside this vector floor remains LEV when
-either of the independent EPSS or KEV predicates is satisfied.
 
 \begin{definitionbox}
 Internet reachability is a property of the \emph{(vulnerability, asset) pair}, not
@@ -1017,8 +1007,8 @@ asset:
 U &= 1-(1-0.84)^3 = 0.995904,\quad
 S = 1.000 \;\Rightarrow\; \text{Debilitating},\ m=1 \;\Rightarrow\; \text{N5},
 \end{align*}
-on the Class~C LEV+IRV clock of \textbf{2 days} (Log4Shell is LEV twice over:
-KEV-listed, and caught by the \code{FRD-LEV} floor). With the evidenced egress-deny,
+on the Class~C LEV+IRV clock of \textbf{2 days} (Log4Shell is LEV because it is
+KEV-listed). With the evidenced egress-deny,
 $\mathrm{MC}=\mathrm{MI}=\mathrm{MA}=0.22$ (Low):
 \begin{align*}
 U &= 1-(1-0.33)^3 = 0.699237,\\
@@ -1079,9 +1069,9 @@ hypothetical --- each has already played out in public:
 mitigations do not touch the impact metrics at all --- they move the finding's
 \emph{column}. Network segmentation that verifiably cuts the payload path, or a
 current prevention assertion under the companion model, can flip IRV to NIRV; a
-qualifying remote-access boundary (the companion model's Gate~3) defeats the
-\code{FRD-LEV} unauthenticated-automation floor. The matrix supplies a longer clock
-when either binary classification changes. The textual hook is
+qualifying remote-access boundary (the companion model's Gate~3) can flip IRV to
+NIRV. The matrix supplies a longer clock when either binary classification changes.
+The textual hook is
 \code{FRD-PMV}/\code{FRD-FMV}: FedRAMP defines mitigation over \emph{likelihood or}
 PAIN, and an evidence-backed reachability or exploitability reduction is the
 likelihood half. The column move and the separately labeled residual-response
@@ -1708,15 +1698,8 @@ on. Each item below names the value we use, why, and the fact that an implementa
   higher values produce fewer fast-track findings. FedRAMP leaves the framework
   to the provider.
 \item \textbf{LEV is a union, not a blend.} A finding is Likely Exploitable if
-  EPSS $\ge \theta_{\text{epss}}$, \emph{or} it is listed in the CISA KEV catalog,
-  \emph{or} it is internet-reachable via direct exposure and its vector permits
-  low-complexity, unauthenticated automation (\code{AV:N/AC:L/PR:N/UI:N}) ---
-  whichever fires, with no weighting among them. The third disjunct is the method's
-  deterministic operational profile for the \code{FRD-LEV} floor note that ``any
-  vulnerability that an automated unauthenticated system can exploit over the
-  internet is a likely exploitable vulnerability.'' An \code{AC:H} finding does not
-  enter LEV through this vector floor alone, but KEV membership or EPSS
-  $\ge \theta_{\text{epss}}$ independently places it in LEV.
+  EPSS $\ge \theta_{\text{epss}}$, \emph{or} it is listed in the CISA KEV catalog ---
+  whichever fires, with no weighting among them.
 \item \textbf{Impact-only severity.} We use the CVSS-derived impact aggregate rather
   than computing the full Environmental Score; exploitability and reachability
   select the remediation column instead of influencing the PAIN row.

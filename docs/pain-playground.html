@@ -407,7 +407,7 @@
           </fieldset>
 
           <fieldset class="field-set">
-            <legend class="fld">Exploit preconditions <span class="tipicon" tabindex="0" data-tip="These never change the PAIN level. They matter later: a flaw that is network-triggerable with low attack complexity, no privileges, and no user interaction, sitting directly on the internet, is automatically treated as likely-exploitable (FedRAMP&rsquo;s FRD-LEV floor, AV:N/AC:L/PR:N/UI:N).">?</span></legend>
+            <legend class="fld">Exploit preconditions <span class="tipicon" tabindex="0" data-tip="These never change the PAIN level. Attack vector and exposure inform reachability; EPSS and KEV determine likely exploitability.">?</span></legend>
             <div class="triple" style="grid-template-columns:repeat(2,1fr)">
               <div class="cell"><label for="mAV"><b>Attack Vector</b> <span class="sym">AV</span></label>
                 <select id="mAV"><option value="N">Network</option><option value="A">Adjacent</option><option value="L">Local</option><option value="P">Physical</option></select></div>
@@ -723,15 +723,14 @@ function compute(){
   const D = state.exposed && avDirectOk && !state.gate3;
   const indirect = state.j==='confirmed' && state.c0 && !state.p0;
   const irv = D || indirect;
-  const floor = D && state.AC==='L' && state.PR==='N' && state.UI==='N';
   const byEpss = !state.mitE && state.epss >= state.thEpss;
-  const lev = byEpss || state.kev || floor;
+  const lev = byEpss || state.kev;
   const col = lev ? (irv ? 0 : 1) : 2;
   const deadline = pain==='N1' ? null : MATRIX[state.cls][pain][col];
   const seedHits = state.cwes.filter(c=>SEED_CWES[c]);
   return {req, archetypeReq:req.archetype, ceiling:req.ceiling, cr,ir,ar, baseC,baseI,baseA, effC,effI,effA, mitCok,mitIok,mitAok,
           pC,pI,pA, raw, cvssMiss, aboveCvssCap, S, word, pain,
-          avDirectOk, D, indirect, irv, floor, byEpss, lev, col, deadline, seedHits};
+          avDirectOk, D, indirect, irv, byEpss, lev, col, deadline, seedHits};
 }
 
 /* ============================== helpers ============================== */
@@ -854,7 +853,6 @@ function disj(on, title, why){
 }
 
 function levBlock(r){
-  const floorTip = 'FedRAMP&rsquo;s FRD-LEV floor: &ldquo;any vulnerability that an automated unauthenticated system can exploit over the internet is a likely exploitable vulnerability.&rdquo; The memo&rsquo;s deterministic profile: directly internet-reachable AND the vector permits low-complexity, unauthenticated automation (AV:N/AC:L/PR:N/UI:N). A high-complexity (AC:H) finding does not enter through this floor alone — but EPSS or KEV can still make it likely-exploitable.';
   return disj(r.byEpss, state.mitE && state.epss>=state.thEpss
       ? 'Prediction mitigated — EPSS '+state.epss.toFixed(2)+' attested below the '+state.thEpss.toFixed(2)+' trigger point'
       : 'Prediction says yes — EPSS '+state.epss.toFixed(2)+' is '+(r.byEpss?'at or above':'below')+' the '+state.thEpss.toFixed(2)+' trigger point',
@@ -862,12 +860,7 @@ function levBlock(r){
       ? 'An evidence-backed exploitability mitigation is on record — the likelihood half of FedRAMP mitigation. Re-evaluated whenever the control changes; the raw EPSS stays on the books.'
       : 'Statistical likelihood of exploitation in the wild, from FIRST&rsquo;s scoring system.')+
     disj(state.kev, 'CISA says yes — '+(state.kev?'on':'not on')+' the Known Exploited Vulnerabilities list',
-      'Observed exploitation overrides any prediction.')+
-    disj(r.floor, '<span class="tip" tabindex="0" data-tip="'+floorTip+'">Auto-exploitable from the internet</span> — directly reachable, low complexity, no account, no user action',
-      r.floor ? 'A bot can exploit this unauthenticated over the internet — FedRAMP&rsquo;s floor makes it likely-exploitable by definition, whatever EPSS says.'
-              : (state.gate3 && state.exposed && state.AV==='N' ? 'Defeated: the VPN/identity-proxy boundary removes the direct internet path.'
-                 : (r.D && state.AC==='H' ? 'High attack complexity (AC:H) keeps it off the automation floor — only EPSS or KEV could make it likely-exploitable.'
-                    : 'Would need the flaw to be directly internet-reachable and triggerable at low complexity with no account and no user action.')));
+      'Observed exploitation overrides any prediction.'));
 }
 function irvBlock(r){
   let dWhy;
@@ -944,7 +937,7 @@ function stepPanel4(r){
 function stepPanel5(r){
   /* verdict sentence */
   const levWhy = r.lev
-    ? 'likely to be exploited ('+[r.byEpss?'EPSS '+state.epss.toFixed(2):'',state.kev?'seen in the wild':'',r.floor?'auto-exploitable from the internet':''].filter(Boolean).join(', ')+')'
+    ? 'likely to be exploited ('+[r.byEpss?'EPSS '+state.epss.toFixed(2):'',state.kev?'seen in the wild':''].filter(Boolean).join(', ')+')'
     : 'not likely to be exploited';
   const irvWhy = r.irv ? (r.D?'the internet can reach it directly':'a payload can reach it second-hand') : 'the internet can&rsquo;t deliver a payload to it';
   const sentence = 'A flaw with <b>'+r.word.toLowerCase()+'</b> customer effect on a <b>'+(state.m?'multi':'single')+'-agency</b> asset &rarr; <b>'+r.pain+'</b>. It&rsquo;s '+levWhy+' and '+irvWhy+', so it lands on the <b>'+COLPLAIN[r.col].replace('&amp;','&')+'</b> clock.';
@@ -988,7 +981,7 @@ function stepPanel5(r){
     '<div><span class="lbl">PAIN S<sub>H</sub></span>= '+f4(r.raw)+' / <span class="tip" tabindex="0" data-tip="'+normTip+'">0.995904</span> = <span class="res">'+f3(r.S)+'</span></div>'+
     '<div><span class="lbl">word</span> thresholds ('+fmtThreshold(state.t1)+', '+fmtThreshold(state.t2)+', '+fmtThreshold(state.t3)+') &rArr; '+r.word+'</div>'+
     '<div><span class="lbl">PAIN</span> '+r.word+' &and; m='+(state.m?1:0)+' &rArr; <span class="res">'+r.pain+'</span></div>'+
-    '<div><span class="lbl">column</span> LEV='+(r.lev?1:0)+' (EPSS&ge;&theta;: '+(r.byEpss?1:0)+' &or; KEV: '+(state.kev?1:0)+' &or; floor: '+(r.floor?1:0)+'), IRV='+(r.irv?1:0)+' (direct: '+(r.D?1:0)+' &or; indirect: '+(r.indirect?1:0)+') &rArr; '+COLNAMES[r.col]+'</div>'+
+    '<div><span class="lbl">column</span> LEV='+(r.lev?1:0)+' (EPSS&ge;&theta;: '+(r.byEpss?1:0)+' &or; KEV: '+(state.kev?1:0)+'), IRV='+(r.irv?1:0)+' (direct: '+(r.D?1:0)+' &or; indirect: '+(r.indirect?1:0)+') &rArr; '+COLNAMES[r.col]+'</div>'+
     '<div><span class="lbl">deadline</span> M['+state.cls+']['+r.pain+']['+COLNAMES[r.col]+'] = <span class="res">'+(r.deadline===null?'—':fmtDays(r.deadline))+'</span></div>'+
     '</div></div></details>';
 

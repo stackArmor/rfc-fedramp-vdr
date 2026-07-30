@@ -245,9 +245,7 @@ facts tighten the remediation clock:
   an EPSS probability threshold (EPSS being the statistical ``how likely is this to
   be exploited in the wild'' score) \textbf{or} if it's known to be actively
   exploited --- for example, listed in CISA's KEV catalog. Either signal is enough.
-  The method also applies a direct-exposure floor: a directly internet-reachable
-  finding with \texttt{AV:N/AC:L/PR:N/UI:N} is treated as likely exploitable. Whichever
-  predicate fires moves the finding to a faster remediation column.
+  Whichever predicate fires moves the finding to a faster remediation column.
 \item \textbf{Is it reachable from the internet?} A vulnerable surface an
   unauthenticated outside attacker can actually reach --- through a public IP, a
   public load balancer, an ingress, or any edge path that doesn't authenticate

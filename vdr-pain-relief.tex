@@ -153,11 +153,10 @@ control named in the finding's evidence.
 FedRAMP's exploitability axis is binary: a finding is likely-exploitable (LEV) or
 not (NLEV), and the two select different remediation columns. The memo computes
 \[
-\text{LEV} \;=\; \text{KEV} \ \lor\ (\text{EPSS} \ge \tau)\ \lor\ \text{floor},
+\text{LEV} \;=\; \text{KEV} \ \lor\ (\text{EPSS} \ge \tau),
 \qquad \tau = 0.70,
 \]
-where the floor is the \code{FRD-LEV} rule that an automated unauthenticated
-internet exploit is likely-exploitable. PAIN Relief never edits the published
+PAIN Relief never edits the published
 EPSS score --- a global prediction is not a provider's to rewrite --- just as the
 impact lever never edits the CVSS base vector. Instead a verified control lowers
 a \emph{local} estimate of exploitation probability, and the binary threshold
@@ -190,9 +189,7 @@ not defuse a vulnerability being exploited everywhere. Third,
 \textbf{KEV is frozen by default}, with one governed, off-by-default exception
 (below): a Known Exploited Vulnerability stays LEV regardless of $\rho$ unless an
 adopter deliberately enables the exception, and its BOD~26-04 clock is always the
-deadline floor. The \code{FRD-LEV} floor is a
-reachability premise, not a probability, so it is defeated only in the binary ---
-by a qualifying edge-authentication boundary --- never by a residual factor.
+deadline floor.
 
 \paragraph{The KEV exception (governed, off by default).} A KEV is
 \emph{observed} exploitation, not a prediction, so by default no control moves it.
@@ -247,7 +244,6 @@ Read-only root filesystem  & 22, 434, 73       & impact & MI High$\to$Low \\
 Route rate limiting        & 400, 1333         & impact & MA High$\to$Low \\
 Egress control (tiered)    & 917, 94, 98       & likelihood & $\rho$ 0.90--0.50 by firewall tier \\
 Blocking-mode EDR/RASP     & (any)             & likelihood & $\rho=0.85$ \\
-Edge auth (remote-access)  & (any)             & likelihood & defeats \code{FRD-LEV} floor \\
 \bottomrule
 \end{tabular}
 \caption{Illustrative PAIN Relief rows. The maintained catalog is proprietary and
