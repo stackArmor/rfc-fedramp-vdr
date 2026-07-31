@@ -563,6 +563,18 @@ loss is at least serious. The reference calibration treats that multidimensional
 shape as a reasonable proxy for a broader and generally more consequential class
 of vulnerability.
 
+\paragraph{External consistency check.}
+This breadth requirement is directionally consistent with CISA Vulnrichment data.
+In a reproducible random sample of 15,000 CVE records, 3,439 contained both a CISA
+SSVC Technical Impact decision and CISA-provided CVSS v3 impact metrics. Of the
+1,475 records labeled \code{Technical Impact: total}, 1,376 (93.3\%) had at least
+two High C/I/A impacts. Conversely, only 25 of 1,006 records (2.5\%) with exactly
+one High impact were labeled \code{total}. This comparison is corroborative rather
+than definitional: SSVC Technical Impact characterizes control or disclosure
+relative to the vulnerable component, whereas PAIN also evaluates dimensional
+alignment with the asset's security requirements \mbox{[CISA-SSVC]}
+\mbox{[CISA-VULN]}.
+
 This is not an arbitrary rule that High/High alignment is unimportant. A lone
 High/High pair is the strongest possible one-objective loss and remains Disruptive
 under the reference calibration. Likely exploitability, internet reachability, and
@@ -1180,6 +1192,13 @@ not a categorization rule imported from NIST or FedRAMP.
   \url{https://www.fedramp.gov/2026/providers/start/class/#alignment-with-agency-use-cases}.
 \item[{[CWE-RCM]}] MITRE, \emph{CVE to CWE Root Cause Mapping Guidance}.
   \url{https://cwe.mitre.org/documents/cwe_usage/guidance.html}.
+\item[{[CISA-SSVC]}] Cybersecurity and Infrastructure Security Agency,
+  \emph{Stakeholder-Specific Vulnerability Categorization Guide}. Technical Impact
+  decision values and affected-component scope.
+  \url{https://www.cisa.gov/resources-tools/resources/stakeholder-specific-vulnerability-categorization-ssvc}.
+\item[{[CISA-VULN]}] Cybersecurity and Infrastructure Security Agency,
+  \emph{Vulnrichment}, repository snapshot, July 31, 2026.
+  \href{https://github.com/cisagov/vulnrichment/tree/6c7a125e39a2e4dd0eb6fb22dbd68c4f71b0c89b}{GitHub commit \code{6c7a125}}.
 \end{itemize}
 }
 
@@ -1217,5 +1236,12 @@ for Dataset A; 3,691 findings and 60,817 observations for Dataset B. Dataset nam
 resource names, and source identifiers are intentionally omitted from this public
 paper. Authorized reviewers may reproduce the run using the controlled internal
 evidence package.
+
+The external CISA consistency check sampled 15,000 unique \code{CVE-*.json}
+records without replacement from the \mbox{[CISA-VULN]} snapshot using seed
+\code{20260801}. Eligibility required a CISA-ADP SSVC Technical Impact value of
+\code{total} or \code{partial} and CISA-ADP CVSS v3.0 or v3.1 Scope and C/I/A
+impact metrics. The filter yielded 3,439 records: 1,475 \code{total} and 1,964
+\code{partial}.
 
 \end{document}
