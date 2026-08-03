@@ -860,7 +860,7 @@ function levBlock(r){
       ? 'An evidence-backed exploitability mitigation is on record — the likelihood half of FedRAMP mitigation. Re-evaluated whenever the control changes; the raw EPSS stays on the books.'
       : 'Statistical likelihood of exploitation in the wild, from FIRST&rsquo;s scoring system.')+
     disj(state.kev, 'CISA says yes — '+(state.kev?'on':'not on')+' the Known Exploited Vulnerabilities list',
-      'Observed exploitation overrides any prediction.'));
+      'Observed exploitation overrides any prediction.');
 }
 function irvBlock(r){
   let dWhy;
