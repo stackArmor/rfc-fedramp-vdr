@@ -27,6 +27,16 @@
   title={IN PLAIN TERMS}
 }
 
+% Practical-operational callout: keeps implementation constraints visible.
+\newtcolorbox{reality}{
+  enhanced, breakable,
+  colback=Sepia!7, colframe=Sepia!55, boxrule=0.4pt, arc=2pt,
+  left=7pt, right=7pt, top=4pt, bottom=4pt,
+  fontupper=\small,
+  coltitle=Sepia!72!black, fonttitle=\bfseries\sffamily\footnotesize,
+  title={IN REALITY}
+}
+
 % Notation callout: same framing, different color/heading from the plain box.
 \newtcolorbox{notation}{
   enhanced, breakable,
@@ -613,6 +623,28 @@ elsewhere, calls for explicit target review. A future extension may combine
 data-flow and trust evidence with Modified Vulnerable- and Subsequent-System
 impact metrics, but it must state how each consequence is associated with the
 effective requirements of the system on which it lands.
+
+\begin{reality}
+  CSPs should reasonably account for CVSS Scope changes and v4.0
+  Subsequent-System evidence, but CNA and CVE records seldom identify the
+  affected downstream subcomponent in machine-readable form. Determining whether
+  a SQL-injection consequence belongs to a particular database, for example, or
+  whether an XSS consequence reaches a particular user context, requires
+  environmental analysis of resource identity, authorization, trust boundaries,
+  data flows, and deployment architecture. A mechanically precise recalculation
+  against every possible downstream asset's CR/IR/AR profile is therefore not a
+  realistic default at CSP scale.
+
+  The operational priority remains to remediate the vulnerable component or
+  apply an effective mitigation. Cross-system consequence evidence should inform
+  how that remediation or mitigation is prioritized, scoped, and verified; it
+  should not routinely delay action while the CSP pursues speculative
+  per-component PAIN recalculation. Recalculate against a specifically affected
+  asset when the target and consequence are clear and material; otherwise retain
+  the Scope or Subsequent-System evidence, document the review need, and resolve
+  the vulnerability or exposure. This CVSS system-boundary evidence remains
+  distinct from PAIN's \emph{multi-agency} blast-radius determination.
+\end{reality}
 
 The result is not a conformant CVSS Environmental Score. It preserves CVSS's
 impact values, requirement multipliers, and aggregation form, but retains the
