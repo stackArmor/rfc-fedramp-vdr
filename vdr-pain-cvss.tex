@@ -595,12 +595,15 @@ The full Environmental formula branches on the Changed/Unchanged Modified Scope
 metric. CVSS Scope asks whether exploitation can affect resources governed by a
 security authority beyond the vulnerable component's authority; it is not limited
 to sandbox or privilege-boundary escape, and Modified Scope can reflect the local
-environment. FedRAMP's blast-radius concern here asks a different question:
-whether the finding's supported effect reaches one agency or several. The
-multi-agency flag in Eq.~\eqref{eq:pain} carries that concern directly, while the
-cross-component attribution above determines which consequence profile is
-relevant. Because these concepts are not semantically interchangeable, the CVSS
-Scope machinery is omitted rather than renamed or repurposed.
+environment. PAIN's affected-agency scope asks a different question: whether the
+finding's evidenced effect reaches one definite agency or several. The
+multi-agency flag in Eq.~\eqref{eq:pain} carries that concern directly.
+
+CVSS Scope is retained as evidence for cross-component target review and for
+scoping remediation or mitigation; it is neither a PAIN severity multiplier nor a
+substitute for affected-agency scope. Because the concepts are not semantically
+interchangeable, PAIN does not incorporate CVSS Scope's Environmental-score branch
+or rename it as a multi-agency field.
 
 \paragraph{CVSS v4.0 makes impact location explicit without defining PAIN
 attribution.}
