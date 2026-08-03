@@ -225,6 +225,9 @@ agency or several. It is a property of the finding in its deployed architecture,
 not merely a count of customers or data attached to the vulnerable asset. SEVERITY
 is mapped to a FedRAMP customer-effect word (Minimal, Narrow, Disruptive,
 Debilitating); the word and affected-agency scope together select the N-level.
+Here, \emph{scope} means affected-agency scope. It must not be confused with
+CVSS Scope, the v3.1 security-authority metric, which is handled separately in
+Section~\ref{sec:cvss-scope}.
 
 \begin{plain}
 \textbf{See the whole method interactively.}
@@ -587,6 +590,7 @@ the CVSS coefficients are not a ratio-scale measurement of harm. The division
 changes no ordering --- it relabels the axis.
 
 \paragraph{We do not repurpose CVSS Scope.}
+\label{sec:cvss-scope}
 The full Environmental formula branches on the Changed/Unchanged Modified Scope
 metric. CVSS Scope asks whether exploitation can affect resources governed by a
 security authority beyond the vulnerable component's authority; it is not limited
